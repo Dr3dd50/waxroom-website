@@ -24,3 +24,6 @@ dist-dashboard
 *.sln
 *.sw?
 motion/out
+
+# local API data
+platform/api/.data

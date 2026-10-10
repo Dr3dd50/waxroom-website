@@ -9,6 +9,9 @@
     },
     {
       "path": "./tsconfig.dashboard.json"
+    },
+    {
+      "path": "./tsconfig.api.json"
     }
   ]
 }
