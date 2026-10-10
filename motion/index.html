@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Wax Room doodles</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #111; }
+      body { display: grid; place-items: center; }
+      canvas { max-width: 100vw; max-height: 100vh; display: block; }
+      nav { position: fixed; top: 10px; left: 10px; display: flex; gap: 6px; font: 13px system-ui; }
+      nav a { color: #eee; background: #333; padding: 4px 8px; border-radius: 6px; text-decoration: none; }
+      body.render nav { display: none; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c" width="1600" height="900"></canvas>
+    <nav id="nav"></nav>
+    <script type="module">
+      // Opened directly (node motion/render.mjs --serve) it plays a scene live;
+      // the renderer instead calls window.frame(f) once per frame.
+      import { drawScene, SCENES, DURATION } from './scenes.js';
+      import { FPS } from './doodle.js';
+
+      const font = new FontFace('Hand', 'url(fonts/caveat-latin-600.woff2)', { weight: '600' });
+      await font.load();
+      document.fonts.add(font);
+
+      const params = new URLSearchParams(location.search);
+      const name = params.get('scene') || SCENES[0];
+      const ctx = document.getElementById('c').getContext('2d');
+      window.FRAMES = DURATION * FPS;
+      window.frame = (f) => {
+        drawScene(ctx, name, f / FPS);
+        return ctx.canvas.toDataURL('image/png');
+      };
+      window.ready = true;
+
+      if (params.has('render')) {
+        document.body.classList.add('render');
+      } else {
+        document.getElementById('nav').innerHTML = SCENES.map((s) => `<a href="?scene=${s}">${s}</a>`).join('');
+        const start = performance.now();
+        const tick = () => {
+          drawScene(ctx, name, ((performance.now() - start) / 1000) % DURATION);
+          requestAnimationFrame(tick);
+        };
+        tick();
+      }
+    </script>
+  </body>
+</html>
