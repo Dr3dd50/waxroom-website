@@ -97,13 +97,7 @@ export function Hero() {
           .from('.hero__logo', { scale: 0.85, opacity: 0, duration: 1.6 })
           .from('.hero__reveal', { y: 30, opacity: 0, stagger: 0.1 }, '<0.3');
 
-        // Scroll-out: the logo stays centred and recedes; copy lifts away.
-        gsap.to('.hero__logo', {
-          scale: 0.82,
-          opacity: 0.35,
-          ease: 'none',
-          scrollTrigger: { trigger: root.current, start: 'top top', end: 'bottom top', scrub: true },
-        });
+        // Scroll-out: the copy lifts away. The logo stays solid until the header logo takes over.
         gsap.to('.hero__copy', {
           yPercent: -12,
           opacity: 0.2,

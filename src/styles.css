@@ -1461,6 +1461,9 @@ h3 {
   aspect-ratio: 16 / 9;
   object-fit: cover;
   background: #f8f1e7;
+  /* browsers float their own video buttons over a hovered video; these loops take no
+     input, so hovers and clicks pass straight through to the card or link around them */
+  pointer-events: none;
 }
 .svc-film__cta {
   display: flex;
@@ -1743,7 +1746,8 @@ h3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  align-items: start;
+  /* every tile in a row the same height, however long its tagline */
+  align-items: stretch;
 }
 .sc-tile {
   display: flex;
@@ -1765,10 +1769,16 @@ h3 {
   display: block;
 }
 .sc-tile__body {
-  display: grid;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   gap: 0.35rem;
   padding: 1.1rem 1.3rem 1.2rem;
   border-top: 1px solid var(--line);
+}
+/* the dropdown sits on the same line in every tile */
+.sc-tile__body .svc-drop {
+  margin-top: auto;
 }
 .sc-tile__name {
   font: 400 1.9rem/1.1 var(--serif);
@@ -1782,35 +1792,14 @@ h3 {
   font-size: 0.95rem;
   margin-bottom: 0.4rem;
 }
-.sc-tile--waxing {
-  grid-column: span 2;
-  grid-row: span 2;
-  /* fill the height of the two tiles beside it; the extra room is paper around the drawing */
-  align-self: stretch;
-}
-.sc-tile--waxing .sc-tile__media {
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-.sc-tile--waxing .sc-tile__name {
-  font-size: clamp(2.2rem, 3.6vw, 3.2rem);
-}
 @media (max-width: 860px) {
   .sc-bento__grid {
     grid-template-columns: 1fr 1fr;
-  }
-  .sc-tile--waxing {
-    grid-column: span 2;
-    grid-row: span 1;
   }
 }
 @media (max-width: 520px) {
   .sc-bento__grid {
     grid-template-columns: 1fr;
-  }
-  .sc-tile--waxing {
-    grid-column: auto;
   }
 }
 /* Shared services dropdown (B and C) */
@@ -1864,13 +1853,6 @@ h3 {
   margin: 0.9rem 0 0.3rem;
   color: var(--honey-deep);
   font-size: 0.92rem;
-}
-.sc-tile--waxing .svc-drop ul {
-  columns: 2 200px;
-  column-gap: 1.6rem;
-}
-.sc-tile--waxing .svc-drop li {
-  break-inside: avoid;
 }
 /* ───────────────── Grouped services menu ───────────────── */
 .dropdown__panel.mega {

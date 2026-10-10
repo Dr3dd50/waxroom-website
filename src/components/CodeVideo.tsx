@@ -31,6 +31,10 @@ export function CodeVideo({ slug, label, className = '' }: { slug: string; label
       muted
       loop
       playsInline
+      // decorative loops: no picture-in-picture, casting or other browser buttons over them
+      disablePictureInPicture
+      disableRemotePlayback
+      controlsList="nodownload nofullscreen noplaybackrate noremoteplayback"
       preload="metadata"
       aria-label={label || undefined}
       aria-hidden={label ? undefined : true}

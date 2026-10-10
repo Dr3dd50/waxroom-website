@@ -109,7 +109,14 @@ export function Nav({ isHome }: { isHome: boolean }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > window.innerHeight * 0.55);
+    // The header logo takes over as soon as the hero logo starts to slide under the header,
+    // so a logo is always in view.
+    const onScroll = () => {
+      const hero = document.querySelector('.hero__logo');
+      const header = document.querySelector('.header');
+      if (hero && header) setScrolled(hero.getBoundingClientRect().top < header.getBoundingClientRect().bottom);
+      else setScrolled(window.scrollY > window.innerHeight * 0.55);
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
