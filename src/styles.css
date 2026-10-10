@@ -1785,6 +1785,13 @@ h3 {
 .sc-tile--waxing {
   grid-column: span 2;
   grid-row: span 2;
+  /* fill the height of the two tiles beside it; the extra room is paper around the drawing */
+  align-self: stretch;
+}
+.sc-tile--waxing .sc-tile__media {
+  flex: 1;
+  display: flex;
+  align-items: center;
 }
 .sc-tile--waxing .sc-tile__name {
   font-size: clamp(2.2rem, 3.6vw, 3.2rem);
