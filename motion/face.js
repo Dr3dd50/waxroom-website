@@ -2,7 +2,7 @@
 // headband on, eyes closed, towel over her shoulders. Shared by the scenes that
 // show her face (Jet Plasma, and the wide shot that opens the lash video).
 
-import { MUTED, SKIN, SKIN_SHADE, stroke, fill, shape, spline, ellipse } from './doodle.js';
+import { MUTED, SKIN, SKIN_SHADE, stroke, fill, shape, spline, ellipse, rrect } from './doodle.js';
 
 export const CX = 800; // face centre line
 // Face outline: forehead at top (towards the pillow), chin at the bottom (towards us).
@@ -54,8 +54,34 @@ export const LINES = [
 ];
 
 
-/** Draw the client. `underEyePad` adds the white gel pad lash artists tape under her eye; `lines` the fine lines Jet Plasma softens. */
-export function drawClient(ctx, t, { underEyePad = false, lines = true } = {}) {
+// The salon's black waxing bed, head end at the top. It runs on past the bottom of
+// the frame so a zoomed-out shot can show her whole length on it.
+export const BED = rrect(180, 40, 1240, 2560, 90);
+export const BED_BLACK = '#1E1B19';
+
+/** The black bed with its faint embossed-leather texture. */
+export function drawBed(ctx, t) {
+  shape(ctx, BED, t, { fillColor: BED_BLACK, w: 6 });
+  ctx.save();
+  ctx.beginPath();
+  BED.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.clip();
+  ctx.strokeStyle = '#332E2A';
+  ctx.lineWidth = 3;
+  for (let y = 70, r = 0; y < 2600; y += 46, r++) {
+    for (let x = 200 + (r % 2) * 30; x < 1420; x += 60) {
+      const j = Math.sin(x * 12.9898 + y * 78.233) * 6;
+      ctx.beginPath();
+      ctx.ellipse(x + j, y, 22, 14, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+/** Draw the client. `underEyePad` adds the white gel pad lash artists tape under her eye; `lines` the fine lines Jet Plasma softens; `bed` the black waxing bed under her. */
+export function drawClient(ctx, t, { underEyePad = false, lines = true, bed = false } = {}) {
+  if (bed) drawBed(ctx, t);
   // pillow, hair, neck and the towel over her shoulders
   shape(ctx, PILLOW, t, { fillColor: '#FFFFFF', w: 5, seed: 1 });
   HAIR.forEach((h, i) => stroke(ctx, h, 1, t, { w: 5, seed: 10 + i }));

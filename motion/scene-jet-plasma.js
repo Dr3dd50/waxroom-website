@@ -1,49 +1,64 @@
-// Jet Plasma facial, front-on: the client lies back on a pillow, face toward us
-// (her chin toward the esthetician), headband on, eyes closed. The JETT plasma
-// pen comes in from our side and glides its flat "shower" disc
-// in slow circles over her cheek while a violet plasma glow crackles in the gap.
+// Jet Plasma facial, front-on: the client lies back on the salon's black waxing
+// bed, face toward us (her chin toward the esthetician), headband on, eyes closed.
+// The handpiece glides its flat nozzle in slow circles over her cheek while a
+// violet plasma glow crackles where it meets the skin. The video opens on the
+// whole bed, zooms in to the face for the treatment and zooms back out.
 // Every motion completes a whole number of cycles per loop, so the last frame
-// flows straight into the first.
+// flows straight into the first. Tools only.
 //
-// Reference: JETT Plasma Lift handpiece — thick white pen, dark display panel,
-// rear cable, screw-on applicators (silver cones, gold needle, flat shower disc).
+// Reference: The Wax Room's own Jet Plasma Facial video (the handpiece, the bed).
 
-import {
-  INK, HONEY, PLASMA, TAU,
-  stroke, shape, spline, arc, rrect, rotate, translate, write, lerp, wave,
-} from './doodle.js';
+import { PAPER, HONEY, MUTED, SKIN, SKIN_SHADE, PLASMA, TAU, stroke, shape, spline, arc, rrect, ellipse, write, wave } from './doodle.js';
 import { drawClient } from './face.js';
+import { zoomLoop } from './camera.js';
+import { plasmaHandpiece, plasmaGlow } from './plasma-device.js';
 
-export const DURATION = 8;
-const LAPS = 2; // circles the pen makes per loop
+// The close-up's own loop; the full video adds a zoom in and out around it.
+const CLOSE = 8;
+export const DURATION = 10;
+export const POSTER = 0; // the wide shot
+const LAPS = 2; // circles the nozzle makes per close-up loop
 
-// Where the disc glides: her cheek on our right.
+// Where the nozzle glides: her cheek on our right.
 const CHEEK = { x: 892, y: 548, rx: 34, ry: 22 };
+// The handpiece comes in from our side (lower right), the side the esthetician works from.
+const ANGLE = 2.5;
+const CONSOLE = [2150, 1150]; // the plasma unit on its cart, beside the bed (off-frame in the close-up)
 
-// Pen built pointing straight up from its tip at (0, 0), then rotated. It comes in
-// from our side (lower right), the side the esthetician works from.
-const PEN_ANGLE = 2.5;
-function penParts(tipX, tipY) {
-  const place = (pts) => translate(rotate(pts, 0, 0, PEN_ANGLE), tipX, tipY);
-  return {
-    disc: place(rrect(-46, -14, 92, 18, 8)),
-    neck: place(rrect(-15, -58, 30, 46, 8)),
-    collar: place(rrect(-26, -78, 52, 22, 8)),
-    body: place(rrect(-32, -520, 64, 444, 30)),
-    panel: place(rrect(-15, -250, 30, 120, 10)),
-    tail: place([[0, -520]])[0],
-    at: (x, y) => place([[x, y]])[0],
-  };
+/** Her arms and the blanket below the towel: only seen in the wide shot. */
+function drawBody(ctx, t) {
+  shape(ctx, spline([[300, 905], [800, 900], [1300, 905], [1320, 1600], [1290, 2560], [310, 2560], [280, 1600], [300, 905]], 8), t, { fillColor: '#E3DCD2', w: 5 });
+  stroke(ctx, spline([[520, 1100], [560, 1500], [540, 1900]], 6), 1, t, { w: 3, color: MUTED });
+  stroke(ctx, spline([[1080, 1100], [1040, 1500], [1060, 1900]], 6), 1, t, { w: 3, color: MUTED });
+  for (const side of [-1, 1]) {
+    const x = 800 + side * 470;
+    shape(ctx, spline([[x - 50, 900], [x - 56, 1300], [x - 40, 1640], [x + 40, 1640], [x + 56, 1300], [x + 50, 900]], 6), t, { fillColor: SKIN, w: 5 });
+    shape(ctx, ellipse(x, 1690, 46, 64), t, { fillColor: SKIN_SHADE, w: 5 });
+  }
 }
 
-export function draw(ctx, t) {
-  const a = TAU * LAPS * (t / DURATION);
+/** The plasma unit on a cart at the side of the bed. */
+function drawConsole(ctx, t) {
+  const [cx, cy] = CONSOLE;
+  shape(ctx, rrect(cx - 210, cy - 160, 420, 320, 26), t, { fillColor: '#D8D2CA', w: 6 });
+  shape(ctx, rrect(cx - 150, cy - 120, 300, 190, 22), t, { fillColor: '#FFFFFF', w: 6 });
+  shape(ctx, rrect(cx - 120, cy - 95, 160, 110, 12), t, { fillColor: '#2A2622', w: 5 });
+  stroke(ctx, spline([[cx - 100, cy - 40], [cx - 70, cy - 70], [cx - 40, cy - 30], [cx - 10, cy - 60], [cx + 20, cy - 40]], 6), 1, t, { w: 4, color: PLASMA });
+  shape(ctx, ellipse(cx + 90, cy - 40, 26, 26), t, { fillColor: '#C9CDD2', w: 5 });
+}
+
+function drawClose(ctx, t, { wide = false } = {}) {
+  const a = TAU * LAPS * (t / CLOSE);
   const tipX = CHEEK.x + Math.cos(a) * CHEEK.rx;
   const tipY = CHEEK.y + Math.sin(a) * CHEEK.ry;
 
-  drawClient(ctx, t);
+  drawClient(ctx, t, { bed: true });
+  if (wide) {
+    drawBody(ctx, t);
+    drawConsole(ctx, t);
+  }
 
-  // glow trail where the disc has just passed (analytic, so the loop is seamless)
+  // glow trail where the nozzle has just passed (analytic, so the loop is seamless)
   for (let k = 9; k >= 1; k--) {
     const b = a - k * 0.18;
     const x = CHEEK.x + Math.cos(b) * CHEEK.rx, y = CHEEK.y + Math.sin(b) * CHEEK.ry;
@@ -57,49 +72,32 @@ export function draw(ctx, t) {
     ctx.restore();
   }
 
-  // the pen and its cable (off the bottom-right corner)
-  const pen = penParts(tipX, tipY);
-  const tail = pen.tail;
-  stroke(ctx, spline([tail, [tail[0] + 40, tail[1] + 60], [1520, 860 + wave(t, DURATION, LAPS) * 10], [1640, 900]], 12), 1, t, { w: 7, seed: 80 });
-  shape(ctx, pen.body, t, { fillColor: '#FFFFFF', w: 6, seed: 81 });
-  shape(ctx, pen.panel, t, { fillColor: '#2A2622', w: 4, seed: 82 });
-  // display: intensity "04" and a level meter that pulses 8 times per loop
-  const lvl = 0.5 + 0.5 * (0.5 + 0.5 * wave(t, DURATION, 8));
-  for (let i = 0; i < 5; i++) {
-    const c0 = pen.at(-7, -150 - i * 13), c1 = pen.at(7, -150 - i * 13);
-    stroke(ctx, [c0, c1], 1, t, { w: 5, color: i / 5 < lvl ? '#7DE3B0' : '#4A4440', seed: 83 + i });
+  plasmaGlow(ctx, t, tipX, tipY, { loop: CLOSE });
+  plasmaHandpiece(ctx, t, tipX, tipY, {
+    angle: ANGLE,
+    scale: 0.7,
+    cable: [[1520, 900 + wave(t, CLOSE, LAPS) * 10], [1760, 1020], [1960, 1110], [CONSOLE[0] - 60, CONSOLE[1] - 20]],
+  });
+
+  if (!wide) {
+    write(ctx, 'Jet Plasma · no needles · no downtime', 800, 64, 1, t, { size: 50, color: PAPER, rot: 0 }); // light on the black bed
+    stroke(ctx, arc(800, 30, 300, 14, Math.PI * 0.12, Math.PI * 0.88, 20).map(([x, y]) => [x, y + 64]), 1, t, { w: 4, color: HONEY });
   }
-  const d = pen.at(0, -222);
+}
+
+// ── wide shot: the whole bed from above, the console on its cart beside it ──
+const ZOOM = 2.4;
+const TARGET = [800, 300];
+
+function drawWide(ctx, t) {
   ctx.save();
-  ctx.translate(d[0], d[1]);
-  ctx.rotate(PEN_ANGLE + Math.PI / 2);
-  ctx.fillStyle = '#7DE3B0';
-  ctx.font = '600 26px Hand';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('04', 0, 0);
+  ctx.translate(TARGET[0] - 800 / ZOOM, TARGET[1] - 450 / ZOOM);
+  ctx.scale(1 / ZOOM, 1 / ZOOM);
+  drawClose(ctx, 0, { wide: true });
   ctx.restore();
-  shape(ctx, pen.collar, t, { fillColor: '#D8D2CA', w: 5, seed: 88 });
-  shape(ctx, pen.neck, t, { fillColor: '#B9B2A8', w: 5, seed: 89 });
-  shape(ctx, pen.disc, t, { fillColor: '#F2EEE8', w: 5, seed: 90 });
+  write(ctx, 'Jet Plasma facial', 300, 640, 1, t, { size: 46, color: MUTED, rot: 0 });
+}
 
-  // plasma in the gap between disc and skin: a violet glow with crackling micro-arcs
-  const under = pen.at(0, 10);
-  ctx.save();
-  const glow = ctx.createRadialGradient(under[0], under[1], 4, under[0], under[1], 64);
-  glow.addColorStop(0, 'rgba(196,178,255,0.95)');
-  glow.addColorStop(0.45, 'rgba(155,123,255,0.42)');
-  glow.addColorStop(1, 'rgba(155,123,255,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(under[0] - 80, under[1] - 80, 160, 160);
-  ctx.restore();
-  for (let k = 0; k < 7; k++) {
-    const s0 = pen.at(-36 + k * 12, 4);
-    const e = pen.at(-36 + k * 12 + Math.sin(t * 50 + k * 3) * 5, 20);
-    stroke(ctx, [s0, [lerp(s0[0], e[0], 0.5) + Math.sin(t * 70 + k) * 4, lerp(s0[1], e[1], 0.5)], e], 1, t, { w: 2.5, color: '#7B5CF0', seed: 100 + k });
-  }
-
-
-  write(ctx, 'Jet Plasma · no needles · no downtime', 800, 64, 1, t, { size: 50, color: INK, rot: 0 });
-  stroke(ctx, arc(800, 30, 300, 14, Math.PI * 0.12, Math.PI * 0.88, 20).map(([x, y]) => [x, y + 64]), 1, t, { w: 4, color: HONEY, seed: 110 });
+export function draw(ctx, t) {
+  zoomLoop(ctx, t, { duration: DURATION, closeDuration: CLOSE, target: TARGET, zoom: ZOOM, wide: drawWide, close: drawClose });
 }

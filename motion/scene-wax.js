@@ -16,6 +16,7 @@ import {
   lerp, seg, prog, ease, clamp,
 } from './doodle.js';
 import { zoomLoop } from './camera.js';
+import { BED_BLACK } from './face.js';
 
 // The close-up's own loop; the full video adds a zoom in and out around it.
 const CLOSE = 8;
@@ -261,7 +262,8 @@ function drawWide(ctx, t) {
   stroke(ctx, line(potBase[0] + 66, potBase[1] + 12, potBase[0] + 66, 772, 6), 1, t, { w: 5 });
   shape(ctx, ellipse(potBase[0] - 66, 774, 9, 9), t, { fillColor: '#2A2622', w: 3 });
   shape(ctx, ellipse(potBase[0] + 66, 774, 9, 9), t, { fillColor: '#2A2622', w: 3 });
-  shape(ctx, rrect(-DX - 60, bot + 44, 1000 + DX, 66, 20), t, { fillColor: '#E9DCC8', w: 5 });
+  shape(ctx, rrect(-DX - 60, bot + 44, 1000 + DX, 66, 20), t, { fillColor: BED_BLACK, w: 5 }); // the salon's black waxing bed
+  for (let x = -DX - 30; x < 920; x += 44) shape(ctx, ellipse(x + ((x * 7) % 9), bot + 77, 15, 9), t, { w: 2.5, color: '#332E2A' });
   stroke(ctx, line(90, bot + 110, 90, 780, 4), 1, t, { w: 6 });
   stroke(ctx, line(870, bot + 110, 870, 780, 4), 1, t, { w: 6 });
   shape(ctx, spline([[-DX - 60, bot - 2], [950, bot - 2], [960, bot + 46], [-DX - 60, bot + 46]], 4), t, { fillColor: '#FFFFFF', w: 4 });

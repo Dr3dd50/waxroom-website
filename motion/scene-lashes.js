@@ -181,7 +181,7 @@ const ZOOM = 9;
 const TARGET = [882, 461 + 90 / ZOOM];
 
 function drawWide(ctx, t) {
-  drawClient(ctx, t, { underEyePad: true, lines: false });
+  drawClient(ctx, t, { underEyePad: true, lines: false, bed: true });
   // a lash tile on the towel: rows of extensions ready to pick up
   shape(ctx, rrect(1110, 760, 150, 96, 12), t, { fillColor: '#FFFFFF', w: 4 });
   for (let r = 0; r < 4; r++) {
