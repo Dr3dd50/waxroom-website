@@ -92,8 +92,9 @@ export function publicRoutes(store: Store) {
     if (!client || !service || !service.bookableOnline) throw bad('Something went wrong. Please start again.');
     client.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
     await store.put('clients', client);
-    // "anyone": first person free at that time
-    const staffIds = b.staffId ? [b.staffId] : (await slotsFor(store, service, zoned(b.start).day, null)).find((s) => s.start === b.start)?.staffIds ?? [];
+    // only times the booking page could have offered: hours, availability, lead time, time off
+    const offered = (await slotsFor(store, service, zoned(b.start).day, b.staffId ?? null)).find((s) => s.start === b.start);
+    const staffIds = offered ? (b.staffId ? offered.staffIds.filter((id) => id === b.staffId) : offered.staffIds) : [];
     let staffId: string | undefined;
     for (const id of staffIds) if (await isFree(store, id, b.start, service.duration)) staffId = id;
     if (!staffId) throw new HttpError(409, 'That time was just taken. Please pick another.');
@@ -150,7 +151,8 @@ export function publicRoutes(store: Store) {
     if ((Date.parse(appt.start) - Date.now()) / 3600000 < settings.policies.cancellationWindowHours)
       throw bad(`Changes within ${settings.policies.cancellationWindowHours} hours need a call or text to the studio.`);
     const service = (await store.get<Service>('services', appt.serviceId))!;
-    if (!(await isFree(store, appt.staffId, b.start, service.duration, appt.id))) throw new HttpError(409, 'That time was just taken. Please pick another.');
+    const offered = (await slotsFor(store, service, zoned(b.start).day, appt.staffId)).some((s) => s.start === b.start);
+    if (!offered || !(await isFree(store, appt.staffId, b.start, service.duration, appt.id))) throw new HttpError(409, 'That time isn’t available. Please pick another.');
     // the id carries the start time, so a new time is a new record
     await store.delete('appointments', appt.id);
     const moved: Appointment = { ...appt, id: `${b.start}_${rid(4)}`, start: b.start, end: new Date(Date.parse(b.start) + service.duration * 60000).toISOString(), status: 'booked', texts: {} };

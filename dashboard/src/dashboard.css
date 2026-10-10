@@ -1429,3 +1429,27 @@ code {
 .week__appt.appt--completed {
   opacity: 0.6;
 }
+.daygrid__off {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 4px 6px;
+  background: repeating-linear-gradient(135deg, rgba(23, 17, 11, 0.07) 0 6px, rgba(23, 17, 11, 0.02) 6px 12px);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+  pointer-events: none;
+}
+.card-panel h3 {
+  font: 600 0.78rem var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mini-list li .chip {
+  justify-self: end;
+}

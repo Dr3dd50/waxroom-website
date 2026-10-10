@@ -34,7 +34,7 @@ export function resolve(pathname: string): Route {
 /** Pages search engines should list. */
 export const SITEMAP_PATHS = ['/', ...SERVICE_GROUPS.filter((g) => g.landing).map(groupPath), ...SERVICE_PAGES.map(servicePath), '/gallery/'];
 /** Every path that gets a pre-rendered HTML file (/r/ serves every referral link). */
-export const PRERENDER_PATHS = [...SITEMAP_PATHS, '/book/', ...(NATIVE ? ['/booking/', '/join/', '/r/'] : [])];
+export const PRERENDER_PATHS = [...SITEMAP_PATHS, '/404/', '/book/', ...(NATIVE ? ['/booking/', '/join/', '/r/'] : [])];
 
 export function headFor(route: Route) {
   if (route.kind === 'service') {

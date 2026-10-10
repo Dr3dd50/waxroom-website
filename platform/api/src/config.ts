@@ -16,7 +16,8 @@ export const config = {
   demoData: env.DEMO_DATA !== 'false' && !env.TABLE_NAME,
   owner: {
     email: env.OWNER_EMAIL ?? 'waxroomrichmond@gmail.com',
-    password: env.OWNER_PASSWORD ?? 'waxroom-demo',
+    // on AWS this must come from the keys secret; the demo password is local-only
+    password: env.OWNER_PASSWORD ?? (env.TABLE_NAME ? undefined : 'waxroom-demo'),
   },
   stripe: {
     secretKey: env.STRIPE_SECRET_KEY,

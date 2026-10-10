@@ -17,7 +17,11 @@ export type Staff = {
   bookable: boolean;
   /** Working hours by weekday; null = day off. Missing = business hours. */
   schedule?: WeekSchedule;
+  /** Days or hours off: nothing can be booked online in these windows. */
+  timeOff?: TimeOff[];
 };
+
+export type TimeOff = { id: string; from: string; to: string; note: string };
 
 export type Service = {
   id: string;

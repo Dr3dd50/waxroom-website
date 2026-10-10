@@ -81,12 +81,13 @@ export function CalendarView() {
       {!data ? <p className="empty">Loading…</p> : null}
       {data && mode === 'day' ? (
         <>
-          <div className="stats">
+          {/* totals are the owner's numbers */}
+          {owner ? <div className="stats">
             <Stat label="Appointments" value={live.length} note={plural(live.filter((a) => a.newClient).length, 'new client')} />
             <Stat label="Booked" value={money(live.reduce((n, a) => n + a.price, 0))} note="before tips" />
             <Stat label="Paid so far" value={money(live.reduce((n, a) => n + (a.checkout?.total ?? 0), 0))} note="incl. tips" />
             <Stat label="Confirmed" value={`${live.filter((a) => a.status !== 'booked').length} / ${live.length}`} note="replied C or checked in" />
-          </div>
+          </div> : null}
           <DayGrid day={day} columns={columns} appts={shown} clients={clients} onOpen={(a) => setOpenId(a.id)} />
         </>
       ) : null}
@@ -139,6 +140,11 @@ function DayGrid({ day, columns, appts, clients, onOpen }: { day: string; column
               <i key={hr} className="daygrid__line" style={{ top: (hr * 60 - OPEN) * PX }} />
             ))}
             {!h?.working ? <div className="daygrid__closed" style={{ top: 0, bottom: 0 }} /> : h.end * 60 < CLOSE ? <div className="daygrid__closed" style={{ top: (h.end * 60 - OPEN) * PX, bottom: 0 }} /> : null}
+            {offBlocks(s, day).map((b) => (
+              <div key={b.id} className="daygrid__off" style={{ top: (Math.max(b.start, OPEN) - OPEN) * PX, height: (Math.min(b.end, CLOSE) - Math.max(b.start, OPEN)) * PX }}>
+                <span>{b.note || 'Time off'}</span>
+              </div>
+            ))}
             {appts
               .filter((a) => a.staffId === s.id)
               .map((a) => {
@@ -192,7 +198,7 @@ function WeekGrid({ start, staffId, appts, clients, onOpen, onDay }: { start: st
               <strong>{new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}</strong>
               <span>{+d.slice(8)}</span>
             </button>
-            <p className="week__sum">{list.length ? `${list.length} appts · ${money(total)}` : h?.working ? 'Open' : 'Closed'}</p>
+            <p className="week__sum">{list.length ? (boot.me.role === 'owner' ? `${list.length} appts · ${money(total)}` : '') : h?.working ? '' : 'Closed'}</p>
             <ul>
               {list.map((a) => {
                 const sv = boot.services.find((x) => x.id === a.serviceId);
@@ -465,6 +471,18 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
   );
 }
 
+/** A person's time off and non-working hours on a studio day, as minutes from midnight. */
+function offBlocks(s: { schedule?: Record<number, { start: number; end: number } | null>; timeOff: { id: string; from: string; to: string; note: string }[] }, day: string) {
+  const out: { id: string; start: number; end: number; note: string }[] = [];
+  const own = s.schedule?.[weekday(day)];
+  if (s.schedule && own === null) out.push({ id: 'day-off', start: 0, end: 24 * 60, note: 'Not working' });
+  for (const t of s.timeOff ?? []) {
+    const a = local(t.from), b = local(t.to);
+    if (a.day > day || b.day < day) continue;
+    out.push({ id: t.id, start: a.day < day ? 0 : a.minutes, end: b.day > day ? 24 * 60 : b.minutes, note: t.note });
+  }
+  return out.filter((x) => x.end > 9 * 60 && x.start < 19 * 60);
+}
 const bookedWithin = (a: Appointment, hours: number) => a.texts.bookedAt !== undefined && (Date.parse(a.start) - Date.parse(a.texts.bookedAt)) / 3600000 <= hours;
 const Line = ({ label, amount }: { label: string; amount: number }) => (
   <>

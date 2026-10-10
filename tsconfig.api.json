@@ -21,6 +21,8 @@
   },
   "include": [
     "platform/api/src",
-    "platform/api/scripts"
+    "platform/api/scripts",
+    "platform/api/test",
+    "platform/infra"
   ]
 }

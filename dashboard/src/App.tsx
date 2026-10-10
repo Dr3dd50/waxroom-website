@@ -10,12 +10,14 @@ import { TextsView } from './views/Texts';
 import { PaymentsView } from './views/Payments';
 import { SettingsView } from './views/Settings';
 import { Login } from './views/Login';
+import { AvailabilityView } from './views/Availability';
 import { Icon, type IconName } from './ui';
 
-type View = 'calendar' | 'clients' | 'catalog' | 'referrals' | 'texts' | 'payments' | 'settings';
+type View = 'calendar' | 'availability' | 'clients' | 'catalog' | 'referrals' | 'texts' | 'payments' | 'settings';
 
 const NAV: { view: View; label: string; icon: IconName; ownerOnly?: boolean }[] = [
   { view: 'calendar', label: 'Calendar', icon: 'calendar' },
+  { view: 'availability', label: 'Availability', icon: 'clock' },
   { view: 'clients', label: 'Clients', icon: 'users' },
   { view: 'catalog', label: 'Services', icon: 'tag', ownerOnly: true },
   { view: 'referrals', label: 'Referrals', icon: 'gift', ownerOnly: true },
@@ -101,6 +103,7 @@ export default function App() {
         </aside>
         <main className="main">
           {current === 'calendar' ? <CalendarView /> : null}
+          {current === 'availability' ? <AvailabilityView /> : null}
           {current === 'clients' ? <ClientsView /> : null}
           {current === 'catalog' ? <CatalogView /> : null}
           {current === 'referrals' ? <ReferralsView /> : null}

@@ -1,5 +1,6 @@
 // Shapes the API returns (mirrors platform/api/src/types.ts).
-export type Staff = { id: string; name: string; short: string; email: string; phone?: string; role: 'owner' | 'employee'; color: string; active: boolean; bookable: boolean; schedule?: Record<number, { start: number; end: number } | null> };
+export type TimeOff = { id: string; from: string; to: string; note: string };
+export type Staff = { id: string; name: string; short: string; email: string; phone?: string; role: 'owner' | 'employee'; color: string; active: boolean; bookable: boolean; schedule?: Record<number, { start: number; end: number } | null>; timeOff: TimeOff[] };
 export type Service = { id: string; name: string; category: string; order: number; price: number; priceVaries: boolean; duration: number; deposit: number | null; depositNewClientsOnly: boolean; description: string | null; staffIds: string[]; active: boolean; bookableOnline: boolean; prepTip?: string };
 export type Membership = { id: string; name: string; description: string | null; price: number; includes: { serviceId: string; quantity: number }[]; active: boolean; public: boolean };
 export type Package = { id: string; name: string; price: number; items: { serviceId: string; quantity: number }[]; expiresMonths: number | null; active: boolean };

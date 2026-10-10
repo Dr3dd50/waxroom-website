@@ -1,11 +1,21 @@
 // AWS entry points: the API (behind CloudFront at /api/*) and the 15-minute
-// scheduled run that sends timed texts.
-import { handle } from 'hono/aws-lambda';
-import { makeApp, makeStore } from './app';
-import { runDueTexts } from './services/notify';
+// scheduled run that sends timed texts. Keys (Stripe, Twilio, the session
+// secret) live in Secrets Manager and are loaded once per cold start, before
+// the app reads its configuration.
+import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 
-const ready = makeStore();
-const app = ready.then(makeApp);
+async function boot() {
+  if (process.env.APP_SECRET_ARN) {
+    const r = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: process.env.APP_SECRET_ARN }));
+    for (const [k, v] of Object.entries(JSON.parse(r.SecretString ?? '{}') as Record<string, string>)) if (v) process.env[k] = v;
+  }
+  const { makeApp, makeStore } = await import('./app');
+  const { runDueTexts } = await import('./services/notify');
+  const { handle } = await import('hono/aws-lambda');
+  const store = await makeStore();
+  return { handler: handle(makeApp(store)), tick: () => runDueTexts(store) };
+}
+const ready = boot();
 
-export const api = async (event: unknown, context: unknown) => handle(await app)(event as never, context as never);
-export const tick = async () => runDueTexts(await ready);
+export const api = async (event: unknown, context: unknown) => (await ready).handler(event as never, context as never);
+export const tick = async () => (await ready).tick();

@@ -45,6 +45,7 @@ export async function slotsFor(store: Store, service: Service, day: string, staf
     const win = workingWindow(day, s, settings);
     if (!win) continue;
     const mine = booked.filter((a) => a.staffId === s.id).map((a) => [Date.parse(a.start), Date.parse(a.end)]);
+    for (const off of s.timeOff ?? []) mine.push([Date.parse(off.from), Date.parse(off.to)]);
     for (let t = win.start; t + service.duration <= win.end; t += step) {
       const st = zonedToUtc(day, t).getTime();
       const en = st + service.duration * 60000;

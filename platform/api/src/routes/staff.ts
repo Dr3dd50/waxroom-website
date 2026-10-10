@@ -15,7 +15,7 @@ import { runDueTexts } from '../services/notify';
 import { hashPassword } from '../seed';
 import { twilioLive } from '../config';
 
-const publicStaff = (s: Staff) => ({ id: s.id, name: s.name, short: s.short, email: s.email, phone: s.phone, role: s.role, color: s.color, active: s.active, bookable: s.bookable, schedule: s.schedule });
+const publicStaff = (s: Staff) => ({ id: s.id, name: s.name, short: s.short, email: s.email, phone: s.phone, role: s.role, color: s.color, active: s.active, bookable: s.bookable, schedule: s.schedule, timeOff: s.timeOff ?? [] });
 
 export function staffRoutes(store: Store) {
   const r = new Hono<Env>();
@@ -396,7 +396,8 @@ export function staffRoutes(store: Store) {
     const s = await store.get<Staff>('staff', id);
     if (!s) throw new HttpError(404, 'Not found.');
     const b = await c.req.json<Partial<Staff> & { password?: string }>();
-    const allowed = me.role === 'owner' ? (['name', 'short', 'email', 'phone', 'color', 'bookable', 'active', 'schedule', 'role'] as const) : (['phone'] as const);
+    // employees can set their own phone and availability; everything else is the owner's
+    const allowed = me.role === 'owner' ? (['name', 'short', 'email', 'phone', 'color', 'bookable', 'active', 'schedule', 'role'] as const) : (['phone', 'schedule'] as const);
     const next = { ...s, ...pick(b, [...allowed]) } as Staff;
     if (b.password) {
       if (b.password.length < 8) throw bad('Use at least 8 characters.');
@@ -404,6 +405,32 @@ export function staffRoutes(store: Store) {
     }
     await store.put('staff', next);
     return c.json(publicStaff(next));
+  });
+
+  // ── availability: time off (own, or anyone's for the owner) ──
+  r.post('/team/:id/time-off', async (c) => {
+    const me = c.get('staff');
+    const id = c.req.param('id')!;
+    if (me.role !== 'owner' && me.id !== id) throw new HttpError(403, 'You can only change your own availability.');
+    const s = await store.get<Staff>('staff', id);
+    if (!s) throw new HttpError(404, 'Not found.');
+    const b = await c.req.json<{ from: string; to: string; note?: string }>();
+    if (!b.from || !b.to || Date.parse(b.to) <= Date.parse(b.from)) throw bad('Pick when the time off starts and ends.');
+    s.timeOff = [...(s.timeOff ?? []).filter((t) => Date.parse(t.to) > Date.now() - 7 * 86400000), { id: rid(), from: b.from, to: b.to, note: (b.note ?? '').slice(0, 80) }].sort((x, y) => x.from.localeCompare(y.from));
+    await store.put('staff', s);
+    // anything already booked in that window stays put; say how many so it can be moved
+    const clash = (await appointmentsBetween(store, b.from, b.to)).filter((a) => a.staffId === id && ['booked', 'confirmed'].includes(a.status)).length;
+    return c.json({ staff: publicStaff(s), clash });
+  });
+  r.delete('/team/:id/time-off/:offId', async (c) => {
+    const me = c.get('staff');
+    const id = c.req.param('id')!;
+    if (me.role !== 'owner' && me.id !== id) throw new HttpError(403, 'You can only change your own availability.');
+    const s = await store.get<Staff>('staff', id);
+    if (!s) throw new HttpError(404, 'Not found.');
+    s.timeOff = (s.timeOff ?? []).filter((t) => t.id !== c.req.param('offId'));
+    await store.put('staff', s);
+    return c.json(publicStaff(s));
   });
 
   return r;

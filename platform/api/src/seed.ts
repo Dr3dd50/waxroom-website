@@ -1,7 +1,6 @@
 // First-run setup: the real catalog ported from GlossGenius becomes services,
 // staff, memberships, packages and settings. Local demos also get sample
 // clients and appointments so every screen has something to show.
-import { readFileSync } from 'node:fs';
 import { scryptSync, randomBytes } from 'node:crypto';
 import { config } from './config';
 import type { Store } from './store/store';
@@ -9,7 +8,8 @@ import type { Appointment, Client, Membership, Package, Service, Settings, Staff
 import { addDays, zoned, zonedToUtc } from './lib/time';
 import { rid } from './lib/util';
 
-const catalog = JSON.parse(readFileSync(new URL('../../seed/catalog.json', import.meta.url), 'utf8'));
+// bundled into the Lambda by esbuild
+import catalog from '../../seed/catalog.json';
 
 export function hashPassword(pw: string) {
   const salt = randomBytes(16).toString('hex');
@@ -65,8 +65,8 @@ export async function seed(store: Store) {
       active: true,
       bookable: s.bookable,
     };
-    if (look.role === 'owner') staff.passwordHash = hashPassword(config.owner.password);
-    else if (config.demoData) staff.passwordHash = hashPassword(config.owner.password);
+    if (look.role === 'owner' && config.owner.password) staff.passwordHash = hashPassword(config.owner.password);
+    else if (config.demoData) staff.passwordHash = hashPassword('waxroom-demo');
     staffByGg.set(s.id, staff);
     await store.put('staff', staff);
   }

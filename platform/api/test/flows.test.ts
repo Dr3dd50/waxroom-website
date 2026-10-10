@@ -200,3 +200,32 @@ test('a package is paid once and covers its visits at checkout', async () => {
   const client = await store.get<any>('clients', s.json.clientId);
   assert.equal(client.packages[0].remaining[brazilian.id], 2);
 });
+
+test('employees set their own hours and time off; online booking respects them; they can’t touch settings', async () => {
+  await call('POST', '/staff/logout');
+  cookie = '';
+  await call('POST', '/staff/login', { email: 'nyeesha@example.com', password: 'employee-pass' });
+  const me = (await call('GET', '/staff/me')).json;
+  const day = nextWeekday(10);
+  const dow = new Date(`${day}T12:00:00Z`).getUTCDay();
+  // off all day on that weekday
+  const sched = Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((d) => [d, d === dow ? null : { start: 9 * 60, end: 17 * 60 }]));
+  assert.equal((await call('PATCH', `/staff/team/${me.id}`, { schedule: sched })).status, 200);
+  assert.equal((await call('PATCH', `/staff/team/${me.id}`, { role: 'owner' })).json.role, 'employee');
+  const cat = (await call('GET', '/public/catalog')).json;
+  const bikini = cat.services.find((s: any) => s.name === 'Bikini');
+  assert.equal((await call('GET', `/public/availability?service=${bikini.id}&day=${day}&staff=${me.id}`)).json.length, 0);
+  // time off the next day from 9 to 12 removes the morning
+  const next = addDays(day, 1);
+  const before = (await call('GET', `/public/availability?service=${bikini.id}&day=${next}&staff=${me.id}`)).json;
+  const off = await call('POST', `/staff/team/${me.id}/time-off`, { from: zonedToUtc(next, 9 * 60).toISOString(), to: zonedToUtc(next, 12 * 60).toISOString(), note: 'Dentist' });
+  assert.equal(off.status, 200);
+  const after = (await call('GET', `/public/availability?service=${bikini.id}&day=${next}&staff=${me.id}`)).json;
+  assert.ok(after.length < before.length && after.every((s: any) => zoned(s.start).minutes >= 12 * 60));
+  // a time the page never offered is refused
+  const s = await call('POST', '/public/bookings/start', { client: { first: 'Kim', last: 'T', phone: '804-555-0111' } });
+  const sneaky = await call('POST', '/public/bookings/confirm', { clientId: s.json.clientId, setupId: s.json.setupId, serviceId: bikini.id, staffId: me.id, start: zonedToUtc(next, 9 * 60).toISOString() });
+  assert.equal(sneaky.status, 409);
+  assert.equal((await call('PUT', `/staff/services/${bikini.id}`, { price: 100 })).status, 403);
+  assert.equal((await call('PUT', '/staff/settings', { referrals: { friendGets: 5000 } })).status, 403);
+});

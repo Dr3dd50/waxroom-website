@@ -9,7 +9,7 @@ behind it.
 | Piece | Where | What it does |
 | --- | --- | --- |
 | Catalog seed | `seed/catalog.json` | Everything GlossGenius publishes, ported by `scripts/port-glossgenius.mjs` |
-| Dashboard | `employee.waxroomrichmond.com` | Owner and employee logins: calendars, clients, services, memberships, referrals, texts |
+| Dashboard | `staff.waxroomrichmond.com` | Owner and employee logins: calendars, availability, clients; the owner also manages services, offers, referrals, texts, payments and settings |
 | Booking | on the website | Pick service → staff → time → details → card on file (Stripe) |
 | API | AWS | Appointments, availability, clients, catalog, referrals, webhooks |
 | Payments | Stripe | Card on file, deposits, checkout, no-show fees, membership subscriptions, referral credit |
@@ -44,11 +44,31 @@ owner/employee logins, EventBridge Scheduler for timed texts.
 5. **Gift cards.** Selling gift cards is switched off in GlossGenius, but the website links to it. Sell gift cards in the new system, or hide the link?
 6. **Old records.** "VCU College Tour" (a one-off event), plus former staff "College Tours" and "Shae Haskins", are still in GlossGenius. Leave them out of the new system?
 
-## Dashboard prototype
+## Running it locally
 
-`dashboard/` is a clickable prototype of the staff dashboard (sample clients and
-appointments, the real ported catalog). Owners see everything; employees see
-their own calendar and clients.
+    npm run dev:all    # API :8787, website :5173 (our booking), dashboard :5174
+
+Sample clients and appointments are generated on first run (`platform/api/.data`;
+delete it to start fresh). Owner sign-in: waxroomrichmond@gmail.com / waxroom-demo;
+employees nyeesha@demo.local and chicago@demo.local, same password.
+Stripe and Twilio stay simulated until their keys are set.
+
+## Who can do what
+
+- **Owner (Danielle):** everything, including the day's totals, payments, and
+  every change to services, memberships, packages, referral amounts, text
+  templates, offers, booking rules, hours and the team.
+- **Employees:** their own calendar and the clients they've seen; booking,
+  checking in, checking out, moving, cancelling and no-shows on their own
+  appointments; their own working hours and time off. No totals, prices,
+  offers, referrals, services or settings.
+
+## Two versions of the website
+
+`npm run build` keeps every Book button on GlossGenius (live now).
+`npm run build:native` switches to our own booking, memberships and referral
+links once Twilio's registration and Stripe are ready. Deploying is in
+`platform/infra/README.md`.
 
     npm run dashboard          # dev server on :5174
-    npm run build:dashboard    # → dist-dashboard/, deployable to employee.waxroomrichmond.com
+    npm run build:dashboard    # → dist-dashboard/, deployed to staff.waxroomrichmond.com
