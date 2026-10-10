@@ -1,9 +1,10 @@
 import { SERVICE_PAGES, servicePath } from '../content/services';
 import { business } from '../data';
-import { bookLink } from '../lib/booking';
+import { useBookLink } from '../lib/booking';
 
 /** bookBar: the floating Book button on phones; off on pages that are already booking. */
 export function Footer({ bookBar = true }: { bookBar?: boolean }) {
+  const book = useBookLink();
   const [title, ...policy] = business.cancellationPolicy.split(/\n+/);
   return (
     <footer className={`footer ${bookBar ? 'footer--bar' : ''}`}>
@@ -13,7 +14,7 @@ export function Footer({ bookBar = true }: { bookBar?: boolean }) {
           <p className="display">
             Ready when <em>you are.</em>
           </p>
-          <a className="btn btn--honey" {...bookLink()}>
+          <a className="btn btn--honey" {...book()}>
             Book your appointment
           </a>
         </div>
@@ -35,7 +36,7 @@ export function Footer({ bookBar = true }: { bookBar?: boolean }) {
         </p>
       </div>
       {bookBar ? (
-        <a className="mobile-book btn btn--honey" {...bookLink()}>
+        <a className="mobile-book btn btn--honey" {...book()}>
           Book now
         </a>
       ) : null}

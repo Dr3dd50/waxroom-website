@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { CodeVideo } from '../components/CodeVideo';
 import { business, findService, money, duration, reviews } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
-import { bookLink } from '../lib/booking';
+import { useBookLink } from '../lib/booking';
 
 const STATEMENT =
   'Jet Plasma tightens skin, softens fine lines and fades scars and hyperpigmentation. No numbing. No downtime. Just you, brighter.';
@@ -10,6 +10,7 @@ const STATEMENT =
 const FEATURED = ['Jet Plasma Facial', 'Biorepeel', 'Jet Plasma Eye Treatment', 'Vajacial', 'Jet Plasma Body Treatment'];
 
 export function Skin() {
+  const book = useBookLink();
   const root = useRef<HTMLElement>(null);
   const services = FEATURED.map(findService).filter((s) => !!s);
 
@@ -102,7 +103,7 @@ export function Skin() {
               </li>
             ))}
             <li className="treats__ctas">
-              <a className="btn btn--honey" {...bookLink()}>
+              <a className="btn btn--honey" {...book({ group: 'skin' })}>
                 Book a skin treatment
               </a>
               <a className="link-arrow" href="/services/skin-treatments/">

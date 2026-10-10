@@ -72,7 +72,8 @@
           "description": "An elevated introduction to self-care at The Wax Room.\n\nThis first-time client experience combines our signature Brazilian Wax with a 30-minute Yoni Steam, creating a moment of smooth confidence and deep feminine relaxation.\n\nIndividually, these services are valued at $105. As a new guest, enjoy them together at a special introductory rate—available only for your first visit.\n\nRefined. Intentional. Restorative.\n\nLimited availability. First-time clients only.\n\nBook now and step into a higher standard of self-care.",
           "image": null,
           "deposit": 10,
-          "depositNewClientsOnly": true
+          "depositNewClientsOnly": true,
+          "token": "1000f-c463f7ec-f0ea-40e5-b30b-7eed04bf802a"
         },
         {
           "name": "Brazilian",
@@ -82,7 +83,8 @@
           "description": "Experience silky-smooth confidence with our Brazilian wax. We remove all unwanted hair from the front, back, and everything in between, leaving you completely smooth and fresh. Perfect for a clean, flawless feel.",
           "image": "https://static.glossgenius.com/public/service/0742aa8338199eb02f9058293d2f6d83e2ebcc7b/image/06216781dd59a9c16247e668c31a5ff8.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-011e5b92-e26c-41f7-acb6-139957d3888f"
         },
         {
           "name": "Bikini",
@@ -92,7 +94,8 @@
           "description": "Keep things neat and tidy with our bikini wax. We gently remove hair along the sides and top of the bikini line, leaving you smooth, fresh, and beach-ready while maintaining a natural look.",
           "image": "https://static.glossgenius.com/public/service/a88d8a4b062d4a9beed01dbe69aef65cda8b5dbc/image/8958302de85e62bc7e0536ac00c2f285.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-c2e24c52-c511-4c3c-b8a5-c3c61e86430e"
         },
         {
           "name": "French Bikini",
@@ -102,7 +105,8 @@
           "description": "Get a sleek, smooth look with our French bikini wax, perfect for those who want a little more than a classic bikini wax but not as much as a full Brazilian. This service removes hair from the sides and top of the bikini line, as well as a bit more from the front, leaving a narrow strip or triangle — your choice of style. It’s ideal if you want a cleaner, more defined shape while still leaving some hair for a natural look. Includes backside.",
           "image": "https://static.glossgenius.com/public/service/2f8b594340678b040cb8398a0f00a720fbae0713/image/4e57d0eaff7cd3d4192256b2275f80fa.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-2bc3acc7-8a02-4a48-ae89-bbb004a72e9a"
         },
         {
           "name": "Manzilian",
@@ -112,7 +116,8 @@
           "description": "Experience the ultimate grooming with our Manzilian wax service, removing all unwanted hair for a clean and confident look.",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-031d354e-bdd8-42a5-a89d-148bb121e71e"
         },
         {
           "name": "Brazilian And Underarm Wax",
@@ -122,7 +127,8 @@
           "description": "Experience the ultimate smoothness with our Brazilian wax, paired with our expert underarm waxing for flawless, hair-free skin all around!",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-511d1fb9-5177-40fd-aa85-76063902aa95"
         }
       ]
     },
@@ -138,7 +144,8 @@
           "description": "Say goodbye to underarm stubble with our expert underarm waxing service. Enjoy smooth, hair-free underarms for weeks!",
           "image": "https://static.glossgenius.com/public/service/cd5ada08d13fe1b565c7b81195c5763204c68d56/image/850e5389a41c6da103c747e641af0ec1.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-f3093cff-a7ea-40ce-8d01-d92975d45fb8"
         },
         {
           "name": "Lower Leg",
@@ -148,7 +155,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/9575e7ad096952316120c3e0f50775911999b2eb/image/25b9e5be74231ee44cc15ba019a0b72f.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-b433afb8-c20e-4f3f-8f70-a5895932f5b3"
         },
         {
           "name": "Full Leg",
@@ -158,7 +166,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/049d690f09a5253ef1404b3a0c79f6e781368a5c/image/842b33b838b1956bc1742c21c24fe4da.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-062b013f-a8cf-4439-935b-3af298b0e7e1"
         },
         {
           "name": "Lip Wax",
@@ -168,7 +177,8 @@
           "description": "Achieve smooth, hair-free lips with our gentle and precise lip waxing service.",
           "image": "https://static.glossgenius.com/public/service/d898cb34ed68af6184bf8c7cbc2c4ab6c032d383/image/6e44e248d0d7fcddd27d86c98c86d808.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-109d73a4-0ce5-4524-ad76-2579870edbcc"
         },
         {
           "name": "Chin",
@@ -178,7 +188,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/72da87083b9532867867c6ac81c298de0c97ec25/image/7f7ab3bacc624168b7a627b1b4738798.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-ff9bd8cb-cd13-4bf7-8d3d-61f8e009cc18"
         },
         {
           "name": "Full Back Wax",
@@ -188,7 +199,8 @@
           "description": "Experience the freedom of smooth, hair-free skin with our Full Back Wax service.",
           "image": "https://static.glossgenius.com/public/service/91b8544bcefcbcb23c9a0b07e8cfecda9398983a/image/f6b7ab88901cd1d54a476c2b546a19d1.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-529c3a16-ff01-4893-a2f0-e8415fe72cd3"
         },
         {
           "name": "Backside",
@@ -198,7 +210,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/e9152b3193955b1c0e66da48b2a4ce99f1667e37/image/94c65e0391c5dace01d2e41fc368a28e.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-6162507d-8591-499f-82bf-686ea4c0e133"
         },
         {
           "name": "Chest",
@@ -208,7 +221,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/925769e41815ac7489be4ff352c3f1c396fb99aa/image/fca32f52518f17dc2b2266e65b71a070.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-e0e7432d-acc6-4713-b9e1-e61a24a93f38"
         },
         {
           "name": "Belly Wax",
@@ -218,7 +232,8 @@
           "description": "Experience smooth and hair-free skin with our belly waxing service, includes from belly button down to bikini line.",
           "image": "https://static.glossgenius.com/public/service/b7b7cdc58ebec573516762628e18dc5ddf0a3664/image/5c75956026e91bc487b6d341d4caca38.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-3e9ae2b0-bc26-4175-846d-8e02ca82aa2a"
         },
         {
           "name": "Full Arm Wax",
@@ -228,7 +243,8 @@
           "description": "Experience the sleek feel of smooth, hair-free arms with our expert full arm waxing service.",
           "image": "https://static.glossgenius.com/public/service/857e9bf5959c616c896f9a85bb296d9cb4e36a27/image/41596ca98bbc02c73847950be37a9337.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-04ab0185-a279-4744-a8c5-14f166993de8"
         },
         {
           "name": "Inner thigh",
@@ -238,7 +254,8 @@
           "description": "Hair-free inner thighs. Great add on for intimate waxing.",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-bc577eb2-1580-42ac-8545-35b549520dde"
         },
         {
           "name": "Full torso",
@@ -248,7 +265,8 @@
           "description": "Full torso waxing service, removing unwanted hair from the chest, stomach, and back for a clean and confident feel.",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-0f9de2cd-7323-4589-859d-e3c74397f2a5"
         },
         {
           "name": "Toe wax",
@@ -258,7 +276,8 @@
           "description": "",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-9d2f6965-d804-4387-95aa-ec4e88549667"
         },
         {
           "name": "Thigh wax",
@@ -268,7 +287,8 @@
           "description": "",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-8586bd1e-b16c-44bd-8754-501bafcf39b0"
         },
         {
           "name": "Full Face Waxing",
@@ -278,7 +298,8 @@
           "description": "Experience a fresh, smooth face with our thorough full face waxing service—say goodbye to unwanted facial hair for a flawless look…eyebrows included!",
           "image": "https://static.glossgenius.com/public/stockimage/cc3fda1ce1e98fff9ceb26f99d933084147c19f7/image/8b60415bd78e414e1e5771925f11846d.png",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-200bf459-0fb5-4920-8ad7-d8572321eb8d"
         }
       ]
     },
@@ -294,7 +315,8 @@
           "description": "Elevate your brow game with our Brow Lamination and Wax service. Enjoy perfectly sculpted brows that stay sleek, defined, and fabulous for weeks.",
           "image": "https://static.glossgenius.com/public/service/9693baa6209643386631df1ad9addb9cf999955d/image/7e18d8bd1fe7cb16b6dffb3f2e7040d0.jpeg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-9d2cbe36-23ee-410d-9192-4e4bdcbd2a71"
         },
         {
           "name": "Eyebrow Wax",
@@ -304,7 +326,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/ea823c4d16bd0f3853c664bbd29bb5a4ca132ab1/image/aff008914438f69a5a62c32dd1566477.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-49165cc0-d4fc-4d97-9e9b-ad0cf58c9412"
         },
         {
           "name": "Henna Tint and Wax",
@@ -314,7 +337,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/29b01c35200089f4d1ed76523bca8ef5acaee323/image/4ec2dec8ad6b966833ba7a4a0dc0919b.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-f6066a52-614d-402e-ad64-c8ea8bc0b5e4"
         }
       ]
     },
@@ -330,7 +354,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/c911e5ee7e0eb01c5f8f3052b14632032b996838/image/d1f26f33278e77ca004d1903a60fd44d.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-c2f188f2-7cf3-4bf7-9018-98dff3f05988"
         },
         {
           "name": "2 Week Fill",
@@ -340,7 +365,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/004a6f20e0904c06865e74d8cbac7a6888205e4a/image/400d22ede0af5ddacd6fe4c40d1980e3.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-2ea63cc7-7127-42da-83b5-13e35515e0f4"
         },
         {
           "name": "3 Week Fill",
@@ -350,7 +376,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/90bee0b8a912ccf6dcac4ae7707ba351d5a2dca9/image/d464088d8951c5b80d6c49879f625fc5.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-699bf0cf-3337-4a15-84f4-bf347da61a5f"
         },
         {
           "name": "4 Week Fill",
@@ -360,7 +387,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/67c1d598833c5f6f4da8d813d51d07fcc9f07755/image/de0fc24d3f42ee4f88b1abe5fea4da85.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-e32756fa-8a4b-4224-82f0-5ead5041e89a"
         },
         {
           "name": "Full Set of Lash Extensions",
@@ -370,7 +398,8 @@
           "description": "Enhance your natural beauty with a full set of lash extensions for glamorous, long-lasting volume and length!",
           "image": "https://static.glossgenius.com/public/service/816581a07ce172abff2aa0e4a40417620e127939/image/2ebb1df303075b453ae7726c12856a77.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-a7642161-1751-4e15-adfb-8dd0c9fc858c"
         },
         {
           "name": "Lash Bath",
@@ -380,7 +409,8 @@
           "description": "Refresh and revitalize your lashes extensions before your fill with our gentle and cleansing lash bath treatment.",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-88ee9fe9-3de0-419f-b805-f5e60573c32a"
         }
       ]
     },
@@ -396,7 +426,8 @@
           "description": "Transform your face with our Jet Plasma facial. This advanced, non-invasive treatment uses cutting-edge plasma technology to stimulate collagen, tighten skin, and improve overall texture. It helps reduce fine lines, wrinkles, acne, scars, hyperpigmentation, eczema and rosacea, leaving your complexion smoother, brighter, and rejuvenated with no downtime, no numbing required and no discomfort.",
           "image": "https://static.glossgenius.com/public/service/afa27c901e28cb951ef3eed05f84aefd73188e10/image/e74617f55633c9549bfaea8a620867c6.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-6c5486cd-7fd4-48e6-8148-cf0bc4103bd8"
         },
         {
           "name": "Biorepeel",
@@ -406,7 +437,8 @@
           "description": "Experience the next generation of chemical peels with BioRePeel, a cutting-edge treatment that rejuvenates your skin without the downtime. This Italian-made, medical-grade peel uses a unique blend of vitamins, amino acids, and bio-stimulating ingredients to resurface, hydrate, and restore your skin. Smooths fine lines & wrinkles. Fades acne scars & pigmentation. Minimizes pores & improves texture. Stimulates collagen production. Delivers instant radiance with little to no peeling. Perfect for face, neck, hands, and body, BioRePeel is safe, effective, and suitable for all skin types.",
           "image": "https://static.glossgenius.com/public/service/7c8d6d298eac7a51dbc02a029f92d823608dba83/image/78e4f921fd77917f6b3c71457a630aa9.jpeg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-762f2d65-26f4-497b-a266-ae46fd080a27"
         },
         {
           "name": "Jet Plasma Body Treatment",
@@ -416,7 +448,8 @@
           "description": "Revitalize your skin with our Jet Plasma body treatment. This advanced, non-invasive therapy uses plasma technology to stimulate collagen, tighten loose skin, and improve texture on areas like the arms, stomach, thighs, and more. It helps reduce scarring, stretch marks, and uneven tone, leaving your skin firmer, smoother, and beautifully refreshed.",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-daeeb180-b9a0-4e90-acc2-966f9fa38a4a"
         },
         {
           "name": "Vajacial",
@@ -426,7 +459,8 @@
           "description": "A soothing treatment designed for the bikini area to cleanse, gently exfoliate, and calm the skin. Helps reduce ingrowns, brighten, and leave skin soft, smooth, and refreshed. Can be combined with a wax for the ultimate treatment.",
           "image": "https://static.glossgenius.com/public/service/e0b9940d6e3a8cccf9b898e992fe1e3a97d2bf65/image/9c7bd2e7accc04c60d70ee90d6110e40.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-78e7bb02-decc-4859-9151-11f074638772"
         },
         {
           "name": "Jet Plasma Eye Treatment",
@@ -436,7 +470,8 @@
           "description": "Revitalize your eyes with our Jet Plasma Eye Treatment, reducing puffiness and revitalizing the delicate skin around your eyes for a youthful glow.",
           "image": "https://static.glossgenius.com/public/stockimage/9362076cf03d44dbc127bc558f83854bc0d39b3c/image/7badd6074b1ae6a9c4ccbf25fe5c953b.png",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-4a713090-2205-4238-b0ca-7e8f47b27d1d"
         },
         {
           "name": "Clear and Calm add-on",
@@ -446,7 +481,8 @@
           "description": "This elevated add-on combines warm steam and targeted extra extractions to soften the skin, open the pores and gently release trapped hair and congestion after your Brazilian. Service is completed by a hyaluronic acid sheet mask to provide needed moisture. The result is fewer ingrowns, reduced irritation, a smoother finish, and skin that heals faster.",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-61656385-9d48-4d24-a0e6-b3faf866575e"
         }
       ]
     },
@@ -462,7 +498,8 @@
           "description": "",
           "image": "https://static.glossgenius.com/public/service/1921fb788eb02838d35ba243886f99e0717475f0/image/61b8005ef0eac51cce3ad6b21fc20e3b.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-0c0107bb-e7ca-4c9a-b18f-d4a3e3fef3b5"
         }
       ]
     },
@@ -478,7 +515,8 @@
           "description": "Experience advanced Jet Plasma Hair Restoration technology, a non-invasive procedure that stimulates hair growth for thicker, fuller-looking hair without surgery.",
           "image": "https://static.glossgenius.com/public/service/6a2a2ca1e07dfe4d4a2b89f147b22f4a1ac88d07/image/69d2e4d8eda72e62a57bfaa6c1894a21.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-7b2a1f4e-ab69-4508-bf33-5ce906f20ba9"
         },
         {
           "name": "Luxury Wig Installation",
@@ -488,7 +526,8 @@
           "description": "Experience a flawless glueless high definition lace wig installation. Tailored to your unique style, enhancing your confidence and beauty effortlessly. Please come with clean hair.",
           "image": "https://static.glossgenius.com/public/service/5ee5c4ba3a5aee466e82e293ccaef11083a5c501/image/1aa338cfb0c8734f1b9dfdf188bbf9c3.jpg",
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-9d7411a5-795a-4306-a8eb-8b6969c2cbfc"
         },
         {
           "name": "Luxury Wig Install Consultation",
@@ -498,7 +537,8 @@
           "description": "Discover the perfect custom wig installation tailored to your style and comfort during our luxury consultation session.",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-8c3f7de2-7b4e-4304-a1c5-4e2bc67cf6f7"
         }
       ]
     },
@@ -514,7 +554,8 @@
           "description": "Experience cutting-edge technology with our Bio Scan service, offering detailed insights into your body's health and wellness for personalized care.",
           "image": null,
           "deposit": null,
-          "depositNewClientsOnly": false
+          "depositNewClientsOnly": false,
+          "token": "1000f-3185bc69-76bf-43e8-8891-1dc21333a274"
         }
       ]
     }

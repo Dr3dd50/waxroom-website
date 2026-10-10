@@ -8,14 +8,17 @@ import { BookPage } from './pages/BookPage';
 import { ManagePage } from './pages/ManagePage';
 import { JoinPage } from './pages/JoinPage';
 import { ReferralPage } from './pages/ReferralPage';
-import { NATIVE } from './lib/booking';
-import { business } from './data';
+import { BookContext, type BookTarget } from './lib/booking';
+import { groupForPage } from './content/services';
 import { GalleryPage } from './pages/GalleryPage';
 import { headFor, resolve } from './routes';
 import { gsap, handleHashLinks, ScrollTrigger, scrollToHash, startSmoothScroll } from './lib/motion';
 
 export default function App({ path }: { path: string }) {
   const route = resolve(path);
+  // A plain Book button opens the menu on this page's umbrella.
+  const here: BookTarget =
+    route.kind === 'group' ? { group: route.group.key } : route.kind === 'service' ? { group: groupForPage(route.page.slug).key, page: route.page.slug } : {};
 
   useEffect(() => {
     document.title = headFor(route).title;
@@ -43,7 +46,7 @@ export default function App({ path }: { path: string }) {
   }, []);
 
   return (
-    <>
+    <BookContext.Provider value={here}>
       <div className="progress" aria-hidden="true" />
       <Nav isHome={route.kind === 'home'} />
       <main>
@@ -51,7 +54,7 @@ export default function App({ path }: { path: string }) {
         {route.kind === 'service' ? <ServicePage page={route.page} /> : null}
         {route.kind === 'group' ? <GroupPage group={route.group} /> : null}
         {route.kind === 'gallery' ? <GalleryPage /> : null}
-        {route.kind === 'book' ? NATIVE ? <BookPage /> : <ForwardToGlossGenius /> : null}
+        {route.kind === 'book' ? <BookPage /> : null}
         {route.kind === 'manage' ? <ManagePage /> : null}
         {route.kind === 'join' ? <JoinPage /> : null}
         {route.kind === 'referral' ? <ReferralPage /> : null}
@@ -71,24 +74,6 @@ export default function App({ path }: { path: string }) {
         ) : null}
       </main>
       <Footer bookBar={!['book', 'manage', 'join'].includes(route.kind)} />
-    </>
-  );
-}
-
-/** Until our own booking is switched on, /book/ hands over to GlossGenius. */
-function ForwardToGlossGenius() {
-  useEffect(() => {
-    location.replace(business.bookingUrl);
-  }, []);
-  return (
-    <section className="hero">
-      <div className="hero__inner">
-        <p>
-          <a className="btn btn--honey" href={business.bookingUrl}>
-            Continue to booking
-          </a>
-        </p>
-      </div>
-    </section>
+    </BookContext.Provider>
   );
 }

@@ -10,6 +10,8 @@ export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   // Relative asset paths, so the build runs from any folder or host.
   base: './',
+  // its own dependency cache: the website's dev servers use the repo's node_modules/.vite
+  cacheDir: fileURLToPath(new URL('../node_modules/.vite-dashboard', import.meta.url)),
   plugins: [react()],
   build: { outDir: fileURLToPath(new URL('../dist-dashboard', import.meta.url)), emptyOutDir: true },
   server: { port: 5174, proxy: { '/api': 'http://127.0.0.1:8787' } },

@@ -7,7 +7,7 @@ import { Sparkles } from '../components/Sparkles';
 import { serviceAnchor, type Faq } from '../content/services';
 import { business, duration, money, reviews } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
-import { bookLink, membershipLink, packageLink } from '../lib/booking';
+import { bookLink, membershipLink, packageLink, useBookLink } from '../lib/booking';
 
 export const nice = (s: string) => (s === s.toUpperCase() ? s.toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase()) : s);
 
@@ -24,6 +24,7 @@ export function LandingHero({
   flips: [string, string][];
   intro: string;
 }) {
+  const book = useBookLink();
   const [i, setI] = useState(0);
   useEffect(() => {
     if (flips.length < 2) return;
@@ -60,7 +61,7 @@ export function LandingHero({
         </h1>
         <p className="hero__intro hero__reveal">{intro}</p>
         <div className="hero__ctas hero__reveal">
-          <a className="btn btn--honey" {...bookLink()}>
+          <a className="btn btn--honey" {...book()}>
             Book your appointment
           </a>
           <a className="btn btn--ghost" href="#prices">
@@ -126,8 +127,7 @@ export function PriceRows({ services }: { services: Service[] }) {
               {s.priceVaries ? '+' : ''}
             </span>
           </div>
-          {s.description || s.deposit ? (
-            <div className="price__desc">
+          <div className="price__desc">
               {s.description
                 ? s.description
                     .split(/\n+/)
@@ -139,8 +139,10 @@ export function PriceRows({ services }: { services: Service[] }) {
                   {money(s.deposit)} deposit{s.depositNewClientsOnly ? ' for new clients' : ''}
                 </p>
               ) : null}
+              <a {...bookLink({ service: s.name })} className="link-arrow price__book">
+                Book {nice(s.name)}
+              </a>
             </div>
-          ) : null}
         </li>
       ))}
     </ul>
@@ -148,6 +150,7 @@ export function PriceRows({ services }: { services: Service[] }) {
 }
 
 export function PricesSection({ children }: { children: ReactNode }) {
+  const book = useBookLink();
   return (
     <section className="svc-section svc-section--paper" id="prices">
       <div className="container">
@@ -155,7 +158,7 @@ export function PricesSection({ children }: { children: ReactNode }) {
           <h2 className="display">
             Services <em>& prices</em>
           </h2>
-          <a className="btn btn--dark" {...bookLink()}>
+          <a className="btn btn--dark" {...book()}>
             Book online
           </a>
         </div>

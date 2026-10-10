@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SERVICE_GROUPS, groupHref, groupServices } from '../content/services';
 import { business, reviews } from '../data';
 import { scrollToHash } from '../lib/motion';
-import { bookLink } from '../lib/booking';
+import { bookLink, useBookLink } from '../lib/booking';
+import { OPEN_SERVICES } from '../lib/menu';
 
 const LEFT = [
   ['/services/skin-treatments/', 'Skin'],
@@ -48,8 +49,22 @@ function ServicesMenu({ onNavigate }: { onNavigate: () => void }) {
   const [open, setOpen] = useState(false);
   const [group, setGroup] = useState(0);
   const g = GROUPS[group];
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener(OPEN_SERVICES, show);
+    return () => window.removeEventListener(OPEN_SERVICES, show);
+  }, []);
+  // opened without the pointer on it (from a button): a click anywhere else closes it
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [open]);
   return (
     <div
+      ref={root}
       className={`dropdown ${open ? 'dropdown--open' : ''}`}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
@@ -65,16 +80,13 @@ function ServicesMenu({ onNavigate }: { onNavigate: () => void }) {
       <div className="dropdown__panel mega" id="services-menu">
         <ul className="mega__groups">
           {GROUPS.map((x, i) => (
-            <li key={x.key}>
-              <a
-                href={x.href}
-                className={i === group ? 'is-active' : ''}
-                onMouseEnter={() => setGroup(i)}
-                onFocus={() => setGroup(i)}
-                onClick={onNavigate}
-              >
+            <li key={x.key} className={`mega__row ${i === group ? 'is-active' : ''}`} onMouseEnter={() => setGroup(i)}>
+              <a href={x.href} onFocus={() => setGroup(i)} onClick={onNavigate}>
                 <b>{x.label}</b>
                 <small>{x.problem}</small>
+              </a>
+              <a className="mega__book" {...bookLink({ group: x.key })} onFocus={() => setGroup(i)} aria-label={`Book ${x.label.toLowerCase()}`}>
+                Book
               </a>
             </li>
           ))}
@@ -105,8 +117,16 @@ function ServicesMenu({ onNavigate }: { onNavigate: () => void }) {
 }
 
 export function Nav({ isHome }: { isHome: boolean }) {
+  const book = useBookLink();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+
+  // On phones the Services menu lives in the drawer.
+  useEffect(() => {
+    const show = () => window.matchMedia('(max-width: 960px)').matches && setOpen(true);
+    window.addEventListener(OPEN_SERVICES, show);
+    return () => window.removeEventListener(OPEN_SERVICES, show);
+  }, []);
 
   useEffect(() => {
     // The header logo takes over as soon as the hero logo starts to slide under the header,
@@ -156,7 +176,7 @@ export function Nav({ isHome }: { isHome: boolean }) {
         </a>
         <div className="nav__side nav__side--right">
           <nav aria-label="More">{RIGHT.map(link)}</nav>
-          <a className="btn btn--dark nav__book" {...bookLink()}>
+          <a className="btn btn--dark nav__book" {...book()}>
             Book now
           </a>
         </div>
@@ -170,6 +190,9 @@ export function Nav({ isHome }: { isHome: boolean }) {
             <details key={x.key} className="drawer-group">
               <summary>{x.label}</summary>
               <div className="drawer-group__list">
+                <a className="drawer-group__book" {...bookLink({ group: x.key })}>
+                  Book {x.label.toLowerCase()} →
+                </a>
                 {x.services.map((sv) => (
                   <a key={sv.name} href={sv.href} onClick={() => setOpen(false)}>
                     {nice(sv.name)}

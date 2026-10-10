@@ -193,6 +193,12 @@ h3 {
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
   box-shadow: 0 1px 0 var(--line);
 }
+/* A backdrop-filter makes the header the box that fixed children are placed in,
+   which would shrink the full-screen menu drawer to the header's height. */
+.header--open {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
 
 /* Review strip */
 .strip {
@@ -1876,9 +1882,37 @@ h3 {
   padding: 0.65rem 0.8rem;
   border-radius: 12px;
 }
-.nav__side .mega__groups a.is-active {
+/* each umbrella: its info link, and a Book button beside it */
+.mega__row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 12px;
+}
+.mega__row > a:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.mega__row.is-active {
   background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
+}
+.nav__side .mega__groups .mega__book {
+  flex: none;
+  display: inline-flex;
+  margin-right: 0.6rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--cream);
+  font: 600 0.78rem/1 var(--sans);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+.nav__side .mega__groups .mega__book:hover,
+.nav__side .mega__groups .mega__book:focus-visible {
+  background: var(--honey-deep);
+  color: var(--ink);
 }
 .mega__groups b {
   font: 400 1.25rem/1.2 var(--serif);
@@ -1956,6 +1990,15 @@ h3 {
   .nav__drawer .drawer-group__list a {
     font: 400 1rem/1.5 var(--sans);
     color: var(--muted);
+  }
+  .nav__drawer .drawer-group__list .drawer-group__book {
+    justify-self: start;
+    margin: 0.2rem 0 0.4rem;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    background: var(--honey);
+    color: var(--ink);
+    font-weight: 600;
   }
   .nav__drawer .drawer-group__list .drawer-group__all {
     color: var(--honey-deep);
@@ -2481,7 +2524,9 @@ h3 {
   text-align: left;
   font: inherit;
   color: var(--ink);
+  text-decoration: none;
   cursor: pointer;
+  box-sizing: border-box;
 }
 .svc-row:hover,
 .svc-row:focus-visible {
@@ -2489,6 +2534,22 @@ h3 {
 }
 .svc-row__name {
   font-weight: 600;
+}
+.book__note {
+  margin: -0.4rem 0 0;
+}
+.book__more {
+  margin: 0.8rem 0 0;
+  font: 600 0.75rem var(--sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* the live site's menu has no summary column */
+@media (min-width: 861px) {
+  .book__grid--single {
+    grid-template-columns: minmax(0, 720px);
+  }
 }
 .svc-row__meta {
   color: var(--muted);

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlipWord, HALF_FLIP_MS } from '../components/FlipWord';
 import { Sparkles } from '../components/Sparkles';
-import { gsap, scrollToHash, useGSAP } from '../lib/motion';
-import { bookLink } from '../lib/booking';
+import { gsap, useGSAP } from '../lib/motion';
+import { openServicesMenu } from '../lib/menu';
+import { useBookLink } from '../lib/booking';
 
 // "Get your ___ ___." Only the two words flip. The line underneath explains the
 // treatment that phrase is promoting, drawn from the salon's own descriptions.
@@ -71,6 +72,7 @@ const PHRASES: { noun: string; verb: string; service: string; learn: string }[] 
 const INTERVAL_MS = 3400;
 
 export function Hero() {
+  const book = useBookLink();
   const root = useRef<HTMLElement>(null);
   const [i, setI] = useState(0);
   // The explainer changes as the flip lands, not before it starts.
@@ -138,7 +140,7 @@ export function Hero() {
             </p>
           </div>
           <div className="hero__ctas hero__reveal">
-            <a className="btn btn--honey" {...bookLink()}>
+            <a className="btn btn--honey" {...book()}>
               Book your appointment
             </a>
             <a
@@ -146,7 +148,7 @@ export function Hero() {
               href="#menu"
               onClick={(e) => {
                 e.preventDefault();
-                scrollToHash('#menu');
+                openServicesMenu();
               }}
             >
               See the menu

@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { business, hourLabel, phoneDisplay } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
-import { bookLink } from '../lib/booking';
+import { useBookLink } from '../lib/booking';
 
 const DAY_NAMES: Record<string, string> = {
   monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
@@ -21,6 +21,7 @@ function richmondNow() {
 }
 
 export function Visit() {
+  const book = useBookLink();
   const root = useRef<HTMLElement>(null);
   const now = richmondNow();
   const today = business.hours.find((h) => h.day === now.day);
@@ -97,7 +98,7 @@ export function Visit() {
               </tbody>
             </table>
             <div className="visit__ctas">
-              <a className="btn btn--honey" {...bookLink()}>
+              <a className="btn btn--honey" {...book()}>
                 Book now
               </a>
               {business.instagram ? (

@@ -4,6 +4,8 @@ import { CardForm, type CardSetup } from '../components/CardForm';
 import { api, cents, dateOf, minutes, timeOf, TZ } from '../lib/api';
 import { business } from '../data';
 import { jumpToTop } from '../lib/motion';
+import { NATIVE, glossGeniusService } from '../lib/booking';
+import { SERVICE_GROUPS, findServicePage, groupCategories } from '../content/services';
 
 type Svc = { id: string; name: string; category: string; price: number; priceVaries: boolean; duration: number; deposit: number | null; depositNewClientsOnly: boolean; description: string | null; staffIds: string[] };
 type Catalog = { staff: { id: string; short: string; color: string }[]; services: Svc[] };
@@ -30,7 +32,60 @@ export function readReferral(): { code: string; from: string; amount: number } |
   }
 }
 
+/** Book buttons pass ?group= (an umbrella) and ?page= (the service page they were on). */
+function useFocus() {
+  const [focus, setFocus] = useState<{ label: string; categories: string[] } | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    const g = SERVICE_GROUPS.find((x) => x.key === q.get('group'));
+    if (!g) return;
+    const first = findServicePage(q.get('page') ?? '')?.categories ?? [];
+    setFocus({ label: g.label, categories: [...new Set([...first, ...groupCategories(g)])] });
+  }, []);
+  return focus;
+}
+
+const nice = (n: string) => (n === n.toUpperCase() ? n.toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase()) : n);
+// The live site's menu comes from the GlossGenius sync; ids are GlossGenius service tokens.
+const GG_SERVICES: Svc[] = business.categories.flatMap((c) =>
+  c.services.map((s) => ({
+    id: s.token,
+    name: nice(s.name),
+    category: c.name,
+    price: Math.round(s.price * 100),
+    priceVaries: s.priceVaries,
+    duration: s.duration,
+    deposit: s.deposit ? Math.round(s.deposit * 100) : null,
+    depositNewClientsOnly: s.depositNewClientsOnly,
+    description: s.description || null,
+    staffIds: [],
+  })),
+);
+
 export function BookPage() {
+  return NATIVE ? <NativeBooking /> : <GlossGeniusMenu />;
+}
+
+/** Live site: our menu, opened on the right umbrella; a service opens its calendar on GlossGenius. */
+function GlossGeniusMenu() {
+  const focus = useFocus();
+  return (
+    <section className="book">
+      <div className="container book__grid book__grid--single">
+        <div className="book__main">
+          <p className="eyebrow">Book online</p>
+          <h1 className="display book__title">
+            Book your <em>visit.</em>
+          </h1>
+          <ServicePicker services={GG_SERVICES} focus={focus} hrefFor={(s) => glossGeniusService(s.id)} note="Tap a service to pick your day and time." />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NativeBooking() {
+  const focus = useFocus();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [loadError, setLoadError] = useState('');
@@ -166,7 +221,7 @@ export function BookPage() {
           {loadError ? <p className="form-error">{loadError}</p> : null}
           {!catalog && !loadError ? <p className="muted">Loading the menu…</p> : null}
 
-          {catalog && step === 'service' ? <ServicePicker catalog={catalog} onPick={(s) => pickService(s)} /> : null}
+          {catalog && step === 'service' ? <ServicePicker services={catalog.services} focus={focus} onPick={(s) => pickService(s)} /> : null}
 
           {step === 'who' && service ? (
             <div className="book__step">
@@ -270,41 +325,77 @@ export function BookPage() {
   );
 }
 
-function ServicePicker({ catalog, onPick }: { catalog: Catalog; onPick: (s: Svc) => void }) {
+type PickerProps = {
+  services: Svc[];
+  /** The umbrella the visitor came from: its categories open first, the rest folded below. */
+  focus: { label: string; categories: string[] } | null;
+  onPick?: (s: Svc) => void;
+  /** Rows become links (the live site hands a chosen service to GlossGenius). */
+  hrefFor?: (s: Svc) => string;
+  note?: string;
+};
+
+function ServicePicker({ services, focus, onPick, hrefFor, note }: PickerProps) {
   // menu order: waxing first, the same order as the rest of the site
   const order = Object.keys(CATEGORY_LABEL);
-  const cats = [...new Set(catalog.services.map((s) => s.category))].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
-  const [open, setOpen] = useState(cats[0]);
+  const all = [...new Set(services.map((s) => s.category))].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+  const mine = focus ? focus.categories.filter((c) => all.includes(c)) : [];
+  const rest = all.filter((c) => !mine.includes(c));
+  // until they open or close something: the umbrella's categories, or else the first one
+  const [picked, setPicked] = useState<string[] | null>(null);
+  const open = picked ?? (mine.length ? mine : all.slice(0, 1));
+  const toggle = (c: string) => setPicked(open.includes(c) ? open.filter((x) => x !== c) : [...open, c]);
+
+  const group = (cat: string) => (
+    <section key={cat} className={`svc-acc__group ${open.includes(cat) ? 'is-open' : ''}`}>
+      <button className="svc-acc__head" onClick={() => toggle(cat)} aria-expanded={open.includes(cat)}>
+        <span>{CATEGORY_LABEL[cat] ?? cat}</span>
+        <small>{services.filter((s) => s.category === cat).length}</small>
+      </button>
+      {open.includes(cat) ? (
+        <ul>
+          {services
+            .filter((s) => s.category === cat)
+            .map((s) => {
+              const inner = (
+                <>
+                  <span className="svc-row__name">{s.name}</span>
+                  <span className="svc-row__meta">
+                    {minutes(s.duration)} · {cents(s.price)}
+                    {s.priceVaries ? '+' : ''}
+                  </span>
+                </>
+              );
+              return (
+                <li key={s.id}>
+                  {hrefFor ? (
+                    <a className="svc-row" href={hrefFor(s)}>
+                      {inner}
+                    </a>
+                  ) : (
+                    <button className="svc-row" onClick={() => onPick?.(s)}>
+                      {inner}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+        </ul>
+      ) : null}
+    </section>
+  );
+
   return (
     <div className="book__step">
-      <h2>What are you booking?</h2>
-      <div className="svc-acc">
-        {cats.map((cat) => (
-          <section key={cat} className={`svc-acc__group ${open === cat ? 'is-open' : ''}`}>
-            <button className="svc-acc__head" onClick={() => setOpen(open === cat ? '' : cat)} aria-expanded={open === cat}>
-              <span>{CATEGORY_LABEL[cat] ?? cat}</span>
-              <small>{catalog.services.filter((s) => s.category === cat).length}</small>
-            </button>
-            {open === cat ? (
-              <ul>
-                {catalog.services
-                  .filter((s) => s.category === cat)
-                  .map((s) => (
-                    <li key={s.id}>
-                      <button className="svc-row" onClick={() => onPick(s)}>
-                        <span className="svc-row__name">{s.name}</span>
-                        <span className="svc-row__meta">
-                          {minutes(s.duration)} · {cents(s.price)}
-                          {s.priceVaries ? '+' : ''}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-              </ul>
-            ) : null}
-          </section>
-        ))}
-      </div>
+      <h2>{mine.length && focus ? `${focus.label}: what are you booking?` : 'What are you booking?'}</h2>
+      {note ? <p className="muted book__note">{note}</p> : null}
+      <div className="svc-acc">{(mine.length ? mine : all).map(group)}</div>
+      {mine.length ? (
+        <>
+          <h3 className="book__more">Something else?</h3>
+          <div className="svc-acc">{rest.map(group)}</div>
+        </>
+      ) : null}
     </div>
   );
 }

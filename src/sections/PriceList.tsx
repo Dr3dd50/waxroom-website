@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { business, duration, money } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
 import { bookLink } from '../lib/booking';
+import { SERVICE_GROUPS, groupCategories } from '../content/services';
 
 const nice = (s: string) => (s === s.toUpperCase() ? s.toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase()) : s);
 
@@ -10,6 +11,8 @@ export function PriceList() {
   const [active, setActive] = useState(business.categories[0].slug);
   const cat = business.categories.find((c) => c.slug === active) ?? business.categories[0];
   const list = useRef<HTMLUListElement>(null);
+  // the Book button opens the menu on the umbrella of the tab that's showing
+  const group = SERVICE_GROUPS.find((g) => groupCategories(g).includes(cat.name))?.key;
 
   useGSAP(
     () => {
@@ -26,7 +29,7 @@ export function PriceList() {
           <h2 className="display">
             Price <em>list</em>
           </h2>
-          <a className="btn btn--dark" {...bookLink()}>
+          <a className="btn btn--dark" {...bookLink({ group })}>
             Book online
           </a>
         </div>
@@ -65,7 +68,7 @@ export function PriceList() {
                       {money(s.deposit)} deposit{s.depositNewClientsOnly ? ' for new clients' : ''}
                     </p>
                   ) : null}
-                  <a {...bookLink(nice(s.name))} className="link-arrow">
+                  <a {...bookLink({ service: s.name })} className="link-arrow">
                     Book {nice(s.name)}
                   </a>
                 </div>

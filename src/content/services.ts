@@ -733,3 +733,5 @@ export const groupHref = (g: ServiceGroup) => (g.landing ? groupPath(g) : servic
 export const findGroupLanding = (key: string) => SERVICE_GROUPS.find((g) => g.key === key && g.landing);
 /** The group a service page belongs to. */
 export const groupForPage = (slug: string) => SERVICE_GROUPS.find((g) => g.pages.includes(slug))!;
+/** The GlossGenius categories under a group, its main page's first. */
+export const groupCategories = (g: ServiceGroup) => [...g.pages.flatMap((slug) => findServicePage(slug)!.categories), ...(g.extraCategories ?? [])];
