@@ -247,7 +247,9 @@ export function BookPage() {
 }
 
 function ServicePicker({ catalog, onPick }: { catalog: Catalog; onPick: (s: Svc) => void }) {
-  const cats = [...new Set(catalog.services.map((s) => s.category))];
+  // menu order: waxing first, the same order as the rest of the site
+  const order = Object.keys(CATEGORY_LABEL);
+  const cats = [...new Set(catalog.services.map((s) => s.category))].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
   const [open, setOpen] = useState(cats[0]);
   return (
     <div className="book__step">

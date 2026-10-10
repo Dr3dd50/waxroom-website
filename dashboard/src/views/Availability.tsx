@@ -138,6 +138,16 @@ function TimeOffPanel({ who }: { who: Staff }) {
   const [error, setError] = useState('');
   const upcoming = (who.timeOff ?? []).filter((t) => Date.parse(t.to) > Date.now());
   const fmt = (iso: string) => new Date(iso).toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const dayOf = (iso: string) => new Date(iso).toLocaleDateString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric' });
+  // whole days read as dates; part days as one date with two times
+  const range = (from: string, to: string) => {
+    const a = local(from), b = local(to);
+    if (a.minutes === 0 && b.minutes === 0) {
+      const last = new Date(Date.parse(to) - 3600000).toISOString();
+      return a.day === local(last).day ? `${dayOf(from)}, all day` : `${dayOf(from)} – ${dayOf(last)}`;
+    }
+    return a.day === b.day ? `${fmt(from)} – ${new Date(to).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' })}` : `${fmt(from)} – ${fmt(to)}`;
+  };
   const times = Array.from({ length: 25 }, (_, i) => 7 * 60 + i * 30);
   return (
     <section className="card-panel">
@@ -216,9 +226,7 @@ function TimeOffPanel({ who }: { who: Staff }) {
         {upcoming.map((t) => (
           <li key={t.id}>
             <span>{t.note || 'Off'}</span>
-            <strong>
-              {fmt(t.from)} – {fmt(t.to)}
-            </strong>
+            <strong>{range(t.from, t.to)}</strong>
             <button
               className="chip"
               onClick={async () => {

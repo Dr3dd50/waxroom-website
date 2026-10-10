@@ -1,0 +1,12 @@
+{
+  "name": "The Wax Room Staff",
+  "short_name": "Wax Room",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#F8F1E7",
+  "theme_color": "#211710",
+  "icons": [
+    { "src": "favicon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
