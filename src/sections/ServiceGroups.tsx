@@ -78,10 +78,10 @@ export function ServiceGroups() {
           </h2>
         </div>
         <div className="sc-bento__grid">
-          {GROUPS.map((g, i) => (
+          {GROUPS.map((g) => (
             <article key={g.key} className={`sc-tile sc-tile--${g.key}`}>
               <a className="sc-tile__media" href={g.href} tabIndex={-1} aria-hidden="true">
-                <CodeVideo slug={g.video} label="" startAt={3.2 + ((i * 1.3) % 2.6)} />
+                <CodeVideo slug={g.video} label="" />
               </a>
               <div className="sc-tile__body">
                 <a className="sc-tile__name" href={g.href}>
