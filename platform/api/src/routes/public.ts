@@ -32,7 +32,7 @@ export function publicRoutes(store: Store) {
   });
 
   r.get('/catalog', async (c) => {
-    const staff = (await store.list<Staff>('staff')).filter((s) => s.active && s.bookable);
+    const staff = (await store.list<Staff>('staff')).filter((s) => s.active && s.bookable).sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'owner' ? -1 : 1));
     const services = (await store.list<Service>('services')).filter((s) => s.active && s.bookableOnline);
     return c.json({
       staff: staff.map((s) => ({ id: s.id, short: s.short, color: s.color })),

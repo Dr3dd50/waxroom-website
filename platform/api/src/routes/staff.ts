@@ -387,6 +387,7 @@ export function staffRoutes(store: Store) {
     if ((await store.list<Staff>('staff')).some((s) => s.email.toLowerCase() === b.email.toLowerCase())) throw bad('Someone already uses that email.');
     const s: Staff = { id: rid(), name: b.name, short: b.short || b.name.split(' ')[0], email: b.email, role: b.role ?? 'employee', color: b.color ?? '#9C8A76', bookable: b.bookable ?? true, active: true, passwordHash: hashPassword(b.password) };
     await store.put('staff', s);
+    await refreshOnline();
     return c.json(publicStaff(s));
   });
   r.patch('/team/:id', async (c) => {
@@ -404,8 +405,19 @@ export function staffRoutes(store: Store) {
       next.passwordHash = hashPassword(b.password);
     }
     await store.put('staff', next);
+    if (next.bookable !== s.bookable || next.active !== s.active) await refreshOnline();
     return c.json(publicStaff(next));
   });
+
+  /** A service can be booked online when it's offered and someone bookable performs it. */
+  async function refreshOnline() {
+    const staff = await store.list<Staff>('staff');
+    const ok = new Set(staff.filter((x) => x.active && x.bookable).map((x) => x.id));
+    for (const svc of await store.list<Service>('services')) {
+      const online = svc.active && svc.staffIds.some((id) => ok.has(id));
+      if (online !== svc.bookableOnline) await store.put('services', { ...svc, bookableOnline: online });
+    }
+  }
 
   // ── availability: time off (own, or anyone's for the owner) ──
   r.post('/team/:id/time-off', async (c) => {

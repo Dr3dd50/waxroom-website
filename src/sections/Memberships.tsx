@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { business, money } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
-import { NATIVE, membershipLink, packageLink } from '../lib/booking';
+import { membershipLink, packageLink } from '../lib/booking';
 
 export function Memberships() {
   const root = useRef<HTMLElement>(null);
@@ -84,15 +84,6 @@ export function Memberships() {
               </a>
             );
           })}
-          {/* Gift cards are sold through GlossGenius; our own system doesn't sell them yet. */}
-          {NATIVE ? null : (
-          <a className="card card--gift" href={business.giftCardsUrl} target="_blank" rel="noopener" onPointerMove={tilt} onPointerLeave={reset}>
-              <span className="card__tag">Gift cards</span>
-              <h3>Give the gift of smooth.</h3>
-              <p>Digital gift cards for any service, delivered instantly.</p>
-              <p className="card__price">Shop gift cards</p>
-            </a>
-          )}
         </div>
       </div>
     </section>

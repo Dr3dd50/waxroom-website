@@ -37,12 +37,20 @@ owner/employee logins, EventBridge Scheduler for timed texts.
 
 ## Questions for the owner (found in the port)
 
-1. **Wig installs can't be booked online.** Luxury Wig Installation and the consultation are assigned only to Chicago Chew, who isn't bookable online. Who should take them?
-2. **Luxe Lash Pass** includes one each of the 1-, 2-, 3- and 4-week fill every month. Is it meant to be *one fill of any kind* per month?
-3. **The Steam Society** lists the yoni steam's regular price as $50; the menu price is $30. Which is right?
-4. **Bio Scan membership** allows 31 scans a month (daily). Is that right?
-5. **Gift cards.** Selling gift cards is switched off in GlossGenius, but the website links to it. Sell gift cards in the new system, or hide the link?
-6. **Old records.** "VCU College Tour" (a one-off event), plus former staff "College Tours" and "Shae Haskins", are still in GlossGenius. Leave them out of the new system?
+Answered: Chicago takes wig installs and is bookable online here (it's switched
+off on her GlossGenius profile); the yoni steam's regular price is $30; no gift
+cards; GlossGenius has the right hours; old event and former-staff records are
+left out.
+
+Still open:
+
+1. **Luxe Lash Pass** is set up as one of each fill (1, 2, 3 and 4 week) every
+   month for $125. One fill a month would cost more than paying normally (the
+   4-week fill is $100), but its description promises “saving up to $50 every
+   month”. How many fills does it include, and which?
+2. **Luxury Wig Installation** is set to 10 minutes in GlossGenius. How long
+   should it be booked for?
+3. **Bio Scan membership** allows 31 scans a month (daily). Is that right?
 
 ## Running it locally
 

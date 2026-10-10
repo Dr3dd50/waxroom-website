@@ -20,10 +20,11 @@ export function hashPassword(pw: string) {
 const CATEGORY_MERGE: Record<string, string> = { 'Body Work': 'Body and Facial Waxing', None: 'Body and Facial Waxing', '': 'Body and Facial Waxing' };
 const SKIP_CATEGORIES = new Set(['College Tours']);
 const SKIP_STAFF = new Set(['College Tours', 'Shae Haskins']);
-const STAFF_LOOK: Record<string, { short: string; color: string; role: 'owner' | 'employee' }> = {
+const STAFF_LOOK: Record<string, { short: string; color: string; role: 'owner' | 'employee'; bookable?: boolean }> = {
   'Danielle W': { short: 'Danielle', color: '#E39A1E', role: 'owner' },
   'Nyeesha Holley': { short: 'Nyeesha', color: '#C9728A', role: 'employee' },
-  'Chicago Chew': { short: 'Chicago', color: '#6E9A7A', role: 'employee' },
+  // online booking is switched off on Chicago's GlossGenius profile; she takes wig installs, so it's on here
+  'Chicago Chew': { short: 'Chicago', color: '#6E9A7A', role: 'employee', bookable: true },
 };
 // The first "before your visit" note from each service page, texted with the reminder.
 const PREP: Record<string, string> = {
@@ -63,7 +64,7 @@ export async function seed(store: Store) {
       role: look.role,
       color: look.color,
       active: true,
-      bookable: s.bookable,
+      bookable: look.bookable ?? s.bookable,
     };
     if (look.role === 'owner' && config.owner.password) staff.passwordHash = hashPassword(config.owner.password);
     else if (config.demoData) staff.passwordHash = hashPassword('waxroom-demo');
