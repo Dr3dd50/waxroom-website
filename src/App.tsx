@@ -70,7 +70,7 @@ export default function App({ path }: { path: string }) {
           </section>
         ) : null}
       </main>
-      <Footer />
+      <Footer bookBar={!['book', 'manage', 'join'].includes(route.kind)} />
     </>
   );
 }

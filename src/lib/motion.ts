@@ -44,6 +44,12 @@ export function scrollToHash(hash: string) {
   else window.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
 }
 
+/** Back to the top at once (a step change, not a journey worth animating). */
+export function jumpToTop() {
+  if (lenis) lenis.scrollTo(0, { immediate: true });
+  else window.scrollTo(0, 0);
+}
+
 /** Same-page "#section" links anywhere on the site use the measured scroll above. */
 export function handleHashLinks() {
   const onClick = (e: MouseEvent) => {

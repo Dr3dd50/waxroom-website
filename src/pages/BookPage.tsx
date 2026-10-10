@@ -1,8 +1,9 @@
 // Online booking: service → who → when → details → card → booked.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CardForm, type CardSetup } from '../components/CardForm';
 import { api, cents, dateOf, minutes, timeOf, TZ } from '../lib/api';
 import { business } from '../data';
+import { jumpToTop } from '../lib/motion';
 
 type Svc = { id: string; name: string; category: string; price: number; priceVaries: boolean; duration: number; deposit: number | null; depositNewClientsOnly: boolean; description: string | null; staffIds: string[] };
 type Catalog = { staff: { id: string; short: string; color: string }[]; services: Svc[] };
@@ -66,12 +67,84 @@ export function BookPage() {
   const step = booked ? 'done' : !service ? 'service' : staffId === undefined ? 'who' : !slot ? 'when' : !details ? 'details' : 'card';
   const people = catalog && service ? catalog.staff.filter((x) => service.staffIds.includes(x.id)) : [];
   const deposit = service?.deposit ?? 0;
+  const STEPS = ['service', 'who', 'when', 'details', 'card'];
+  const stepNo = STEPS.indexOf(step) + 1;
+
+  // Each step opens at the top, so its heading (and on phones the summary) is what you see first.
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (step !== shownStep.current) jumpToTop();
+    shownStep.current = step;
+  }, [step]);
+
+  const summary = (compact: boolean) => (
+    <dl className={compact ? 'book__strip' : undefined}>
+      <dt>Service</dt>
+      <dd>
+        {service ? (
+          <>
+            <span>{service.name}</span>
+            <small>
+              {minutes(service.duration)} · {cents(service.price)}
+              {service.priceVaries ? '+' : ''}
+            </small>
+            {step !== 'done' ? (
+              <button className="linkish" onClick={() => (setService(null), setStaffId(undefined), setSlot(null), setDetails(null))}>
+                Change
+              </button>
+            ) : null}
+          </>
+        ) : (
+          '—'
+        )}
+      </dd>
+      {compact && staffId === undefined ? null : (
+        <>
+          <dt>With</dt>
+          <dd>
+            <span>{staffId === undefined ? '—' : staffId === null ? 'Anyone available' : catalog?.staff.find((x) => x.id === staffId)?.short}</span>
+            {staffId !== undefined && people.length > 1 && step !== 'done' ? (
+              <button className="linkish" onClick={() => (setStaffId(undefined), setSlot(null), setDetails(null))}>
+                Change
+              </button>
+            ) : null}
+          </dd>
+        </>
+      )}
+      {compact && !slot ? null : (
+        <>
+          <dt>When</dt>
+          <dd>
+            {slot ? (
+              <>
+                <span>{dateOf(slot.start)}</span>
+                <small>{timeOf(slot.start)}</small>
+                {step !== 'done' ? (
+                  <button className="linkish" onClick={() => (setSlot(null), setDetails(null))}>
+                    Change
+                  </button>
+                ) : null}
+              </>
+            ) : (
+              '—'
+            )}
+          </dd>
+        </>
+      )}
+      {referral && service ? (
+        <>
+          <dt>Referral</dt>
+          <dd>−{cents(Math.min(referral.amount, service.price))} at checkout</dd>
+        </>
+      ) : null}
+    </dl>
+  );
 
   return (
     <section className="book">
       <div className="container book__grid">
         <div className="book__main">
-          <p className="eyebrow">Book online</p>
+          <p className="eyebrow">{stepNo ? `Book online · step ${stepNo} of ${STEPS.length}` : 'Book online'}</p>
           <h1 className="display book__title">
             {step === 'done' ? (
               <>
@@ -88,6 +161,8 @@ export function BookPage() {
               {referral.from} sent you {cents(referral.amount)} off your first visit. It comes off automatically when you check out.
             </p>
           ) : null}
+          {/* phones: what's chosen so far, in a slim strip above the step */}
+          {service && step !== 'done' ? <div className="book__mobile-summary">{summary(true)}</div> : null}
           {loadError ? <p className="form-error">{loadError}</p> : null}
           {!catalog && !loadError ? <p className="muted">Loading the menu…</p> : null}
 
@@ -185,60 +260,9 @@ export function BookPage() {
           ) : null}
         </div>
 
-        <aside className="book__summary">
+        <aside className="book__summary book__summary--steps">
           <h2>Your appointment</h2>
-          <dl>
-            <dt>Service</dt>
-            <dd>
-              {service ? (
-                <>
-                  {service.name}
-                  <small>
-                    {minutes(service.duration)} · {cents(service.price)}
-                    {service.priceVaries ? '+' : ''}
-                  </small>
-                  {step !== 'done' ? (
-                    <button className="linkish" onClick={() => (setService(null), setStaffId(undefined), setSlot(null), setDetails(null))}>
-                      Change
-                    </button>
-                  ) : null}
-                </>
-              ) : (
-                '—'
-              )}
-            </dd>
-            <dt>With</dt>
-            <dd>
-              {staffId === undefined ? '—' : staffId === null ? 'Anyone available' : catalog?.staff.find((s) => s.id === staffId)?.short}
-              {staffId !== undefined && people.length > 1 && step !== 'done' ? (
-                <button className="linkish" onClick={() => (setStaffId(undefined), setSlot(null), setDetails(null))}>
-                  Change
-                </button>
-              ) : null}
-            </dd>
-            <dt>When</dt>
-            <dd>
-              {slot ? (
-                <>
-                  {dateOf(slot.start)}
-                  <small>{timeOf(slot.start)}</small>
-                  {step !== 'done' ? (
-                    <button className="linkish" onClick={() => (setSlot(null), setDetails(null))}>
-                      Change
-                    </button>
-                  ) : null}
-                </>
-              ) : (
-                '—'
-              )}
-            </dd>
-            {referral && service ? (
-              <>
-                <dt>Referral</dt>
-                <dd>−{cents(Math.min(referral.amount, service.price))} at checkout</dd>
-              </>
-            ) : null}
-          </dl>
+          {summary(false)}
           <p className="book__tz">Times are Eastern ({TZ.split('/')[1].replace('_', ' ')}).</p>
         </aside>
       </div>

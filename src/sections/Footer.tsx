@@ -2,10 +2,11 @@ import { SERVICE_PAGES, servicePath } from '../content/services';
 import { business } from '../data';
 import { bookLink } from '../lib/booking';
 
-export function Footer() {
+/** bookBar: the floating Book button on phones; off on pages that are already booking. */
+export function Footer({ bookBar = true }: { bookBar?: boolean }) {
   const [title, ...policy] = business.cancellationPolicy.split(/\n+/);
   return (
-    <footer className="footer">
+    <footer className={`footer ${bookBar ? 'footer--bar' : ''}`}>
       <div className="container footer__inner">
         <img src="/logo.png" alt="The Wax Room" width={212} height={180} className="footer__logo" />
         <div className="footer__cta">
@@ -33,9 +34,11 @@ export function Footer() {
           © {new Date().getFullYear()} {business.name} · {business.address}
         </p>
       </div>
-      <a className="mobile-book btn btn--honey" {...bookLink()}>
-        Book now
-      </a>
+      {bookBar ? (
+        <a className="mobile-book btn btn--honey" {...bookLink()}>
+          Book now
+        </a>
+      ) : null}
     </footer>
   );
 }
