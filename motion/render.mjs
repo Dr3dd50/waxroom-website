@@ -72,7 +72,7 @@ for (const name of names) {
   if (flags.has('--stills')) {
     const dir = path.join(here, 'out', name);
     fs.mkdirSync(dir, { recursive: true });
-    for (const s of [1, 2.5, 4, 5.6, 7.6]) fs.writeFileSync(path.join(dir, `t${s}.png`), await grab(Math.round(s * 30)));
+    for (const s of (process.env.AT ? process.env.AT.split(',').map(Number) : [0, 1, 2.5, 4, 5.6, 7.96])) fs.writeFileSync(path.join(dir, `t${s}.png`), await grab(Math.round(s * 30)));
     console.log(`stills → motion/out/${name}`);
     continue;
   }

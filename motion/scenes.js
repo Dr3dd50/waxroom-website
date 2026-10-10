@@ -6,8 +6,17 @@
 import {
   W, H, INK, HONEY, HONEY_DEEP, HONEY_PALE, MUTED,
   seg, prog, lerp, ease, line, arc, ellipse, spline, bezier, translate,
-  stroke, hatch, write, sparkle, tick, loopFade,
+  stroke, hatch, write, sparkle, tick, loopFade, paper,
 } from './doodle.js';
+import * as jetPlasma from './scene-jet-plasma.js';
+import * as wax from './scene-wax.js';
+
+// Detailed, researched scenes that loop seamlessly (no fade): last frame = first.
+const LOOPS = {
+  'skin-treatments': jetPlasma.draw,
+  'brazilian-waxing': wax.draw,
+  'body-waxing': wax.draw,
+};
 
 export const DURATION = 8;
 const FADE = 0.9;
@@ -280,9 +289,14 @@ const DRAW = {
   'hair-restoration': hair,
 };
 
-export const SCENES = Object.keys(DRAW);
+export const SCENES = [...new Set([...Object.keys(DRAW), ...Object.keys(LOOPS)])];
 
 export function drawScene(ctx, name, t) {
+  if (LOOPS[name]) {
+    paper(ctx);
+    LOOPS[name](ctx, t);
+    return;
+  }
   loopFade(ctx, t, DURATION, FADE, () => DRAW[name](ctx, t));
 }
 

@@ -3,7 +3,6 @@ import { Nav } from './components/Nav';
 import { Footer } from './sections/Footer';
 import { Home } from './pages/Home';
 import { ServicePage } from './pages/ServicePage';
-import { ShowcaseMock } from './pages/ShowcaseMock';
 import { GalleryPage } from './pages/GalleryPage';
 import { headFor, resolve } from './routes';
 import { gsap, ScrollTrigger, scrollToHash, startSmoothScroll } from './lib/motion';
@@ -42,7 +41,6 @@ export default function App({ path }: { path: string }) {
         {route.kind === 'home' ? <Home /> : null}
         {route.kind === 'service' ? <ServicePage page={route.page} /> : null}
         {route.kind === 'gallery' ? <GalleryPage /> : null}
-        {route.kind === 'showcaseMock' ? <ShowcaseMock /> : null}
         {route.kind === 'notFound' ? (
           <section className="hero">
             <div className="hero__inner">

@@ -182,3 +182,47 @@ export function loopFade(ctx, t, duration, fade, draw) {
   draw();
   ctx.restore();
 }
+
+// ── fills, shapes and loop helpers for the detailed scenes ─────────────────────
+export const TAU = Math.PI * 2;
+export const GLOVE = '#9DBCF2';
+export const WOOD = '#E9CF9E';
+export const SKIN = '#F3D9C4';
+export const SKIN_SHADE = '#E7C3A8';
+export const PLASMA = '#9B7BFF';
+
+/** Solid fill of a closed point list. */
+export function fill(ctx, pts, color, alpha = 1) {
+  if (pts.length < 3) return;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Rounded rectangle as a closed point list (x, y = top-left). */
+export function rrect(x, y, w, h, r, n = 6) {
+  r = Math.min(r, w / 2, h / 2);
+  const c = (cx, cy, a0) => arc(cx, cy, r, r, a0, a0 + Math.PI / 2, n);
+  return [...c(x + w - r, y + r, -Math.PI / 2), ...c(x + w - r, y + h - r, 0), ...c(x + r, y + h - r, Math.PI / 2), ...c(x + r, y + r, Math.PI)];
+}
+
+export function rotate(pts, cx, cy, a) {
+  const c = Math.cos(a), s = Math.sin(a);
+  return pts.map(([x, y]) => [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c]);
+}
+
+/** Outline + fill in one go: the usual doodle "coloured-in" shape. */
+export function shape(ctx, pts, t, { fillColor, fillAlpha = 1, w = 5, color = INK, seed = 1, close = true } = {}) {
+  if (fillColor) fill(ctx, pts, fillColor, fillAlpha);
+  stroke(ctx, close ? [...pts, pts[0]] : pts, 1, t, { w, color, seed });
+}
+
+/** Periodic 0..1 phase of t for a loop of `duration`, optionally offset. */
+export const phase = (t, duration, offset = 0) => (((t / duration + offset) % 1) + 1) % 1;
+/** Smooth periodic wave with an integer number of cycles per loop (seam-free). */
+export const wave = (t, duration, cycles = 1, offset = 0) => Math.sin(TAU * (cycles * t / duration + offset));

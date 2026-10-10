@@ -6,14 +6,12 @@ export type Route =
   | { kind: 'home' }
   | { kind: 'service'; page: ServicePage }
   | { kind: 'gallery' }
-  | { kind: 'showcaseMock' }
   | { kind: 'notFound' };
 
 export function resolve(pathname: string): Route {
   const path = pathname.replace(/\/+$/, '') || '/';
   if (path === '/') return { kind: 'home' };
   if (path === '/gallery') return { kind: 'gallery' };
-  if (path === '/mockups/services') return { kind: 'showcaseMock' };
   const m = /^\/services\/([a-z0-9-]+)$/.exec(path);
   const page = m && findServicePage(m[1]);
   return page ? { kind: 'service', page } : { kind: 'notFound' };
