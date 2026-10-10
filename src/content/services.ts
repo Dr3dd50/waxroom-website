@@ -585,15 +585,126 @@ export type ServiceGroup = {
   pages: string[];
   /** Extra GlossGenius categories with no landing page of their own. */
   extraCategories?: string[];
+  /**
+   * A landing page for the group itself, at /services/<key>/, for groups that
+   * span more than one service page or category. Groups without one use their
+   * single service page as their landing page.
+   */
+  landing?: GroupLanding;
+};
+
+/** Editorial copy for a group landing page; services, prices and offers come from its pages. */
+export type GroupLanding = {
+  seoTitle: string;
+  metaDescription: string;
+  flips: [noun: string, verb: string][];
+  intro: string;
+  highlights: Step[];
+  faqs: Faq[];
+  reviewMatch: RegExp;
+  /** Offers for the group's extra categories, on top of those from its pages. */
+  memberships?: string[];
+};
+
+const WAXING: GroupLanding = {
+  seoTitle: 'Waxing in Midlothian, VA: Brazilian, Body & Facial | The Wax Room',
+  metaDescription:
+    'Brazilian, bikini, leg, underarm, back and facial waxing in Midlothian, VA. Quick, judgment-free appointments, memberships that keep you smooth, and online booking.',
+  flips: [
+    ['wax', 'done'],
+    ['Brazilian', 'booked'],
+    ['legs', 'smoothed'],
+    ['underarms', 'cleared'],
+    ['lip', 'cleaned up'],
+  ],
+  intro:
+    'Waxing is what The Wax Room is known for. From a Brazilian to a full leg or a quick lip wax, every appointment is fast, private and judgment-free, and because hair comes out from the root, you stay smooth for weeks.',
+  highlights: [
+    {
+      title: 'Smooth for weeks',
+      body: 'Waxing removes hair from the root rather than the surface, so results last three to four weeks instead of a few days.',
+    },
+    {
+      title: 'Softer regrowth',
+      body: 'Stay on a regular schedule and many clients notice regrowth coming in finer and sparser over time.',
+    },
+    {
+      title: 'Head to toe',
+      body: 'Intimate, body and facial waxing, for every body. Add services together and get it all done in one visit.',
+    },
+  ],
+  faqs: [
+    {
+      q: 'How long does waxing last?',
+      a: 'Usually three to four weeks, depending on the area and your hair growth cycle. Rebooking every 3–5 weeks keeps hair on the same cycle and results consistent.',
+    },
+    {
+      q: 'How long should my hair be?',
+      a: 'About ¼ inch, roughly the length of a grain of rice. That’s usually 2–3 weeks after shaving.',
+    },
+    {
+      q: 'Does waxing hurt?',
+      a: 'There’s a quick sting, usually most noticeable on your first visit. Each wax tends to feel easier as hair grows back finer, and our team works fast to keep it brief.',
+    },
+    {
+      q: 'I’ve never been here before. Is there a first-visit deal?',
+      a: 'Yes. The New Client Ritual pairs a Brazilian with a 30-minute yoni steam at an introductory rate for first-time clients. New clients pay a small deposit when booking.',
+    },
+  ],
+  reviewMatch: /wax|brazilian|bikini|leg|underarm/i,
+};
+
+const WELLNESS: GroupLanding = {
+  seoTitle: 'Yoni Steam & Bio Scans in Midlothian, VA | The Wax Room',
+  metaDescription:
+    'Private yoni steam sessions with premium herbal blends, and quick bio scans, in Midlothian, VA. Self-care on its own or alongside a wax. Book online.',
+  flips: [
+    ['steam', 'on'],
+    ['calm', 'back'],
+    ['me time', 'booked'],
+    ['scan', 'done'],
+  ],
+  intro:
+    'Wellness at The Wax Room is about slowing down. Settle into a private yoni steam over a warm herbal infusion, or add a quick bio scan for insight into your body’s health and wellness.',
+  highlights: [
+    {
+      title: 'A real pause',
+      body: 'About 30 minutes of warm herbal steam in your own private space, fully covered and in control.',
+    },
+    {
+      title: 'Five-minute bio scan',
+      body: 'A quick scan that gives you insight into your body’s health and wellness, so your care can be personalized.',
+    },
+    {
+      title: 'Better together',
+      body: 'Pair a steam with a Brazilian, or join a membership for weekly steams or daily scans.',
+    },
+  ],
+  faqs: [
+    {
+      q: 'Is the steam hot?',
+      a: 'It should feel warm and comfortable, never hot. Tell us right away if it feels too warm and we’ll adjust it.',
+    },
+    {
+      q: 'What is a bio scan?',
+      a: 'A quick, five-minute scan that gives insight into your body’s health and wellness to help personalize your care. You can book it on its own or add it to another visit.',
+    },
+    {
+      q: 'Are these medical treatments?',
+      a: 'No. We offer yoni steams and bio scans as wellness and self-care services, not to diagnose or treat any condition. Please see your healthcare provider for medical concerns.',
+    },
+  ],
+  reviewMatch: /steam|yoni|scan|relax/i,
+  memberships: ['Bio Scan'],
 };
 
 export const SERVICE_GROUPS: ServiceGroup[] = [
-  { key: 'waxing', label: 'Waxing', problem: 'Unwanted hair, gone for weeks', video: 'brazilian-waxing', pages: ['brazilian-waxing', 'body-waxing'] },
+  { key: 'waxing', label: 'Waxing', problem: 'Unwanted hair, gone for weeks', video: 'brazilian-waxing', pages: ['brazilian-waxing', 'body-waxing'], landing: WAXING },
   { key: 'brows', label: 'Brows', problem: 'Sparse, uneven or unruly brows', video: 'brows', pages: ['brows'] },
   { key: 'lashes', label: 'Lashes', problem: 'Short or thin lashes', video: 'lash-extensions', pages: ['lash-extensions'] },
   { key: 'skin', label: 'Skin', problem: 'Fine lines, scars, pigmentation and texture', video: 'skin-treatments', pages: ['skin-treatments'] },
   { key: 'hair', label: 'Hair', problem: 'Thinning hair or a flawless install', video: 'hair-restoration', pages: ['hair-restoration'] },
-  { key: 'wellness', label: 'Wellness', problem: 'Stress, rest and self-care', video: 'yoni-steam', pages: ['yoni-steam'], extraCategories: ['Bio scans'] },
+  { key: 'wellness', label: 'Wellness', problem: 'Stress, rest and self-care', video: 'yoni-steam', pages: ['yoni-steam'], extraCategories: ['Bio scans'], landing: WELLNESS },
 ];
 
 export const serviceAnchor = (name: string) =>
@@ -611,9 +722,14 @@ export function groupServices(g: ServiceGroup, categories: Catalog) {
     }
   }
   for (const c of categories.filter((c) => g.extraCategories?.includes(c.name))) {
-    for (const sv of c.services) items.push({ ...sv, href: '/#prices' });
+    for (const sv of c.services) items.push({ ...sv, href: g.landing ? `/services/${g.key}/#${serviceAnchor(sv.name)}` : '/#prices' });
   }
   return items;
 }
 
-export const groupHref = (g: ServiceGroup) => servicePath(findServicePage(g.pages[0])!);
+export const groupPath = (g: ServiceGroup) => `/services/${g.key}/`;
+/** Where a group links to: its own landing page, or else its single service page. */
+export const groupHref = (g: ServiceGroup) => (g.landing ? groupPath(g) : servicePath(findServicePage(g.pages[0])!));
+export const findGroupLanding = (key: string) => SERVICE_GROUPS.find((g) => g.key === key && g.landing);
+/** The group a service page belongs to. */
+export const groupForPage = (slug: string) => SERVICE_GROUPS.find((g) => g.pages.includes(slug))!;

@@ -290,7 +290,6 @@ function drawWide(ctx, t) {
     const y0 = lerp(top + 10, bot - 10, ((x * 37) % 100) / 100);
     stroke(ctx, [[x, y0], [x + 3, y0 + 2], [x + 6, y0 + 4]], 1, t, { w: 1.8 });
   }
-  write(ctx, 'leg wax', 480, 720, 1, t, { size: 46, color: MUTED, rot: 0 });
   ctx.restore();
 }
 

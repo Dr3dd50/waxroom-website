@@ -3,6 +3,7 @@ import { Nav } from './components/Nav';
 import { Footer } from './sections/Footer';
 import { Home } from './pages/Home';
 import { ServicePage } from './pages/ServicePage';
+import { GroupPage } from './pages/GroupPage';
 import { GalleryPage } from './pages/GalleryPage';
 import { headFor, resolve } from './routes';
 import { gsap, ScrollTrigger, scrollToHash, startSmoothScroll } from './lib/motion';
@@ -40,6 +41,7 @@ export default function App({ path }: { path: string }) {
       <main>
         {route.kind === 'home' ? <Home /> : null}
         {route.kind === 'service' ? <ServicePage page={route.page} /> : null}
+        {route.kind === 'group' ? <GroupPage group={route.group} /> : null}
         {route.kind === 'gallery' ? <GalleryPage /> : null}
         {route.kind === 'notFound' ? (
           <section className="hero">

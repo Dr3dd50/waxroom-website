@@ -2187,3 +2187,72 @@ h3 {
 .lightbox__link {
   color: var(--cream);
 }
+
+/* Group landing pages: a door into each service page, then grouped prices */
+.group-doors__title {
+  margin: 0.4rem 0 2rem;
+}
+.group-doors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px;
+}
+.group-door {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: clamp(1.4rem, 3vw, 2.2rem);
+  border-radius: 26px;
+  border: 1px solid var(--line);
+  background: #f8f1e7;
+  color: var(--ink);
+  text-decoration: none;
+  transition:
+    translate 0.5s var(--ease),
+    box-shadow 0.5s var(--ease);
+}
+.group-door:hover {
+  translate: 0 -4px;
+  box-shadow: 0 30px 50px -30px rgba(33, 23, 16, 0.35);
+}
+.group-door h3 {
+  font: 400 clamp(1.8rem, 3vw, 2.4rem) / 1.05 var(--serif);
+  margin: 0;
+}
+.group-door p {
+  margin: 0;
+  color: rgba(23, 17, 11, 0.72);
+}
+.group-door__meta {
+  font: 600 0.75rem/1 var(--sans);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--honey-deep);
+}
+.group-door .group-door__list {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.group-door__go {
+  margin-top: auto;
+  padding-top: 0.8rem;
+  font-weight: 600;
+}
+.group-door:hover .group-door__go {
+  color: var(--honey-deep);
+}
+.price-group + .price-group {
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
+}
+.price-group__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+.price-group__head h3 {
+  font: 400 clamp(1.5rem, 2.4vw, 1.9rem) / 1.1 var(--serif);
+  margin: 0;
+}

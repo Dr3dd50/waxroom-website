@@ -136,7 +136,7 @@ const headOutline = () => Array.from({ length: 73 }, (_, i) => {
 });
 
 function drawWide(ctx, t) {
-  const [hx, hy, rx, ry] = HEAD;
+  const [hx, hy, rx] = HEAD;
   // shoulders under the salon cape, ears and the tip of the nose past the hair
   shape(ctx, rrect(626, hy - 380, 270, 760, 120), t, { fillColor: '#E3DCD2', w: 5 });
   stroke(ctx, spline([[690, hy - 300], [720, hy - 190]], 3), 1, t, { w: 3, color: MUTED });

@@ -1,10 +1,11 @@
-import { SERVICE_PAGES, findServicePage, servicePath, type ServicePage } from './content/services';
+import { SERVICE_GROUPS, SERVICE_PAGES, findGroupLanding, findServicePage, groupPath, servicePath, type ServiceGroup, type ServicePage } from './content/services';
 
 export const SITE_URL = 'https://www.waxroomrichmond.com';
 
 export type Route =
   | { kind: 'home' }
   | { kind: 'service'; page: ServicePage }
+  | { kind: 'group'; group: ServiceGroup }
   | { kind: 'gallery' }
   | { kind: 'notFound' };
 
@@ -13,12 +14,19 @@ export function resolve(pathname: string): Route {
   if (path === '/') return { kind: 'home' };
   if (path === '/gallery') return { kind: 'gallery' };
   const m = /^\/services\/([a-z0-9-]+)$/.exec(path);
+  const group = m && findGroupLanding(m[1]);
+  if (group) return { kind: 'group', group };
   const page = m && findServicePage(m[1]);
   return page ? { kind: 'service', page } : { kind: 'notFound' };
 }
 
 /** Every path that gets a pre-rendered HTML file. */
-export const PRERENDER_PATHS = ['/', ...SERVICE_PAGES.map(servicePath), '/gallery/'];
+export const PRERENDER_PATHS = [
+  '/',
+  ...SERVICE_GROUPS.filter((g) => g.landing).map(groupPath),
+  ...SERVICE_PAGES.map(servicePath),
+  '/gallery/',
+];
 
 export function headFor(route: Route) {
   if (route.kind === 'service') {
@@ -26,6 +34,13 @@ export function headFor(route: Route) {
       title: route.page.seoTitle,
       description: route.page.metaDescription,
       canonical: `${SITE_URL}${servicePath(route.page)}`,
+    };
+  }
+  if (route.kind === 'group') {
+    return {
+      title: route.group.landing!.seoTitle,
+      description: route.group.landing!.metaDescription,
+      canonical: `${SITE_URL}${groupPath(route.group)}`,
     };
   }
   if (route.kind === 'gallery') {
