@@ -43,3 +43,12 @@ owner/employee logins, EventBridge Scheduler for timed texts.
 4. **Bio Scan membership** allows 31 scans a month (daily). Is that right?
 5. **Gift cards.** Selling gift cards is switched off in GlossGenius, but the website links to it. Sell gift cards in the new system, or hide the link?
 6. **Old records.** "VCU College Tour" (a one-off event), plus former staff "College Tours" and "Shae Haskins", are still in GlossGenius. Leave them out of the new system?
+
+## Dashboard prototype
+
+`dashboard/` is a clickable prototype of the staff dashboard (sample clients and
+appointments, the real ported catalog). Owners see everything; employees see
+their own calendar and clients.
+
+    npm run dashboard          # dev server on :5174
+    npm run build:dashboard    # → dist-dashboard/, deployable to employee.waxroomrichmond.com

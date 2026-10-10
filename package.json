@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "sync:menu": "node scripts/sync-glossgenius.mjs",
     "sync:reviews": "node scripts/fetch-reviews.mjs",
-    "sync:instagram": "node scripts/sync-instagram.mjs"
+    "sync:instagram": "node scripts/sync-instagram.mjs",
+    "dashboard": "vite --config dashboard/vite.config.ts",
+    "build:dashboard": "tsc -b && vite build --config dashboard/vite.config.ts",
+    "port:glossgenius": "node scripts/port-glossgenius.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
