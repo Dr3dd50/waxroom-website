@@ -12,7 +12,7 @@ import { NATIVE } from './lib/booking';
 import { business } from './data';
 import { GalleryPage } from './pages/GalleryPage';
 import { headFor, resolve } from './routes';
-import { gsap, ScrollTrigger, scrollToHash, startSmoothScroll } from './lib/motion';
+import { gsap, handleHashLinks, ScrollTrigger, scrollToHash, startSmoothScroll } from './lib/motion';
 
 export default function App({ path }: { path: string }) {
   const route = resolve(path);
@@ -20,6 +20,7 @@ export default function App({ path }: { path: string }) {
   useEffect(() => {
     document.title = headFor(route).title;
     startSmoothScroll();
+    const stopHashLinks = handleHashLinks();
     // Honey progress bar along the top edge.
     const bar = gsap.to('.progress', {
       scaleX: 1,
@@ -32,6 +33,7 @@ export default function App({ path }: { path: string }) {
     const refresh = () => ScrollTrigger.refresh();
     window.addEventListener('load', refresh);
     return () => {
+      stopHashLinks();
       bar.scrollTrigger?.kill();
       bar.kill();
       window.removeEventListener('load', refresh);
