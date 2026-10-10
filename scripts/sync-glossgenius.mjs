@@ -30,6 +30,9 @@ const CATEGORY_SKIP = new Set(['College Tours']);
 // Staff accounts that aren't people, or that the owner asked to keep off the site.
 const TEAM_SKIP = new Set(['College Tours', 'Shae Haskins']);
 
+// Lengths the owner has confirmed where GlossGenius's setting is wrong (minutes).
+const DURATION_FIX = { 'Luxury Wig Installation': 60 };
+
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const slugify = (s) => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -88,7 +91,7 @@ const categories = [...byCategory.entries()]
         name: s.name,
         price: Number(s.price),
         priceVaries: s.price_varies,
-        duration: s.total_duration,
+        duration: DURATION_FIX[s.name] ?? s.total_duration,
         description: (s.description || '').trim(),
         image: isDefaultImage(s.image) ? null : s.image,
         deposit: s.deposit_amount ? Number(s.deposit_amount) : null,

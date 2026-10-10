@@ -72,6 +72,8 @@ export async function seed(store: Store) {
     await store.put('staff', staff);
   }
 
+  // lengths the owner confirmed where GlossGenius's setting is wrong
+  const DURATION_FIX: Record<string, number> = { 'Luxury Wig Installation': 60 };
   for (const s of catalog.services) {
     if (SKIP_CATEGORIES.has(s.category ?? '')) continue;
     const category = CATEGORY_MERGE[s.category ?? ''] ?? s.category;
@@ -83,7 +85,7 @@ export async function seed(store: Store) {
       order: s.order,
       price: s.price,
       priceVaries: s.priceVaries,
-      duration: s.duration,
+      duration: DURATION_FIX[s.name] ?? s.duration,
       deposit: s.deposit,
       depositNewClientsOnly: s.depositNewClientsOnly,
       description: s.description,

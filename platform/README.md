@@ -38,16 +38,14 @@ owner/employee logins, EventBridge Scheduler for timed texts.
 ## Questions for the owner (found in the port)
 
 Answered: the Luxe Lash Pass is four 1-week fills a month (the only plan
-that matches “saving up to $50”: 4 × $45 = $180 for $125); Chicago takes wig installs and is bookable online here (it's switched
+that matches “saving up to $50”: 4 × $45 = $180 for $125); Chicago takes wig installs (booked for 1 hour) and is bookable online here (it's switched
 off on her GlossGenius profile); the yoni steam's regular price is $30; no gift
 cards; GlossGenius has the right hours; old event and former-staff records are
 left out.
 
 Still open:
 
-1. **Luxury Wig Installation** is set to 10 minutes in GlossGenius. How long
-   should it be booked for?
-2. **Bio Scan membership** allows 31 scans a month (daily). Is that right?
+1. **Bio Scan membership** allows 31 scans a month (daily). Is that right?
 
 ## Running it locally
 

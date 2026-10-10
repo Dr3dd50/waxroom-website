@@ -6,7 +6,6 @@ import { Drawer, Icon, PageHead, Pill } from '../ui';
 
 // Things the GlossGenius port flagged for the owner to confirm.
 const REVIEW: Record<string, string> = {
-  'Luxury Wig Installation': 'Set to 10 minutes in GlossGenius. How long should an install be booked for?',
   'Bio Scan': '31 scans a month (daily). Is that right?',
 };
 
