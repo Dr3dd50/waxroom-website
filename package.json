@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "sync:menu": "node scripts/sync-glossgenius.mjs",
-    "sync:reviews": "node scripts/fetch-reviews.mjs"
+    "sync:reviews": "node scripts/fetch-reviews.mjs",
+    "sync:instagram": "node scripts/sync-instagram.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

@@ -58,6 +58,16 @@ function ServiceDropdown({ g, open, onToggle }: { g: Group; open?: boolean; onTo
 export function ShowcaseList() {
   const root = useRef<HTMLElement>(null);
   const [active, setActive] = useState<number | null>(null);
+  const [openRows, setOpenRows] = useState<Set<number>>(new Set());
+  // The floating doodle only previews a closed row's title; it never covers an open list.
+  const showing = active !== null && !openRows.has(active) ? active : null;
+  const toggleRow = (i: number, isOpen: boolean) =>
+    setOpenRows((prev) => {
+      const next = new Set(prev);
+      if (isOpen) next.add(i);
+      else next.delete(i);
+      return next;
+    });
 
   useGSAP(
     () => {
@@ -84,7 +94,7 @@ export function ShowcaseList() {
   );
 
   return (
-    <section className="sc-list" ref={root} onPointerLeave={() => setActive(null)}>
+    <section className="sc-list" ref={root}>
       <div className="container">
         <div className="sc-head">
           <p className="eyebrow">What can we help with?</p>
@@ -94,9 +104,9 @@ export function ShowcaseList() {
         </div>
         <ol className="sc-list__rows">
           {GROUPS.map((g, i) => (
-            <li key={g.key} className="sc-list__item" onPointerEnter={() => setActive(i)}>
-              <details className="sc-list__details">
-                <summary className="sc-list__row">
+            <li key={g.key} className="sc-list__item">
+              <details className="sc-list__details" onToggle={(e) => toggleRow(i, (e.currentTarget as HTMLDetailsElement).open)}>
+                <summary className="sc-list__row" onPointerEnter={() => setActive(i)} onPointerLeave={() => setActive(null)}>
                   <span className="sc-list__n">{g.n}</span>
                   <span className="sc-list__thumb" aria-hidden="true">
                     <CodeVideo slug={g.video} label="" />
@@ -135,9 +145,9 @@ export function ShowcaseList() {
           ))}
         </ol>
       </div>
-      <div className={`sc-list__preview ${active !== null ? 'is-on' : ''}`} aria-hidden="true">
+      <div className={`sc-list__preview ${showing !== null ? 'is-on' : ''}`} aria-hidden="true">
         {GROUPS.map((g, i) => (
-          <div key={g.key} className={`sc-list__clip ${active === i ? 'is-active' : ''}`}>
+          <div key={g.key} className={`sc-list__clip ${showing === i ? 'is-active' : ''}`}>
             <CodeVideo slug={g.video} label="" />
           </div>
         ))}

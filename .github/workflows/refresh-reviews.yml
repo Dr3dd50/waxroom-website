@@ -1,4 +1,4 @@
-name: Refresh Google reviews & menu
+name: Refresh Google reviews, menu & gallery
 
 # Pulls fresh 5-star Google reviews and the GlossGenius service menu via Apify,
 # and commits any changes. Hosting that deploys on push (Vercel, Netlify,
@@ -36,15 +36,21 @@ jobs:
         run: node scripts/sync-glossgenius.mjs
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+      - name: Sync Instagram gallery
+        run: |
+          command -v ffmpeg >/dev/null || (sudo apt-get update -q && sudo apt-get install -yq ffmpeg)
+          node scripts/sync-instagram.mjs
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
       - name: Commit changes
         run: |
           # syncedAt changes every run; only commit when real content changed
-          if git diff --quiet -- src/data/reviews.json && \
+          if git diff --quiet -- src/data/reviews.json src/data/gallery.json && \
              [ -z "$(git diff -U0 -- src/data/business.json | grep '^[+-] ' | grep -v syncedAt)" ]; then
-            echo "No content changes."; git checkout -- src/data; exit 0
+            echo "No content changes."; git checkout -- src/data public/gallery; git clean -fdq public/gallery; exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
-          git add src/data
-          git commit -m "Refresh Google reviews and service menu"
+          git add src/data public/gallery
+          git commit -m "Refresh Google reviews, service menu and gallery"
           git push

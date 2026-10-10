@@ -8,6 +8,7 @@ const LEFT = [
   ['#memberships', 'Memberships'],
 ] as const;
 const RIGHT = [
+  ['/gallery/', 'Gallery'],
   ['#reviews', 'Reviews'],
   ['#visit', 'Visit'],
 ] as const;

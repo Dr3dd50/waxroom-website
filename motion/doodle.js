@@ -121,7 +121,7 @@ export function hatch(ctx, shape, p, t, { color = HONEY, gap = 14, angle = -0.6,
   const dx = Math.cos(angle), dy = Math.sin(angle);
   for (let i = 0; i < shown; i++) {
     const ox = x0 + i * gap;
-    const a = [ox - dy * 0, y1], b2 = [ox + dx * span, y1 + dy * span];
+    const a = [ox, y1], b2 = [ox + dx * span, y1 + dy * span];
     stroke(ctx, line(a[0], a[1], b2[0], b2[1], 6), 1, t, { color, w, seed: seed + i, jit: 2.2, alpha });
   }
   ctx.restore();
