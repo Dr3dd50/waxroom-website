@@ -66,7 +66,7 @@ fs.mkdirSync(VIDEOS, { recursive: true });
 for (const name of names) {
   await page.goto(`${base}?render&scene=${name}`);
   await page.waitForFunction(() => window.ready === true);
-  const FRAMES = await page.evaluate(() => window.FRAMES);
+  const [FRAMES, POSTER] = await page.evaluate(() => [window.FRAMES, window.POSTER]);
   const grab = async (f) => Buffer.from((await page.evaluate((f) => window.frame(f), f)).split(',')[1], 'base64');
 
   if (flags.has('--stills')) {
@@ -77,8 +77,8 @@ for (const name of names) {
     continue;
   }
 
-  // Poster: the finished drawing, shown before the video loads or with reduced motion.
-  fs.writeFileSync(path.join(here, 'out-poster.png'), await grab(Math.round(5.8 * 30)));
+  // Poster: shown before the video loads or with reduced motion.
+  fs.writeFileSync(path.join(here, 'out-poster.png'), await grab(POSTER));
   await run('ffmpeg', ['-v', 'error', '-y', '-i', path.join(here, 'out-poster.png'), '-vf', 'scale=1280:-2', '-q:v', '4', path.join(VIDEOS, `${name}.jpg`)]);
   fs.unlinkSync(path.join(here, 'out-poster.png'));
 

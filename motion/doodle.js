@@ -62,8 +62,8 @@ export function spline(points, per = 12) {
 export const translate = (pts, dx, dy) => pts.map(([x, y]) => [x + dx, y + dy]);
 
 // ── drawing ─────────────────────────────────────────────────────────────────
-/** Draw the first `p` (0–1) of a path as a pen line. (`t` and `seed` are kept for call-site symmetry.) */
-export function stroke(ctx, pts, p, t, { w = 6, color = INK, alpha = 1 } = {}) {
+/** Draw the first `p` (0–1) of a path as a pen line, optionally dashed. (`t` and `seed` are kept for call-site symmetry.) */
+export function stroke(ctx, pts, p, t, { w = 6, color = INK, alpha = 1, dash } = {}) {
   if (p <= 0 || pts.length < 2) return;
   const lens = [0];
   for (let i = 1; i < pts.length; i++) lens.push(lens[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
@@ -74,6 +74,7 @@ export function stroke(ctx, pts, p, t, { w = 6, color = INK, alpha = 1 } = {}) {
   ctx.lineWidth = w;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  if (dash) ctx.setLineDash(dash);
   ctx.beginPath();
   for (let i = 0; i < pts.length; i++) {
     let [x, y] = pts[i];

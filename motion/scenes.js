@@ -11,21 +11,23 @@ import * as hairScene from './scene-hair.js';
 import * as steamScene from './scene-steam.js';
 
 export { W, H } from './doodle.js';
-export const DURATION = 8;
 
-const SCENE_DRAW = {
-  'brazilian-waxing': wax.draw,
-  'body-waxing': wax.draw,
-  brows: browScene.draw,
-  'lash-extensions': lashScene.draw,
-  'skin-treatments': jetPlasma.draw,
-  'yoni-steam': steamScene.draw,
-  'hair-restoration': hairScene.draw,
+const SCENE = {
+  'brazilian-waxing': wax,
+  'body-waxing': wax,
+  brows: browScene,
+  'lash-extensions': lashScene,
+  'skin-treatments': jetPlasma,
+  'yoni-steam': steamScene,
+  'hair-restoration': hairScene,
 };
 
-export const SCENES = Object.keys(SCENE_DRAW);
+export const SCENES = Object.keys(SCENE);
+export const durationOf = (name) => SCENE[name].DURATION;
+/** Poster time: a scene with a zoom opens on its wide shot, so its poster is that frame too. */
+export const posterOf = (name) => SCENE[name].POSTER ?? 5.8;
 
 export function drawScene(ctx, name, t) {
   paper(ctx);
-  SCENE_DRAW[name](ctx, t);
+  SCENE[name].draw(ctx, t);
 }

@@ -18,7 +18,7 @@
     <script type="module">
       // Opened directly (node motion/render.mjs --serve) it plays a scene live;
       // the renderer instead calls window.frame(f) once per frame.
-      import { drawScene, SCENES, DURATION } from './scenes.js';
+      import { drawScene, SCENES, durationOf, posterOf } from './scenes.js';
       import { FPS } from './doodle.js';
 
       const font = new FontFace('Hand', 'url(fonts/caveat-latin-600.woff2)', { weight: '600' });
@@ -28,7 +28,9 @@
       const params = new URLSearchParams(location.search);
       const name = params.get('scene') || SCENES[0];
       const ctx = document.getElementById('c').getContext('2d');
+      const DURATION = durationOf(name);
       window.FRAMES = DURATION * FPS;
+      window.POSTER = Math.round(posterOf(name) * FPS);
       window.frame = (f) => {
         drawScene(ctx, name, f / FPS);
         return ctx.canvas.toDataURL('image/png');

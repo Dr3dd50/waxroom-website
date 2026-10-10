@@ -11,10 +11,15 @@
 
 import {
   INK, MUTED, SKIN, SKIN_SHADE, TAU,
-  stroke, fill, shape, spline, line, bezier, lerp, seg, ease, write,
+  stroke, fill, shape, spline, line, bezier, lerp, seg, ease, write, rrect,
 } from './doodle.js';
+import { zoomLoop } from './camera.js';
+import { drawClient } from './face.js';
 
-export const DURATION = 8;
+// The close-up's own loop; the full video adds a zoom in and out around it.
+const CLOSE = 8;
+export const DURATION = 10;
+export const POSTER = 0; // the wide shot
 const S = 110; // spacing between natural lashes (world px); the view pans one lash per loop
 const XC = S * 7; // the lash being worked on (screen x at t=0), on the lash grid
 const T = {
@@ -67,7 +72,7 @@ function tweezerL(ctx, t, tipX, tipY, seed) {
   blade(8, seed + 1);
 }
 
-export function draw(ctx, t) {
+function drawClose(ctx, t) {
   const pan = S * seg(t, T.pan[0], T.pan[1], ease.inOut);
   const sx = (wx) => wx - pan;
   const cur = XC; // world x of the lash being worked on this loop
@@ -167,4 +172,27 @@ export function draw(ctx, t) {
   void line;
   void shape;
   void spline;
+}
+
+// ── wide shot: the client lying back with the gel pad under her right eye ──
+// The close-up's lash line (y = 360) sits 90/ZOOM above the frame centre, so the
+// target is placed that far below the wide shot's lash line.
+const ZOOM = 9;
+const TARGET = [882, 461 + 90 / ZOOM];
+
+function drawWide(ctx, t) {
+  drawClient(ctx, t, { underEyePad: true, lines: false });
+  // a lash tile on the towel: rows of extensions ready to pick up
+  shape(ctx, rrect(1110, 760, 150, 96, 12), t, { fillColor: '#FFFFFF', w: 4 });
+  for (let r = 0; r < 4; r++) {
+    for (let i = 0; i < 9; i++) {
+      const x = 1126 + i * 14, y = 772 + r * 21;
+      stroke(ctx, bezier([x, y], [x + 1, y + 6], [x + 3, y + 11], [x + 6, y + 14], 6), 1, t, { w: 2 });
+    }
+  }
+  write(ctx, 'lash extensions', 1185, 720, 1, t, { size: 40, color: MUTED, rot: 0 });
+}
+
+export function draw(ctx, t) {
+  zoomLoop(ctx, t, { duration: DURATION, closeDuration: CLOSE, target: TARGET, zoom: ZOOM, wide: drawWide, close: drawClose });
 }

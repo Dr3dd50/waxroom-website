@@ -1,22 +1,19 @@
-// Brow mapping, front-on, the way brow artists do it: a pre-inked mapping string
-// comes off its spool and is snapped across the face to leave fine guide lines:
-// centre line, brow starts (straight up from the nose), arches (nose → centre of
-// the eye), tails (nose → outer corner), then top and bottom guides. A spoolie
-// brushes each brow up along the map, and a cotton pad wipes the lines away,
-// which returns to the very first frame: a perfect loop. Tools only.
+// Brow mapping, front-on: the guides a brow artist works to (centre line, brow
+// starts straight up from the nose, arches from the nose through the centre of
+// the eye, tails from the nose past the outer corner, then top and bottom) are
+// drawn over the face as a diagram, a spoolie brushes each brow up along them,
+// and the guides fade, back to the very first frame: a perfect loop. The guides
+// are an illustration of the measuring, not marks left on the client. Tools only.
 //
-// References: pre-inked mapping string on a spool (white/pink), brow mapping
-// photos (centre, start, arch, tail lines), spoolie brush, cotton rounds.
+// References: brow mapping photos (centre, start, arch, tail lines), spoolie brush.
 
 import {
-  MUTED, SKIN, SKIN_SHADE, TAU,
-  stroke, fill, shape, spline, line, ellipse, rrect, rotate, translate, write, lerp, seg, ease,
+  MUTED, SKIN, SKIN_SHADE, HONEY_DEEP,
+  stroke, fill, shape, spline, line, rrect, rotate, write, lerp, seg, ease,
 } from './doodle.js';
 
 export const DURATION = 8;
 const CX = 800;
-const STRING = '#E86A8E';
-const MARK = '#FFFFFF';
 
 // Viewer-left brow; the right one is its mirror image.
 const BROW_PATH = spline([[688, 424], [610, 398], [520, 368], [462, 356], [400, 368], [346, 392]], 10);
@@ -65,35 +62,6 @@ function eye(ctx, t, side) {
   stroke(ctx, (side ? mirror : (p) => p)(spline([[420, 500], [520, 484], [630, 500]], 6)), 1, t, { w: 3, color: MUTED, seed: 70 + side });
 }
 
-/** Mapping-string spool with the string feeding out. */
-function spool(ctx, t) {
-  shape(ctx, rrect(1420, 640, 110, 190, 24), t, { fillColor: '#1F1A16', w: 5, seed: 80 });
-  shape(ctx, ellipse(1475, 642, 55, 14), t, { fillColor: '#3A332D', w: 4, seed: 81 });
-  ctx.save();
-  ctx.fillStyle = '#F8F1E7';
-  ctx.font = '600 30px Hand';
-  ctx.textAlign = 'center';
-  ctx.fillText('mapping', 1475, 718);
-  ctx.fillText('string', 1475, 750);
-  ctx.restore();
-}
-
-/** One snap of the string: taut along a→b (fed from the spool), then a quick twang. */
-function snap(ctx, t, a, b, t0, seed) {
-  const taut = seg(t, t0, t0 + 0.25) * (1 - seg(t, t0 + 0.55, t0 + 0.7));
-  if (taut <= 0) return;
-  const twang = t > t0 + 0.32 && t < t0 + 0.55 ? Math.sin((t - t0) * 90) * 10 * (1 - seg(t, t0 + 0.32, t0 + 0.55)) : 0;
-  // held taut a little past both ends of the guide it leaves
-  const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
-  const ext = 60 / len;
-  const a2 = [a[0] - dx * ext, a[1] - dy * ext], b2 = [b[0] + dx * ext, b[1] + dy * ext];
-  const mid = [(a[0] + b[0]) / 2 + twang, (a[1] + b[1]) / 2];
-  ctx.save();
-  ctx.globalAlpha *= taut;
-  stroke(ctx, spline([a2, mid, b2], 10), 1, t, { w: 4, color: STRING, seed });
-  ctx.restore();
-}
-
 export function draw(ctx, t) {
   // skin, headband, nose
   fill(ctx, [[0, 0], [1600, 0], [1600, 900], [0, 900]], SKIN);
@@ -114,26 +82,22 @@ export function draw(ctx, t) {
   brow(ctx, t, 0, lift);
   brow(ctx, t, 1, lift);
 
-  // guide lines left by the string; wiped off by the cotton pad at the end
-  const wipe = seg(t, 6.0, 7.3, ease.inOut);
-  const padX = lerp(150, 1450, wipe);
+  // the guides, drawn on one by one as a dashed overlay, then faded together
+  const fade = 1 - seg(t, 6.0, 6.8);
   const N1 = [732, 820], N2 = [868, 820]; // sides of the nose
-  const lines = [
+  const guides = [
     [[CX, 150], [CX, 900], 0.3],
     [[688, 860], [688, 260], 1.1], [[912, 860], [912, 260], 1.1],
     [N1, [440, 270], 1.9], [N2, [1160, 270], 1.9],
     [N1, [300, 330], 2.7], [N2, [1300, 330], 2.7],
     [[300, 336], [1300, 336], 3.5], [[300, 436], [1300, 436], 3.9],
   ];
-  lines.forEach(([a, b, t0], i) => {
-    const drawn = seg(t, t0 + 0.42, t0 + 0.5);
-    if (drawn <= 0) return;
-    // the pad erases each line as it sweeps past
-    const gone = Math.min(1, Math.max(0, (padX - Math.min(a[0], b[0]) + 40) / (Math.abs(a[0] - b[0]) + 80)));
-    const alpha = drawn * (t >= 6.0 ? 1 - gone : 1);
-    if (alpha > 0.01) stroke(ctx, line(a[0], a[1], b[0], b[1], 24), 1, t, { w: 3.5, color: MARK, seed: 200 + i, alpha: 0.95 * alpha });
-  });
-  lines.forEach(([a, b, t0], i) => snap(ctx, t, a, b, t0, 300 + i * 2));
+  if (fade > 0) {
+    guides.forEach(([a, b, t0], i) => {
+      const drawn = seg(t, t0, t0 + 0.6, ease.out);
+      stroke(ctx, line(a[0], a[1], b[0], b[1], 24), drawn, t, { w: 4, color: HONEY_DEEP, alpha: 0.9 * fade, dash: [18, 14], seed: 200 + i });
+    });
+  }
 
   if (brushing) {
     const y = t < 5.1 ? lerp(410, 380, brushL) : lerp(410, 380, brushR);
@@ -147,19 +111,6 @@ export function draw(ctx, t) {
     shape(ctx, rotate(rrect(brushX - 7, y - 380, 14, 310, 7), brushX, y, 0.2 * dir), t, { fillColor: '#FFFFFF', w: 4, seed: 410 });
   }
 
-  // cotton pad wiping the map away
-  if (t > 5.9 && t < 7.4) {
-    const k = seg(t, 5.9, 6.1) * (1 - seg(t, 7.25, 7.4));
-    ctx.save();
-    ctx.globalAlpha *= k;
-    const y = 470 + Math.sin(wipe * TAU * 2) * 90;
-    shape(ctx, ellipse(padX, y, 78, 78), t, { fillColor: '#FFFFFF', w: 4, seed: 420 });
-    stroke(ctx, ellipse(padX, y, 56, 56), 1, t, { w: 2, color: '#E5DED4', seed: 421 });
-    ctx.restore();
-  }
-
-  spool(ctx, t);
-
   const say = (text, a, b) => {
     const k = seg(t, a, a + 0.3) * (1 - seg(t, b - 0.3, b));
     if (k > 0) {
@@ -170,7 +121,6 @@ export function draw(ctx, t) {
     }
   };
   say('mapped to your face: start, arch, tail', 0.4, 4.3);
-  say('brushed up along the map', 4.3, 5.9);
-  say('lines wiped away', 5.9, 7.5);
-  void translate;
+  say('brushed up along the map', 4.3, 6.0);
+  say('shaped to suit your face', 6.2, 7.7);
 }

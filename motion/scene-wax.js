@@ -15,8 +15,12 @@ import {
   stroke, fill, shape, spline, line, arc, ellipse, rrect, rotate, translate, write,
   lerp, seg, prog, ease, clamp,
 } from './doodle.js';
+import { zoomLoop } from './camera.js';
 
-export const DURATION = 8;
+// The close-up's own loop; the full video adds a zoom in and out around it.
+const CLOSE = 8;
+export const DURATION = 10;
+export const POSTER = 0; // the wide shot
 const P = 560; // one strip / section width; the leg pans by exactly this per loop
 const X0 = 470, X1 = X0 + P; // the section being waxed, in screen space at t=0
 const MID = 488;
@@ -88,7 +92,7 @@ function stripShape(a, b, lip) {
   return [...top, ...cap, ...bot.reverse(), ...tail];
 }
 
-export function draw(ctx, t) {
+function drawClose(ctx, t) {
   const pan = P * seg(t, T.pan[0], T.pan[1], ease.inOut);
   const sx = (wx) => wx - pan; // world → screen
 
@@ -232,4 +236,62 @@ export function draw(ctx, t) {
   say('← pull fast, against the growth', 3.6, 5.0);
   say('smooth. on to the next section', 5.0, 7.6);
   void clamp;
+}
+
+// ── wide shot: the whole leg on the treatment bed, warmer on a cart at the foot ──
+// Laid out so the close-up's frame (1600×900 shrunk by ZOOM around TARGET) lands
+// exactly on the shin, and the warmer in the close-up's corner lands on the cart.
+const ZOOM = 2.4;
+// Laid out around AT, then the whole wide shot is shifted right by DX so the leg sits mid-frame.
+const AT = [700, 470], DX = 150;
+const TARGET = [AT[0] + DX, AT[1]];
+const toWide = ([x, y]) => [AT[0] + (x - 800) / ZOOM, AT[1] + (y - 450) / ZOOM];
+
+function drawWide(ctx, t) {
+  ctx.save();
+  ctx.translate(DX, 0);
+  const top = toWide([800, yTop(800)])[1], bot = toWide([800, yBot(800)])[1];
+  const potBase = toWide([1440, 310]);
+
+  // floor, cart at the foot of the bed, the bed itself with its towel
+  stroke(ctx, line(-DX - 40, 780, 1640 - DX, 780, 30), 1, t, { w: 4, color: MUTED });
+  shape(ctx, rrect(potBase[0] - 78, potBase[1] - 2, 156, 14, 6), t, { fillColor: '#D8D2CA', w: 4 });
+  shape(ctx, rrect(potBase[0] - 78, 640, 156, 12, 6), t, { fillColor: '#D8D2CA', w: 4 });
+  stroke(ctx, line(potBase[0] - 66, potBase[1] + 12, potBase[0] - 66, 772, 6), 1, t, { w: 5 });
+  stroke(ctx, line(potBase[0] + 66, potBase[1] + 12, potBase[0] + 66, 772, 6), 1, t, { w: 5 });
+  shape(ctx, ellipse(potBase[0] - 66, 774, 9, 9), t, { fillColor: '#2A2622', w: 3 });
+  shape(ctx, ellipse(potBase[0] + 66, 774, 9, 9), t, { fillColor: '#2A2622', w: 3 });
+  shape(ctx, rrect(-DX - 60, bot + 44, 1000 + DX, 66, 20), t, { fillColor: '#E9DCC8', w: 5 });
+  stroke(ctx, line(90, bot + 110, 90, 780, 4), 1, t, { w: 6 });
+  stroke(ctx, line(870, bot + 110, 870, 780, 4), 1, t, { w: 6 });
+  shape(ctx, spline([[-DX - 60, bot - 2], [950, bot - 2], [960, bot + 46], [-DX - 60, bot + 46]], 4), t, { fillColor: '#FFFFFF', w: 4 });
+  ctx.save();
+  const origin = toWide([0, 0]);
+  ctx.translate(origin[0], origin[1]);
+  ctx.scale(1 / ZOOM, 1 / ZOOM);
+  warmer(ctx, t);
+  spatula(ctx, t, POT.x - 6, POT.y - 4, 0.38, 1);
+  ctx.restore();
+
+  // the leg, side view: thigh at the left, knee, shin, ankle, foot with toes up at the right.
+  // At the target the shin spans exactly the height the close-up shows.
+  const legTop = spline([[-DX - 60, top - 74], [160, top - 56], [300, top - 30], [380, top - 4], [560, top], [700, top], [800, top + 6], [856, top + 22], [880, top + 8], [900, top - 70], [918, top - 92], [936, top - 70], [944, bot - 30], [936, bot]], 8);
+  const legBot = spline([[936, bot], [860, bot + 2], [800, bot - 6], [700, bot], [600, bot + 4], [420, bot + 6], [200, bot + 8], [-DX - 60, bot + 8]], 8);
+  fill(ctx, [...legTop, ...legBot], SKIN);
+  fill(ctx, [...legBot.map(([x, y]) => [x, y - 26]), ...legBot.slice().reverse()], SKIN_SHADE, 0.55);
+  stroke(ctx, legTop, 1, t, { w: 5 });
+  stroke(ctx, legBot, 1, t, { w: 5 });
+  stroke(ctx, spline([[350, top + 40], [366, top + 62], [356, top + 86]], 4), 1, t, { w: 3, color: MUTED }); // knee
+  stroke(ctx, spline([[852, top + 40], [864, top + 64]], 3), 1, t, { w: 3, color: MUTED }); // ankle bone
+  // unwaxed hair from the section onward, smooth skin before it
+  for (let x = Math.round(toWide([X0, 0])[0]); x < 850; x += 8) {
+    const y0 = lerp(top + 10, bot - 10, ((x * 37) % 100) / 100);
+    stroke(ctx, [[x, y0], [x + 3, y0 + 2], [x + 6, y0 + 4]], 1, t, { w: 1.8 });
+  }
+  write(ctx, 'leg wax', 480, 720, 1, t, { size: 46, color: MUTED, rot: 0 });
+  ctx.restore();
+}
+
+export function draw(ctx, t) {
+  zoomLoop(ctx, t, { duration: DURATION, closeDuration: CLOSE, target: TARGET, zoom: ZOOM, wide: drawWide, close: drawClose });
 }
