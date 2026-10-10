@@ -1,0 +1,1488 @@
+{
+  "portedAt": "2026-10-10T19:16:02.026Z",
+  "source": "https://waxroomrichmond.glossgenius.com",
+  "business": {
+    "name": "The Wax Room",
+    "phone": "+18046018106",
+    "email": "waxroomrichmond@gmail.com",
+    "address": "11162 Hull Street Road North, Midlothian, VA 23112",
+    "lat": 37.438937,
+    "lng": -77.60209929999999,
+    "timezone": "America/New_York",
+    "about": null,
+    "social": {
+      "instagram": "waxroomrichmond",
+      "facebook": "https://m.facebook.com/WaxRoomRichmond/",
+      "website": null
+    },
+    "hours": {
+      "friday": {
+        "end": 19,
+        "start": 9,
+        "working": true
+      },
+      "monday": {
+        "end": 19,
+        "start": 9,
+        "working": true
+      },
+      "sunday": {
+        "end": 13,
+        "start": 9,
+        "working": true
+      },
+      "tuesday": {
+        "end": 18,
+        "start": 9,
+        "working": true
+      },
+      "saturday": {
+        "end": 18,
+        "start": 9,
+        "working": true
+      },
+      "thursday": {
+        "end": 18,
+        "start": 9,
+        "working": true
+      },
+      "wednesday": {
+        "end": 19,
+        "start": 9,
+        "working": true
+      }
+    },
+    "googleReviewUrl": "https://www.google.com/search?client=safari&sca_esv=d9f24a9a5aa894d8&hl=en-us&sxsrf=AE3TifNEGXfUjaJgTUzxkFIYiroxJkLlZA:1761159850496&q=the+wax+room+midlothian+reviews&uds=AOm0WdFG7XPcTfAqjxbmIez_Z0LqeKbBrcW7eMbJTpFS7YuybNgL_aXYHgBJ2NdOFElpIniVFMeyShHysRfHZPT6xVFy0IpAlelnTk2dm_8LPE2aQZsd20R6OkBPztoEv"
+  },
+  "policies": {
+    "cancellationPolicy": "Cancellation & No-Show Policy\n\nYour appointments are reserved especially for you. To respect our time and the time of other clients, please review our policies below:\n\nCancellations Within 24 Hours\n\nAny appointment canceled within 24 hours of your scheduled time will incur a 50% cancellation fee of the service booked.\n\nNo-Shows\n\nIf you miss your appointment without any notice, a 100% no-show fee of the service booked will be charged.\n\nHow to Cancel or Reschedule\n\nPlease cancel or reschedule through our booking system or by contacting us directly as soon as possible. Early notice allows us to offer that time to another client.",
+    "cancellationWindowHours": 24,
+    "cancellationFeePercent": 50,
+    "allowOnlineCancellations": true,
+    "cardRequired": "always_require",
+    "futureBookingsLimit": 3,
+    "defaultGratuityPercent": 20,
+    "waitlist": true,
+    "buyNowPayLater": true,
+    "giftCardsForSale": false,
+    "birthdayEmails": true,
+    "birthdayPromotion": null,
+    "requireIntakeForm": true,
+    "intakeFormUrl": null
+  },
+  "notifications": {
+    "confirmationBefore": [
+      {
+        "unit": "hours",
+        "value": 72
+      }
+    ],
+    "reminderBefore": [
+      {
+        "unit": "hours",
+        "value": 24
+      }
+    ],
+    "rebookingAfter": [
+      {
+        "unit": "weeks",
+        "value": 6
+      }
+    ]
+  },
+  "staff": [
+    {
+      "id": "9031a91ac4018b16c581ddf7da0add267711",
+      "name": "Chicago Chew",
+      "bookable": false,
+      "shownOnline": true,
+      "about": null,
+      "avatar": "https://static.glossgenius.com/public/user/511d97cdb07bde63ee857cc13bbd273a4be194b5/avatar/medium-dab4054fa7ebb1f313a6f52a4376c44c.jpeg"
+    },
+    {
+      "id": "8ef0882c76dd0e3c160be57a78a2ec53d3ad",
+      "name": "College Tours",
+      "bookable": true,
+      "shownOnline": true,
+      "about": null,
+      "avatar": null
+    },
+    {
+      "id": "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+      "name": "Danielle W",
+      "bookable": true,
+      "shownOnline": true,
+      "about": null,
+      "avatar": "https://static.glossgenius.com/public/user/c56b4effb5a76ed137435f3192cba7ca718a3027/avatar/medium-1bc863904811e15eec3205dde276f365.jpeg"
+    },
+    {
+      "id": "d977f385ecf385a11045cfd33432988cedf5",
+      "name": "Nyeesha Holley",
+      "bookable": true,
+      "shownOnline": true,
+      "about": null,
+      "avatar": "https://static.glossgenius.com/public/user/b50024621b9915d7253b080476f9f0df9ce58f79/avatar/medium-bb345ff310c0760f4cbbb21cadc07246.jpeg"
+    },
+    {
+      "id": "51b0ca7ce40c51ca855e9f0aa815405d16af",
+      "name": "Shae Haskins",
+      "bookable": false,
+      "shownOnline": true,
+      "about": null,
+      "avatar": null
+    }
+  ],
+  "services": [
+    {
+      "id": "1000f-3185bc69-76bf-43e8-8891-1dc21333a274",
+      "name": "Bio scan",
+      "category": "Bio scans",
+      "order": 39,
+      "price": 4500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 5,
+      "durations": {
+        "start": 5,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience cutting-edge technology with our Bio Scan service, offering detailed insights into your body's health and wellness for personalized care.",
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2026-02-21T18:01:40.395Z"
+    },
+    {
+      "id": "1000f-f3093cff-a7ea-40ce-8d01-d92975d45fb8",
+      "name": "Underarm",
+      "category": "Body and Facial Waxing",
+      "order": 5,
+      "price": 2500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 10,
+      "durations": {
+        "start": 10,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Say goodbye to underarm stubble with our expert underarm waxing service. Enjoy smooth, hair-free underarms for weeks!",
+      "image": "https://static.glossgenius.com/public/service/cd5ada08d13fe1b565c7b81195c5763204c68d56/image/850e5389a41c6da103c747e641af0ec1.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "8ef0882c76dd0e3c160be57a78a2ec53d3ad",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-22T02:24:21.187Z"
+    },
+    {
+      "id": "1000f-b433afb8-c20e-4f3f-8f70-a5895932f5b3",
+      "name": "Lower Leg",
+      "category": "Body and Facial Waxing",
+      "order": 6,
+      "price": 4000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 15,
+      "durations": {
+        "start": 15,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/9575e7ad096952316120c3e0f50775911999b2eb/image/25b9e5be74231ee44cc15ba019a0b72f.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-22T02:22:49.498Z"
+    },
+    {
+      "id": "1000f-062b013f-a8cf-4439-935b-3af298b0e7e1",
+      "name": "Full Leg",
+      "category": "Body and Facial Waxing",
+      "order": 7,
+      "price": 8000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 20,
+      "durations": {
+        "start": 20,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/049d690f09a5253ef1404b3a0c79f6e781368a5c/image/842b33b838b1956bc1742c21c24fe4da.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-22T02:23:29.252Z"
+    },
+    {
+      "id": "1000f-109d73a4-0ce5-4524-ad76-2579870edbcc",
+      "name": "Lip Wax",
+      "category": "Body and Facial Waxing",
+      "order": 8,
+      "price": 1200,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 10,
+      "durations": {
+        "start": 10,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Achieve smooth, hair-free lips with our gentle and precise lip waxing service.",
+      "image": "https://static.glossgenius.com/public/service/d898cb34ed68af6184bf8c7cbc2c4ab6c032d383/image/6e44e248d0d7fcddd27d86c98c86d808.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-22T02:21:10.802Z"
+    },
+    {
+      "id": "1000f-ff9bd8cb-cd13-4bf7-8d3d-61f8e009cc18",
+      "name": "Chin",
+      "category": "Body and Facial Waxing",
+      "order": 9,
+      "price": 1500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 10,
+      "durations": {
+        "start": 10,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/72da87083b9532867867c6ac81c298de0c97ec25/image/7f7ab3bacc624168b7a627b1b4738798.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-22T02:22:06.510Z"
+    },
+    {
+      "id": "1000f-529c3a16-ff01-4893-a2f0-e8415fe72cd3",
+      "name": "Full Back Wax",
+      "category": "Body and Facial Waxing",
+      "order": 10,
+      "price": 5500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 20,
+      "durations": {
+        "start": 20,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience the freedom of smooth, hair-free skin with our Full Back Wax service.",
+      "image": "https://static.glossgenius.com/public/service/91b8544bcefcbcb23c9a0b07e8cfecda9398983a/image/f6b7ab88901cd1d54a476c2b546a19d1.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-22T02:25:12.771Z"
+    },
+    {
+      "id": "1000f-6162507d-8591-499f-82bf-686ea4c0e133",
+      "name": "Backside",
+      "category": "Body and Facial Waxing",
+      "order": 11,
+      "price": 2500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 10,
+      "durations": {
+        "start": 10,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/e9152b3193955b1c0e66da48b2a4ce99f1667e37/image/94c65e0391c5dace01d2e41fc368a28e.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-22T02:26:12.983Z"
+    },
+    {
+      "id": "1000f-e0e7432d-acc6-4713-b9e1-e61a24a93f38",
+      "name": "Chest",
+      "category": "Body and Facial Waxing",
+      "order": 27,
+      "price": 4000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 10,
+      "durations": {
+        "start": 10,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/925769e41815ac7489be4ff352c3f1c396fb99aa/image/fca32f52518f17dc2b2266e65b71a070.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-27T14:27:27.541Z"
+    },
+    {
+      "id": "1000f-3e9ae2b0-bc26-4175-846d-8e02ca82aa2a",
+      "name": "Belly Wax",
+      "category": "Body and Facial Waxing",
+      "order": 28,
+      "price": 2000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 10,
+      "durations": {
+        "start": 10,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience smooth and hair-free skin with our belly waxing service, includes from belly button down to bikini line.",
+      "image": "https://static.glossgenius.com/public/service/b7b7cdc58ebec573516762628e18dc5ddf0a3664/image/5c75956026e91bc487b6d341d4caca38.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-27T14:29:06.701Z"
+    },
+    {
+      "id": "1000f-04ab0185-a279-4744-a8c5-14f166993de8",
+      "name": "Full Arm Wax",
+      "category": "Body and Facial Waxing",
+      "order": 31,
+      "price": 5000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 20,
+      "durations": {
+        "start": 20,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience the sleek feel of smooth, hair-free arms with our expert full arm waxing service.",
+      "image": "https://static.glossgenius.com/public/service/857e9bf5959c616c896f9a85bb296d9cb4e36a27/image/41596ca98bbc02c73847950be37a9337.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-11-09T16:22:03.788Z"
+    },
+    {
+      "id": "1000f-bc577eb2-1580-42ac-8545-35b549520dde",
+      "name": "Inner thigh",
+      "category": "Body and Facial Waxing",
+      "order": 32,
+      "price": 2000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 10,
+      "durations": {
+        "start": 10,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Hair-free inner thighs. Great add on for intimate waxing.",
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-12-12T16:26:59.293Z"
+    },
+    {
+      "id": "1000f-0f9de2cd-7323-4589-859d-e3c74397f2a5",
+      "name": "Full torso",
+      "category": "Body and Facial Waxing",
+      "order": 36,
+      "price": 11000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 45,
+      "durations": {
+        "start": 45,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Full torso waxing service, removing unwanted hair from the chest, stomach, and back for a clean and confident feel.",
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-12-19T21:31:40.336Z"
+    },
+    {
+      "id": "1000f-200bf459-0fb5-4920-8ad7-d8572321eb8d",
+      "name": "Full Face Waxing",
+      "category": "Body and Facial Waxing",
+      "order": 44,
+      "price": 4500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 15,
+      "durations": {
+        "start": 15,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience a fresh, smooth face with our thorough full face waxing service—say goodbye to unwanted facial hair for a flawless look…eyebrows included!",
+      "image": "https://static.glossgenius.com/public/stockimage/cc3fda1ce1e98fff9ceb26f99d933084147c19f7/image/8b60415bd78e414e1e5771925f11846d.png",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2026-05-09T16:59:14.097Z"
+    },
+    {
+      "id": "1000f-9d2f6965-d804-4387-95aa-ec4e88549667",
+      "name": "Toe wax",
+      "category": "Body Work",
+      "order": 40,
+      "price": 1500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 10,
+      "durations": {
+        "start": 10,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2026-03-05T15:47:49.161Z"
+    },
+    {
+      "id": "1000f-9d2cbe36-23ee-410d-9192-4e4bdcbd2a71",
+      "name": "Brow Lamination and Wax",
+      "category": "Brow Art",
+      "order": 18,
+      "price": 6000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 30,
+      "durations": {
+        "start": 30,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Elevate your brow game with our Brow Lamination and Wax service. Enjoy perfectly sculpted brows that stay sleek, defined, and fabulous for weeks.",
+      "image": "https://static.glossgenius.com/public/service/9693baa6209643386631df1ad9addb9cf999955d/image/7e18d8bd1fe7cb16b6dffb3f2e7040d0.jpeg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-49165cc0-d4fc-4d97-9e9b-ad0cf58c9412",
+      "name": "Eyebrow Wax",
+      "category": "Brow Art",
+      "order": 19,
+      "price": 1800,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 15,
+      "durations": {
+        "start": 15,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/ea823c4d16bd0f3853c664bbd29bb5a4ca132ab1/image/aff008914438f69a5a62c32dd1566477.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "8ef0882c76dd0e3c160be57a78a2ec53d3ad",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-f6066a52-614d-402e-ad64-c8ea8bc0b5e4",
+      "name": "Henna Tint and Wax",
+      "category": "Brow Art",
+      "order": 22,
+      "price": 5000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 15,
+      "durations": {
+        "start": 15,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/29b01c35200089f4d1ed76523bca8ef5acaee323/image/4ec2dec8ad6b966833ba7a4a0dc0919b.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-087cd8d6-bccf-4e18-8c3c-116b87f4ebc7",
+      "name": "VCU College Tour",
+      "category": "College Tours",
+      "order": 2,
+      "price": 5500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 20,
+      "durations": {
+        "start": 20,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": 1000,
+      "depositNewClientsOnly": false,
+      "description": "SEPTEMBER  15th at VCU! Get your Brazilian wax right on campus—no car, no Uber, no problem.\n\nThis exclusive $55 VCU student Brazilian wax is available during scheduled Wax Room campus pop-up dates.\n\n📍 Exact campus location and appointment instructions will be provided for your selected pop-up date.\n🎓 Valid VCU student ID required.",
+      "image": "https://static.glossgenius.com/public/service/0ffc9cf088246b98eb489f626ca083b91ba1cca7/image/6553350861c9aef9e7b1f068125d08d1.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "8ef0882c76dd0e3c160be57a78a2ec53d3ad"
+      ],
+      "createdAt": "2026-09-08T17:25:34.220Z"
+    },
+    {
+      "id": "1000f-7b2a1f4e-ab69-4508-bf33-5ce906f20ba9",
+      "name": "Jet Plasma Hair Restoration",
+      "category": "Hair Restoration",
+      "order": 33,
+      "price": 37500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 60,
+      "durations": {
+        "start": 60,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience advanced Jet Plasma Hair Restoration technology, a non-invasive procedure that stimulates hair growth for thicker, fuller-looking hair without surgery.",
+      "image": "https://static.glossgenius.com/public/service/6a2a2ca1e07dfe4d4a2b89f147b22f4a1ac88d07/image/69d2e4d8eda72e62a57bfaa6c1894a21.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-11-09T16:38:45.633Z"
+    },
+    {
+      "id": "1000f-9d7411a5-795a-4306-a8eb-8b6969c2cbfc",
+      "name": "Luxury Wig Installation",
+      "category": "Hair Restoration",
+      "order": 41,
+      "price": 8500,
+      "priceVaries": true,
+      "priceHidden": false,
+      "duration": 10,
+      "durations": {
+        "start": 10,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience a flawless glueless high definition lace wig installation. Tailored to your unique style, enhancing your confidence and beauty effortlessly. Please come with clean hair. ",
+      "image": "https://static.glossgenius.com/public/service/5ee5c4ba3a5aee466e82e293ccaef11083a5c501/image/1aa338cfb0c8734f1b9dfdf188bbf9c3.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711"
+      ],
+      "createdAt": "2026-03-17T01:29:55.448Z"
+    },
+    {
+      "id": "1000f-8c3f7de2-7b4e-4304-a1c5-4e2bc67cf6f7",
+      "name": "Luxury Wig Install Consultation",
+      "category": "Hair Restoration",
+      "order": 42,
+      "price": 1500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 15,
+      "durations": {
+        "start": 15,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Discover the perfect custom wig installation tailored to your style and comfort during our luxury consultation session.",
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711"
+      ],
+      "createdAt": "2026-03-17T01:31:41.657Z"
+    },
+    {
+      "id": "1000f-c463f7ec-f0ea-40e5-b30b-7eed04bf802a",
+      "name": "NEW CLIENT RITUAL",
+      "category": "Intimate Waxing",
+      "order": 1,
+      "price": 4900,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 60,
+      "durations": {
+        "start": 60,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": 1000,
+      "depositNewClientsOnly": true,
+      "description": "An elevated introduction to self-care at The Wax Room.\n\nThis first-time client experience combines our signature Brazilian Wax with a 30-minute Yoni Steam, creating a moment of smooth confidence and deep feminine relaxation.\n\nIndividually, these services are valued at $105. As a new guest, enjoy them together at a special introductory rate—available only for your first visit.\n\nRefined. Intentional. Restorative.\n\nLimited availability. First-time clients only.\n\nBook now and step into a higher standard of self-care.",
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2026-01-17T20:19:30.084Z"
+    },
+    {
+      "id": "1000f-011e5b92-e26c-41f7-acb6-139957d3888f",
+      "name": "Brazilian",
+      "category": "Intimate Waxing",
+      "order": 3,
+      "price": 6500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 20,
+      "durations": {
+        "start": 20,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience silky-smooth confidence with our Brazilian wax. We remove all unwanted hair from the front, back, and everything in between, leaving you completely smooth and fresh. Perfect for a clean, flawless feel.",
+      "image": "https://static.glossgenius.com/public/service/0742aa8338199eb02f9058293d2f6d83e2ebcc7b/image/06216781dd59a9c16247e668c31a5ff8.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-c2e24c52-c511-4c3c-b8a5-c3c61e86430e",
+      "name": "Bikini",
+      "category": "Intimate Waxing",
+      "order": 16,
+      "price": 4000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 20,
+      "durations": {
+        "start": 20,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Keep things neat and tidy with our bikini wax. We gently remove hair along the sides and top of the bikini line, leaving you smooth, fresh, and beach-ready while maintaining a natural look.",
+      "image": "https://static.glossgenius.com/public/service/a88d8a4b062d4a9beed01dbe69aef65cda8b5dbc/image/8958302de85e62bc7e0536ac00c2f285.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-2bc3acc7-8a02-4a48-ae89-bbb004a72e9a",
+      "name": "French Bikini",
+      "category": "Intimate Waxing",
+      "order": 20,
+      "price": 5000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 20,
+      "durations": {
+        "start": 20,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Get a sleek, smooth look with our French bikini wax, perfect for those who want a little more than a classic bikini wax but not as much as a full Brazilian. This service removes hair from the sides and top of the bikini line, as well as a bit more from the front, leaving a narrow strip or triangle — your choice of style. It’s ideal if you want a cleaner, more defined shape while still leaving some hair for a natural look. Includes backside.",
+      "image": "https://static.glossgenius.com/public/service/2f8b594340678b040cb8398a0f00a720fbae0713/image/4e57d0eaff7cd3d4192256b2275f80fa.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-031d354e-bdd8-42a5-a89d-148bb121e71e",
+      "name": "Manzilian",
+      "category": "Intimate Waxing",
+      "order": 25,
+      "price": 8500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 30,
+      "durations": {
+        "start": 30,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience the ultimate grooming with our Manzilian wax service, removing all unwanted hair for a clean and confident look.",
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-511d1fb9-5177-40fd-aa85-76063902aa95",
+      "name": "Brazilian And Underarm Wax",
+      "category": "Intimate Waxing",
+      "order": 34,
+      "price": 9000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 30,
+      "durations": {
+        "start": 30,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience the ultimate smoothness with our Brazilian wax, paired with our expert underarm waxing for flawless, hair-free skin all around!",
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-11-14T20:18:00.715Z"
+    },
+    {
+      "id": "1000f-c2f188f2-7cf3-4bf7-9018-98dff3f05988",
+      "name": "1 Week Fill",
+      "category": "Lash Art",
+      "order": 12,
+      "price": 4500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 30,
+      "durations": {
+        "start": 30,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/c911e5ee7e0eb01c5f8f3052b14632032b996838/image/d1f26f33278e77ca004d1903a60fd44d.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-2ea63cc7-7127-42da-83b5-13e35515e0f4",
+      "name": "2 Week Fill",
+      "category": "Lash Art",
+      "order": 13,
+      "price": 6500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 45,
+      "durations": {
+        "start": 45,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/004a6f20e0904c06865e74d8cbac7a6888205e4a/image/400d22ede0af5ddacd6fe4c40d1980e3.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-699bf0cf-3337-4a15-84f4-bf347da61a5f",
+      "name": "3 Week Fill",
+      "category": "Lash Art",
+      "order": 14,
+      "price": 7500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 60,
+      "durations": {
+        "start": 60,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/90bee0b8a912ccf6dcac4ae7707ba351d5a2dca9/image/d464088d8951c5b80d6c49879f625fc5.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-e32756fa-8a4b-4224-82f0-5ead5041e89a",
+      "name": "4 Week Fill",
+      "category": "Lash Art",
+      "order": 15,
+      "price": 10000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 90,
+      "durations": {
+        "start": 90,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/67c1d598833c5f6f4da8d813d51d07fcc9f07755/image/de0fc24d3f42ee4f88b1abe5fea4da85.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-a7642161-1751-4e15-adfb-8dd0c9fc858c",
+      "name": "Full Set of Lash Extensions",
+      "category": "Lash Art",
+      "order": 21,
+      "price": 20000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 120,
+      "durations": {
+        "start": 120,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Enhance your natural beauty with a full set of lash extensions for glamorous, long-lasting volume and length!",
+      "image": "https://static.glossgenius.com/public/service/816581a07ce172abff2aa0e4a40417620e127939/image/2ebb1df303075b453ae7726c12856a77.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-88ee9fe9-3de0-419f-b805-f5e60573c32a",
+      "name": "Lash Bath",
+      "category": "Lash Art",
+      "order": 24,
+      "price": 2000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 15,
+      "durations": {
+        "start": 15,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Refresh and revitalize your lashes extensions before your fill with our gentle and cleansing lash bath treatment.",
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-8586bd1e-b16c-44bd-8754-501bafcf39b0",
+      "name": "Thigh wax",
+      "category": "None",
+      "order": 43,
+      "price": 5000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 15,
+      "durations": {
+        "start": 15,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2026-03-20T14:45:03.623Z"
+    },
+    {
+      "id": "1000f-6c5486cd-7fd4-48e6-8148-cf0bc4103bd8",
+      "name": "Jet Plasma Facial",
+      "category": "Skin Therapy",
+      "order": 0,
+      "price": 27500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 90,
+      "durations": {
+        "start": 90,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Transform your face with our Jet Plasma facial. This advanced, non-invasive treatment uses cutting-edge plasma technology to stimulate collagen, tighten skin, and improve overall texture. It helps reduce fine lines, wrinkles, acne, scars, hyperpigmentation, eczema and rosacea, leaving your complexion smoother, brighter, and rejuvenated with no downtime, no numbing required and no discomfort.",
+      "image": "https://static.glossgenius.com/public/service/afa27c901e28cb951ef3eed05f84aefd73188e10/image/e74617f55633c9549bfaea8a620867c6.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-762f2d65-26f4-497b-a266-ae46fd080a27",
+      "name": "Biorepeel",
+      "category": "Skin Therapy",
+      "order": 17,
+      "price": 17500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 60,
+      "durations": {
+        "start": 60,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Experience the next generation of chemical peels with BioRePeel, a cutting-edge treatment that rejuvenates your skin without the downtime. This Italian-made, medical-grade peel uses a unique blend of vitamins, amino acids, and bio-stimulating ingredients to resurface, hydrate, and restore your skin. Smooths fine lines & wrinkles. Fades acne scars & pigmentation. Minimizes pores & improves texture. Stimulates collagen production. Delivers instant radiance with little to no peeling. Perfect for face, neck, hands, and body, BioRePeel is safe, effective, and suitable for all skin types.",
+      "image": "https://static.glossgenius.com/public/service/7c8d6d298eac7a51dbc02a029f92d823608dba83/image/78e4f921fd77917f6b3c71457a630aa9.jpeg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-daeeb180-b9a0-4e90-acc2-966f9fa38a4a",
+      "name": "Jet Plasma Body Treatment",
+      "category": "Skin Therapy",
+      "order": 23,
+      "price": 37500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 90,
+      "durations": {
+        "start": 90,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Revitalize your skin with our Jet Plasma body treatment. This advanced, non-invasive therapy uses plasma technology to stimulate collagen, tighten loose skin, and improve texture on areas like the arms, stomach, thighs, and more. It helps reduce scarring, stretch marks, and uneven tone, leaving your skin firmer, smoother, and beautifully refreshed.",
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-78e7bb02-decc-4859-9151-11f074638772",
+      "name": "Vajacial",
+      "category": "Skin Therapy",
+      "order": 26,
+      "price": 5000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 60,
+      "durations": {
+        "start": 60,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "A soothing treatment designed for the bikini area to cleanse, gently exfoliate, and calm the skin. Helps reduce ingrowns, brighten, and leave skin soft, smooth, and refreshed. Can be combined with a wax for the ultimate treatment.",
+      "image": "https://static.glossgenius.com/public/service/e0b9940d6e3a8cccf9b898e992fe1e3a97d2bf65/image/9c7bd2e7accc04c60d70ee90d6110e40.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    },
+    {
+      "id": "1000f-4a713090-2205-4238-b0ca-7e8f47b27d1d",
+      "name": "Jet Plasma Eye Treatment",
+      "category": "Skin Therapy",
+      "order": 30,
+      "price": 7500,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 30,
+      "durations": {
+        "start": 30,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "Revitalize your eyes with our Jet Plasma Eye Treatment, reducing puffiness and revitalizing the delicate skin around your eyes for a youthful glow.",
+      "image": "https://static.glossgenius.com/public/stockimage/9362076cf03d44dbc127bc558f83854bc0d39b3c/image/7badd6074b1ae6a9c4ccbf25fe5c953b.png",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3"
+      ],
+      "createdAt": "2025-11-06T13:59:05.297Z"
+    },
+    {
+      "id": "1000f-61656385-9d48-4d24-a0e6-b3faf866575e",
+      "name": "Clear and Calm add-on",
+      "category": "Skin Therapy",
+      "order": 35,
+      "price": 2000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 15,
+      "durations": {
+        "start": 15,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": "This elevated add-on combines warm steam and targeted extra extractions to soften the skin, open the pores and gently release trapped hair and congestion after your Brazilian. Service is completed by a hyaluronic acid sheet mask to provide needed moisture. The result is fewer ingrowns, reduced irritation, a smoother finish, and skin that heals faster.",
+      "image": null,
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-12-17T13:38:19.082Z"
+    },
+    {
+      "id": "1000f-0c0107bb-e7ca-4c9a-b18f-d4a3e3fef3b5",
+      "name": "Yoni Steam",
+      "category": "Yoni Steam",
+      "order": 4,
+      "price": 3000,
+      "priceVaries": false,
+      "priceHidden": false,
+      "duration": 60,
+      "durations": {
+        "start": 60,
+        "processing": 0,
+        "end": 0
+      },
+      "deposit": null,
+      "depositNewClientsOnly": false,
+      "description": null,
+      "image": "https://static.glossgenius.com/public/service/1921fb788eb02838d35ba243886f99e0717475f0/image/61b8005ef0eac51cce3ad6b21fc20e3b.jpg",
+      "options": [],
+      "modifierGroups": [],
+      "staff": [
+        "9031a91ac4018b16c581ddf7da0add267711",
+        "794e3fa06bb4bd4f6ae6df92cbd5f4980de3",
+        "d977f385ecf385a11045cfd33432988cedf5",
+        "51b0ca7ce40c51ca855e9f0aa815405d16af"
+      ],
+      "createdAt": "2025-10-16T19:13:08.234Z"
+    }
+  ],
+  "memberships": [
+    {
+      "id": "10039-cfb89205-87e2-4c3e-a746-b37c8d5001ee",
+      "name": "Monthly Cookie Club",
+      "description": "Stay smooth and save $10 off each month with our Cookie Club",
+      "price": 5500,
+      "renews": "P1M",
+      "renewalLimit": null,
+      "public": true,
+      "image": null,
+      "includes": [
+        {
+          "service": "Brazilian",
+          "serviceId": "1000f-011e5b92-e26c-41f7-acb6-139957d3888f",
+          "quantity": 1,
+          "allocatedPrice": 5500,
+          "regularPrice": 6500,
+          "carriesOver": false
+        }
+      ],
+      "createdAt": "2026-08-31T15:19:02.132Z"
+    },
+    {
+      "id": "10039-922da1ad-0710-4c17-9058-84773a3f9a55",
+      "name": "Wax and Steam Pass",
+      "description": "Monthly Brazilian plus weekly yoni steams",
+      "price": 9000,
+      "renews": "P1M",
+      "renewalLimit": null,
+      "public": true,
+      "image": null,
+      "includes": [
+        {
+          "service": "Yoni Steam",
+          "serviceId": "1000f-0c0107bb-e7ca-4c9a-b18f-d4a3e3fef3b5",
+          "quantity": 4,
+          "allocatedPrice": 5838,
+          "regularPrice": 3000,
+          "carriesOver": false
+        },
+        {
+          "service": "Brazilian",
+          "serviceId": "1000f-011e5b92-e26c-41f7-acb6-139957d3888f",
+          "quantity": 1,
+          "allocatedPrice": 3162,
+          "regularPrice": 6500,
+          "carriesOver": false
+        }
+      ],
+      "createdAt": "2026-03-07T00:12:45.165Z"
+    },
+    {
+      "id": "10039-c9c2b059-6306-4ff6-b3e5-8beff3a4ca34",
+      "name": "The Steam Society",
+      "description": "Weekly steam sessions. Your gentle invitation to pause, breathe, and connect. Consistent, restorative monthly steam sessions. Access to custom, premium-grade herbal blends. A dedicated space for peace and connection.",
+      "price": 3500,
+      "renews": "P1M",
+      "renewalLimit": null,
+      "public": true,
+      "image": null,
+      "includes": [
+        {
+          "service": "Yoni Steam",
+          "serviceId": "1000f-0c0107bb-e7ca-4c9a-b18f-d4a3e3fef3b5",
+          "quantity": 1,
+          "allocatedPrice": 3500,
+          "regularPrice": 5000,
+          "carriesOver": false
+        }
+      ],
+      "createdAt": "2026-03-07T00:11:20.842Z"
+    },
+    {
+      "id": "10039-122c6e8a-5beb-4d6e-9f32-e988ec3baef3",
+      "name": "Bio Scan",
+      "description": "Daily bio scans",
+      "price": 8500,
+      "renews": "P1M",
+      "renewalLimit": null,
+      "public": true,
+      "image": null,
+      "includes": [
+        {
+          "service": "Bio scan",
+          "serviceId": "1000f-3185bc69-76bf-43e8-8891-1dc21333a274",
+          "quantity": 31,
+          "allocatedPrice": 8500,
+          "regularPrice": 4500,
+          "carriesOver": false
+        }
+      ],
+      "createdAt": "2026-02-21T18:02:42.067Z"
+    },
+    {
+      "id": "10039-97664057-c6f7-4255-9b84-64b359c92744",
+      "name": "The Basic Bundle",
+      "description": "Monthly Brazilian and underarm wax! Save $15 off retail price and receive a quicker, more comfortable service and longer lasting results!",
+      "price": 7500,
+      "renews": "P1M",
+      "renewalLimit": null,
+      "public": true,
+      "includes": [
+        {
+          "service": "Brazilian And Underarm Wax",
+          "serviceId": "1000f-511d1fb9-5177-40fd-aa85-76063902aa95",
+          "quantity": 1,
+          "allocatedPrice": 7500,
+          "regularPrice": 9000,
+          "carriesOver": false
+        }
+      ],
+      "createdAt": "2025-11-14T20:20:21.405Z"
+    },
+    {
+      "id": "10039-5be01f0e-cf41-47b5-9141-33177bf83449",
+      "name": "Luxe Lash Pass",
+      "description": "Keep your lashes flawless all month long and your wallet happy. With our monthly Lash Extensions Membership, you’ll enjoy exclusive pricing on your fills—saving up to $50 every month while keeping your lashes full, soft, and stunning.",
+      "price": 12500,
+      "renews": "P1M",
+      "renewalLimit": null,
+      "public": true,
+      "includes": [
+        {
+          "service": "1 Week Fill",
+          "serviceId": "1000f-c2f188f2-7cf3-4bf7-9018-98dff3f05988",
+          "quantity": 1,
+          "allocatedPrice": 1974,
+          "regularPrice": 4500,
+          "carriesOver": false
+        },
+        {
+          "service": "2 Week Fill",
+          "serviceId": "1000f-2ea63cc7-7127-42da-83b5-13e35515e0f4",
+          "quantity": 1,
+          "allocatedPrice": 2851,
+          "regularPrice": 6500,
+          "carriesOver": false
+        },
+        {
+          "service": "3 Week Fill",
+          "serviceId": "1000f-699bf0cf-3337-4a15-84f4-bf347da61a5f",
+          "quantity": 1,
+          "allocatedPrice": 3290,
+          "regularPrice": 7500,
+          "carriesOver": false
+        },
+        {
+          "service": "4 Week Fill",
+          "serviceId": "1000f-e32756fa-8a4b-4224-82f0-5ead5041e89a",
+          "quantity": 1,
+          "allocatedPrice": 4385,
+          "regularPrice": 10000,
+          "carriesOver": false
+        }
+      ],
+      "createdAt": "2025-10-29T11:22:35.421Z"
+    }
+  ],
+  "packages": [
+    {
+      "id": "10026-53914f7d-b681-47c8-aac5-c1880add1490",
+      "name": "Brazilian Bundle",
+      "price": 16500,
+      "expires": "P1Y",
+      "public": true,
+      "terms": null,
+      "items": [
+        {
+          "service": "Brazilian",
+          "serviceId": "1000f-011e5b92-e26c-41f7-acb6-139957d3888f",
+          "quantity": 3,
+          "allocatedPrice": 16500
+        }
+      ]
+    },
+    {
+      "id": "10026-f83280ab-7caf-4d08-a6f6-9c951db98dec",
+      "name": "The V-Glow",
+      "price": 13500,
+      "expires": "P1Y",
+      "public": true,
+      "terms": null,
+      "items": [
+        {
+          "service": "Yoni Steam",
+          "serviceId": "1000f-0c0107bb-e7ca-4c9a-b18f-d4a3e3fef3b5",
+          "quantity": 1,
+          "allocatedPrice": 2794
+        },
+        {
+          "service": "Brazilian",
+          "serviceId": "1000f-011e5b92-e26c-41f7-acb6-139957d3888f",
+          "quantity": 1,
+          "allocatedPrice": 6051
+        },
+        {
+          "service": "Vajacial",
+          "serviceId": "1000f-78e7bb02-decc-4859-9151-11f074638772",
+          "quantity": 1,
+          "allocatedPrice": 4655
+        }
+      ]
+    },
+    {
+      "id": "10026-b7210a76-fa16-4de1-af7b-85ad018a4b1a",
+      "name": "The Wax Room Wow",
+      "price": 10000,
+      "expires": "P1Y",
+      "public": true,
+      "terms": null,
+      "items": [
+        {
+          "service": "Brazilian",
+          "serviceId": "1000f-011e5b92-e26c-41f7-acb6-139957d3888f",
+          "quantity": 1,
+          "allocatedPrice": 5001
+        },
+        {
+          "service": "Underarm",
+          "serviceId": "1000f-f3093cff-a7ea-40ce-8d01-d92975d45fb8",
+          "quantity": 1,
+          "allocatedPrice": 1923
+        },
+        {
+          "service": "Lower Leg",
+          "serviceId": "1000f-b433afb8-c20e-4f3f-8f70-a5895932f5b3",
+          "quantity": 1,
+          "allocatedPrice": 3076
+        }
+      ]
+    }
+  ]
+}
