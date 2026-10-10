@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlipWord, HALF_FLIP_MS } from '../components/FlipWord';
 import { Sparkles } from '../components/Sparkles';
-import { business } from '../data';
 import { gsap, scrollToHash, useGSAP } from '../lib/motion';
+import { bookLink } from '../lib/booking';
 
 // "Get your ___ ___." Only the two words flip. The line underneath explains the
 // treatment that phrase is promoting, drawn from the salon's own descriptions.
@@ -144,7 +144,7 @@ export function Hero() {
             </p>
           </div>
           <div className="hero__ctas hero__reveal">
-            <a className="btn btn--honey" href={business.bookingUrl} target="_blank" rel="noopener">
+            <a className="btn btn--honey" {...bookLink()}>
               Book your appointment
             </a>
             <a

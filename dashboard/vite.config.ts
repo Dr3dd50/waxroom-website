@@ -11,6 +11,6 @@ export default defineConfig({
   base: './',
   plugins: [react()],
   build: { outDir: new URL('../dist-dashboard', import.meta.url).pathname, emptyOutDir: true },
-  server: { port: 5174 },
-  preview: { port: 4174 },
+  server: { port: 5174, proxy: { '/api': 'http://localhost:8787' } },
+  preview: { port: 4174, proxy: { '/api': 'http://localhost:8787' } },
 });

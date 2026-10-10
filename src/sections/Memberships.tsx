@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { business, money } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
+import { NATIVE, membershipLink, packageLink } from '../lib/booking';
 
 export function Memberships() {
   const root = useRef<HTMLElement>(null);
@@ -53,7 +54,7 @@ export function Memberships() {
         </div>
         <div className="cards">
           {business.memberships.map((m) => (
-            <a className="card" key={m.name} href={m.url} target="_blank" rel="noopener" onPointerMove={tilt} onPointerLeave={reset}>
+            <a className="card" key={m.name} {...membershipLink(m.name, m.url)} onPointerMove={tilt} onPointerLeave={reset}>
               <span className="card__tag">Membership</span>
               <h3>{m.name}</h3>
               <p>{m.description}</p>
@@ -69,9 +70,7 @@ export function Memberships() {
               <a
                 className="card card--pkg"
                 key={p.name}
-                href={business.packagesUrl}
-                target="_blank"
-                rel="noopener"
+                {...packageLink(p.name)}
                 onPointerMove={tilt}
                 onPointerLeave={reset}
               >
@@ -85,12 +84,15 @@ export function Memberships() {
               </a>
             );
           })}
+          {/* Gift cards are sold through GlossGenius; our own system doesn't sell them yet. */}
+          {NATIVE ? null : (
           <a className="card card--gift" href={business.giftCardsUrl} target="_blank" rel="noopener" onPointerMove={tilt} onPointerLeave={reset}>
-            <span className="card__tag">Gift cards</span>
-            <h3>Give the gift of smooth.</h3>
-            <p>Digital gift cards for any service, delivered instantly.</p>
-            <p className="card__price">Shop gift cards</p>
-          </a>
+              <span className="card__tag">Gift cards</span>
+              <h3>Give the gift of smooth.</h3>
+              <p>Digital gift cards for any service, delivered instantly.</p>
+              <p className="card__price">Shop gift cards</p>
+            </a>
+          )}
         </div>
       </div>
     </section>

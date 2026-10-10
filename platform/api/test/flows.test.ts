@@ -182,3 +182,21 @@ test('employees only see their own calendar and can’t open owner pages', async
   assert.equal((await call('PUT', '/staff/settings', {})).status, 403);
   void owner;
 });
+
+test('a package is paid once and covers its visits at checkout', async () => {
+  await call('POST', '/staff/login', { email: 'waxroomrichmond@gmail.com', password: 'owner-pass-123' });
+  const boot = (await call('GET', '/staff/bootstrap')).json;
+  const bundle = boot.packages.find((p: any) => p.name === 'Brazilian Bundle');
+  const s = await call('POST', `/public/packages/${bundle.id}/start`, { client: { first: 'Jo', last: 'T', phone: '804-555-0110' } });
+  const bought = await call('POST', `/public/packages/${bundle.id}/confirm`, { clientId: s.json.clientId, setupId: s.json.setupId });
+  assert.equal(bought.status, 200, JSON.stringify(bought.json));
+  const brazilian = boot.services.find((x: any) => x.name === 'Brazilian');
+  const day = nextWeekday(9);
+  const slots = (await call('GET', `/staff/availability?service=${brazilian.id}&day=${day}&staff=${boot.me.id}`)).json;
+  const a = (await call('POST', '/staff/appointments', { clientId: s.json.clientId, serviceId: brazilian.id, staffId: boot.me.id, start: slots[0].start })).json;
+  const q = (await call('GET', `/staff/appointments/${encodeURIComponent(a.id)}/quote`)).json;
+  assert.equal(q.due, 0);
+  await call('POST', `/staff/appointments/${encodeURIComponent(a.id)}/checkout`, { tip: 1000, method: 'card', useCredit: false, useMembership: true });
+  const client = await store.get<any>('clients', s.json.clientId);
+  assert.equal(client.packages[0].remaining[brazilian.id], 2);
+});

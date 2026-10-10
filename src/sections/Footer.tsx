@@ -1,5 +1,6 @@
 import { SERVICE_PAGES, servicePath } from '../content/services';
 import { business } from '../data';
+import { bookLink } from '../lib/booking';
 
 export function Footer() {
   const [title, ...policy] = business.cancellationPolicy.split(/\n+/);
@@ -11,7 +12,7 @@ export function Footer() {
           <p className="display">
             Ready when <em>you are.</em>
           </p>
-          <a className="btn btn--honey" href={business.bookingUrl} target="_blank" rel="noopener">
+          <a className="btn btn--honey" {...bookLink()}>
             Book your appointment
           </a>
         </div>
@@ -32,7 +33,7 @@ export function Footer() {
           © {new Date().getFullYear()} {business.name} · {business.address}
         </p>
       </div>
-      <a className="mobile-book btn btn--honey" href={business.bookingUrl} target="_blank" rel="noopener">
+      <a className="mobile-book btn btn--honey" {...bookLink()}>
         Book now
       </a>
     </footer>

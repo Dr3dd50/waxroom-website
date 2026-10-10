@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { business, duration, money } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
+import { bookLink } from '../lib/booking';
 
 const nice = (s: string) => (s === s.toUpperCase() ? s.toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase()) : s);
 
@@ -25,7 +26,7 @@ export function PriceList() {
           <h2 className="display">
             Price <em>list</em>
           </h2>
-          <a className="btn btn--dark" href={business.bookingUrl} target="_blank" rel="noopener">
+          <a className="btn btn--dark" {...bookLink()}>
             Book online
           </a>
         </div>
@@ -64,7 +65,7 @@ export function PriceList() {
                       {money(s.deposit)} deposit{s.depositNewClientsOnly ? ' for new clients' : ''}
                     </p>
                   ) : null}
-                  <a href={business.bookingUrl} target="_blank" rel="noopener" className="link-arrow">
+                  <a {...bookLink(nice(s.name))} className="link-arrow">
                     Book {nice(s.name)}
                   </a>
                 </div>

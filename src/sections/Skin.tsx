@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { CodeVideo } from '../components/CodeVideo';
 import { business, findService, money, duration, reviews } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
+import { bookLink } from '../lib/booking';
 
 const STATEMENT =
   'Jet Plasma tightens skin, softens fine lines and fades scars and hyperpigmentation. No numbing. No downtime. Just you, brighter.';
@@ -101,7 +102,7 @@ export function Skin() {
               </li>
             ))}
             <li className="treats__ctas">
-              <a className="btn btn--honey" href={business.bookingUrl} target="_blank" rel="noopener">
+              <a className="btn btn--honey" {...bookLink()}>
                 Book a skin treatment
               </a>
               <a className="link-arrow" href="/services/skin-treatments/">

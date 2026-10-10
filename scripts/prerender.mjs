@@ -10,7 +10,7 @@ const root = resolve(import.meta.dirname, '..');
 const dist = resolve(root, 'dist');
 const ssrEntry = resolve(root, 'dist-ssr/entry-server.js');
 
-const { render, PRERENDER_PATHS } = await import(pathToFileURL(ssrEntry).href);
+const { render, PRERENDER_PATHS, SITEMAP_PATHS } = await import(pathToFileURL(ssrEntry).href);
 const template = await readFile(resolve(dist, 'index.html'), 'utf8');
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -34,7 +34,7 @@ for (const path of PRERENDER_PATHS) {
 const site = 'https://www.waxroomrichmond.com';
 await writeFile(
   resolve(dist, 'sitemap.xml'),
-  `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${PRERENDER_PATHS.map(
+  `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${SITEMAP_PATHS.map(
     (p) => `  <url><loc>${site}${p}</loc></url>`,
   ).join('\n')}\n</urlset>\n`,
 );

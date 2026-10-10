@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { business, hourLabel, phoneDisplay } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
+import { bookLink } from '../lib/booking';
 
 const DAY_NAMES: Record<string, string> = {
   monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
@@ -96,7 +97,7 @@ export function Visit() {
               </tbody>
             </table>
             <div className="visit__ctas">
-              <a className="btn btn--honey" href={business.bookingUrl} target="_blank" rel="noopener">
+              <a className="btn btn--honey" {...bookLink()}>
                 Book now
               </a>
               {business.instagram ? (

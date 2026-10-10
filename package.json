@@ -16,13 +16,16 @@
     "port:glossgenius": "node scripts/port-glossgenius.mjs",
     "api": "tsx watch platform/api/src/server.ts",
     "test:api": "tsx --test platform/api/test/*.test.ts",
-    "import:glossgenius": "tsx platform/api/scripts/import-glossgenius.ts"
+    "import:glossgenius": "tsx platform/api/scripts/import-glossgenius.ts",
+    "build:native": "VITE_BOOKING=native npm run build",
+    "dev:all": "node scripts/dev-all.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1149.0",
     "@aws-sdk/lib-dynamodb": "^3.1149.0",
     "@gsap/react": "^2.1.2",
     "@hono/node-server": "^1.19.17",
+    "@stripe/stripe-js": "^4.10.0",
     "gsap": "^3.15.0",
     "hono": "^4.13.13",
     "lenis": "^1.3.26",

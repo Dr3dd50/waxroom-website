@@ -173,6 +173,12 @@ export async function cancelAppointment(store: Store, appt: Appointment, opts: {
   return appt;
 }
 
+/** Which of the client's unexpired packages still has a visit of this service. */
+export function packageWithVisit(client: Client, serviceId: string) {
+  const now = nowIso();
+  return (client.packages ?? []).findIndex((p) => (p.remaining[serviceId] ?? 0) > 0 && (!p.expiresAt || p.expiresAt > now));
+}
+
 /** Visits a membership still covers this month for a service. */
 export async function membershipVisitsLeft(store: Store, client: Client, serviceId: string) {
   if (client.membership?.status !== 'active') return 0;
@@ -202,7 +208,13 @@ export async function quote(store: Store, appt: Appointment, input: Omit<Checkou
     lines.push({ label: m?.name ?? 'Membership', amount: -due });
     due = 0;
   }
-  const referralDiscount = !membershipUsed && appt.referral ? Math.min(due, appt.referral.friendDiscount) : 0;
+  // a prepaid package visit, when the membership doesn't cover it
+  const pkgIndex = membershipUsed || !input.useMembership ? -1 : packageWithVisit(client, service.id);
+  if (pkgIndex !== -1) {
+    lines.push({ label: 'Package visit', amount: -due });
+    due = 0;
+  }
+  const referralDiscount = !membershipUsed && pkgIndex === -1 && appt.referral ? Math.min(due, appt.referral.friendDiscount) : 0;
   if (referralDiscount) {
     lines.push({ label: 'Referral: first-visit discount', amount: -referralDiscount });
     due -= referralDiscount;
@@ -217,7 +229,7 @@ export async function quote(store: Store, appt: Appointment, input: Omit<Checkou
     lines.push({ label: 'Account credit', amount: -creditUsed });
     due -= creditUsed;
   }
-  return { lines, due, membershipUsed, membershipLeft, referralDiscount, creditUsed, deposit, client, service };
+  return { lines, due, membershipUsed, membershipLeft, pkgIndex, referralDiscount, creditUsed, deposit, client, service };
 }
 
 export async function checkoutAppointment(store: Store, appt: Appointment, input: CheckoutInput) {
@@ -255,6 +267,12 @@ export async function checkoutAppointment(store: Store, appt: Appointment, input
   if (appt.deposit?.status === 'paid') appt.deposit.status = 'applied';
   await store.put('appointments', appt);
   q.client.credit -= q.creditUsed;
+  if (q.pkgIndex !== -1) {
+    const pk = q.client.packages![q.pkgIndex];
+    pk.remaining[q.service.id] -= 1;
+    appt.checkout.packageUsed = pk.packageId;
+    await store.put('appointments', appt);
+  }
   q.client.lastVisitAt = appt.end;
   await store.put('clients', q.client);
   if (total > 0)

@@ -7,6 +7,7 @@ import { Sparkles } from '../components/Sparkles';
 import { serviceAnchor, type Faq } from '../content/services';
 import { business, duration, money, reviews } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
+import { bookLink, membershipLink, packageLink } from '../lib/booking';
 
 export const nice = (s: string) => (s === s.toUpperCase() ? s.toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase()) : s);
 
@@ -59,7 +60,7 @@ export function LandingHero({
         </h1>
         <p className="hero__intro hero__reveal">{intro}</p>
         <div className="hero__ctas hero__reveal">
-          <a className="btn btn--honey" href={business.bookingUrl} target="_blank" rel="noopener">
+          <a className="btn btn--honey" {...bookLink()}>
             Book your appointment
           </a>
           <a className="btn btn--ghost" href="#prices">
@@ -154,7 +155,7 @@ export function PricesSection({ children }: { children: ReactNode }) {
           <h2 className="display">
             Services <em>& prices</em>
           </h2>
-          <a className="btn btn--dark" href={business.bookingUrl} target="_blank" rel="noopener">
+          <a className="btn btn--dark" {...bookLink()}>
             Book online
           </a>
         </div>
@@ -211,7 +212,7 @@ export function OffersSection({ memberships: mNames, packages: pNames }: { membe
         <p className="eyebrow">Save with a membership or package</p>
         <div className="cards cards--light reveal-group">
           {memberships.map((m) => (
-            <a className="card reveal" key={m.name} href={m.url} target="_blank" rel="noopener">
+            <a className="card reveal" key={m.name} {...membershipLink(m.name, m.url)}>
               <span className="card__tag">Membership</span>
               <h3>{m.name}</h3>
               <p>{m.description}</p>
@@ -222,7 +223,7 @@ export function OffersSection({ memberships: mNames, packages: pNames }: { membe
             </a>
           ))}
           {packages.map((p) => (
-            <a className="card card--pkg reveal" key={p.name} href={business.packagesUrl} target="_blank" rel="noopener">
+            <a className="card card--pkg reveal" key={p.name} {...packageLink(p.name)}>
               <span className="card__tag">Package</span>
               <h3>{p.name}</h3>
               <p>{p.items.map((i) => (i.quantity > 1 ? `${i.quantity}× ${i.name}` : i.name)).join(' + ')}</p>

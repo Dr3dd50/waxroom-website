@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { SERVICE_GROUPS, groupHref, groupServices } from '../content/services';
 import { business, reviews } from '../data';
 import { scrollToHash } from '../lib/motion';
+import { bookLink } from '../lib/booking';
 
 const LEFT = [
   ['/services/skin-treatments/', 'Skin'],
@@ -148,7 +149,7 @@ export function Nav({ isHome }: { isHome: boolean }) {
         </a>
         <div className="nav__side nav__side--right">
           <nav aria-label="More">{RIGHT.map(link)}</nav>
-          <a className="btn btn--dark nav__book" href={business.bookingUrl} target="_blank" rel="noopener">
+          <a className="btn btn--dark nav__book" {...bookLink()}>
             Book now
           </a>
         </div>

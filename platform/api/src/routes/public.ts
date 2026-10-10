@@ -202,5 +202,30 @@ export function publicRoutes(store: Store) {
     return c.json({ ok: true, membership: m.name, price: money(m.price), card: `${client.card.brand} •• ${client.card.last4}` });
   });
 
+  // Packages: pay once, visits are used at checkout until they run out or expire.
+  r.post('/packages/:id/start', async (c) => {
+    const p = await store.get<Package>('packages', c.req.param('id'));
+    if (!p?.active) throw new HttpError(404, 'That package isn’t available.');
+    const { client } = await upsertClient(store, (await c.req.json<{ client: ClientInput }>()).client);
+    client.customerId = await payments.ensureCustomer(client);
+    await store.put('clients', client);
+    return c.json({ clientId: client.id, ...(await payments.startCardSetup(client.customerId)) });
+  });
+
+  r.post('/packages/:id/confirm', async (c) => {
+    const p = await store.get<Package>('packages', c.req.param('id'));
+    const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string } }>();
+    const client = await store.get<Client>('clients', b.clientId);
+    if (!p || !client) throw bad('Something went wrong. Please start again.');
+    client.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
+    const charge = await payments.charge(client.customerId!, client.card, p.price, p.name, { packageId: p.id });
+    if (!charge.ok) throw new HttpError(402, `The card was declined (${charge.error ?? 'unknown reason'}).`);
+    const expiresAt = p.expiresMonths ? new Date(Date.now() + p.expiresMonths * 30.44 * 86400000).toISOString() : null;
+    client.packages = [...(client.packages ?? []), { packageId: p.id, boughtAt: nowIso(), expiresAt, remaining: Object.fromEntries(p.items.map((i) => [i.serviceId, i.quantity])) }];
+    await store.put('clients', client);
+    await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'package', amount: p.price, tip: 0, method: 'card', status: 'paid', providerId: charge.id, simulated: charge.simulated });
+    return c.json({ ok: true, package: p.name, price: money(p.price), card: `${client.card.brand} •• ${client.card.last4}`, expiresAt });
+  });
+
   return r;
 }
