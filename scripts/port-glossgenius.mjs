@@ -11,10 +11,11 @@
 // Client lists, appointments, active memberships and balances are not public;
 // they come from a GlossGenius export (see platform/README.md).
 
+import { fileURLToPath } from 'node:url';
 import { datasetFromArgsOr, writeJson } from './lib/apify.mjs';
 
 const SITE = 'https://waxroomrichmond.glossgenius.com';
-const OUT = new URL('../platform/seed/catalog.json', import.meta.url).pathname;
+const OUT = fileURLToPath(new URL('../platform/seed/catalog.json', import.meta.url));
 
 const cents = (s) => (s == null || s === '' ? null : Math.round(Number(s) * 100));
 const money = (p) => (p ? p.value : null);

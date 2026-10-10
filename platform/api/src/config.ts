@@ -2,6 +2,8 @@
 // back to a safe local-development value; Stripe and Twilio stay simulated
 // until their keys are set.
 
+import { fileURLToPath } from 'node:url';
+
 const env = process.env;
 
 export const config = {
@@ -9,7 +11,7 @@ export const config = {
   siteUrl: env.SITE_URL ?? 'http://localhost:5173',
   staffUrl: env.STAFF_URL ?? 'http://localhost:5174',
   tableName: env.TABLE_NAME, // set on AWS → DynamoDB
-  dataFile: env.DATA_FILE ?? new URL('../.data/store.json', import.meta.url).pathname,
+  dataFile: env.DATA_FILE ?? fileURLToPath(new URL('../.data/store.json', import.meta.url)),
   sessionSecret: env.SESSION_SECRET ?? 'local-dev-secret-change-me',
   secureCookies: env.NODE_ENV === 'production',
   /** Seed sample clients and appointments (local demos only). */

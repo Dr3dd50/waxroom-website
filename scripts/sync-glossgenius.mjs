@@ -7,10 +7,11 @@
 // GlossGenius server-renders everything into the page's __NEXT_DATA__ blob, so a
 // single page crawl with scripts kept is enough to get the whole catalog.
 
+import { fileURLToPath } from 'node:url';
 import { datasetFromArgsOr, writeJson } from './lib/apify.mjs';
 
 const SITE = 'https://waxroomrichmond.glossgenius.com';
-const OUT = new URL('../src/data/business.json', import.meta.url).pathname;
+const OUT = fileURLToPath(new URL('../src/data/business.json', import.meta.url));
 
 // Display order on the new site. Anything not listed is appended after.
 const CATEGORY_ORDER = [

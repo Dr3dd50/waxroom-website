@@ -5,13 +5,14 @@
 //   APIFY_TOKEN=... node scripts/fetch-reviews.mjs
 //   node scripts/fetch-reviews.mjs --input saved-dataset.json   # reuse a saved Apify run
 
+import { fileURLToPath } from 'node:url';
 import { datasetFromArgsOr, writeJson } from './lib/apify.mjs';
 
 const PLACE_ID = 'ChIJkdP2HwFusYkRlevzsf7f53Q'; // The Wax Room, 11162 Hull Street Rd, Midlothian VA
 const MAX_REVIEWS = Number(process.env.MAX_REVIEWS || 300);
 const MIN_TEXT_LENGTH = 40; // skip one-word reviews; they don't read well on the page
 const KEEP = 200; // enough for every service page to find reviews that mention it
-const OUT = new URL('../src/data/reviews.json', import.meta.url).pathname;
+const OUT = fileURLToPath(new URL('../src/data/reviews.json', import.meta.url));
 
 const items = await datasetFromArgsOr('compass/crawler-google-places', {
   startUrls: [{ url: `https://www.google.com/maps/search/?api=1&query=The%20Wax%20Room&query_place_id=${PLACE_ID}` }],

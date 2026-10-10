@@ -6,14 +6,15 @@
 //   APIFY_TOKEN=... node scripts/sync-instagram.mjs
 //   node scripts/sync-instagram.mjs --input saved-dataset.json
 
+import { fileURLToPath } from 'node:url';
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { datasetFromArgsOr, writeJson } from './lib/apify.mjs';
 
 const HANDLE = 'waxroomrichmond';
 const LIMIT = 60;
-const OUT_JSON = new URL('../src/data/gallery.json', import.meta.url).pathname;
-const OUT_DIR = new URL('../public/gallery/', import.meta.url).pathname;
+const OUT_JSON = fileURLToPath(new URL('../src/data/gallery.json', import.meta.url));
+const OUT_DIR = fileURLToPath(new URL('../public/gallery/', import.meta.url));
 // People who should no longer appear on the site.
 const EXCLUDE = /\bshae\b/i;
 
