@@ -236,7 +236,8 @@ async function seedDemo(store: Store, staff: Staff[], settings: Settings) {
           manageToken: rid(12),
           createdAt: new Date(start.getTime() - (2 + Math.floor(r() * 20)) * 86400000).toISOString(),
           newClient: sv.name === 'NEW CLIENT RITUAL',
-          texts: { bookedAt: start.toISOString() },
+          // sample bookings count as already confirmed-by-text, so a demo doesn't open with a burst of texts
+          texts: { bookedAt: start.toISOString(), confirmRequestAt: start.toISOString() },
         };
         if (status === 'completed') {
           const tip = Math.round(sv.price * pick(r, [0.15, 0.2, 0.2, 0.25]));

@@ -30,7 +30,9 @@ export async function runDueTexts(store: Store, now = new Date()) {
       await store.put('appointments', a);
       if (m) sent++;
     }
-    if (hours <= n.reminderHoursBefore && !a.texts.reminderAt) {
+    // booked inside the reminder window: the booking text was the reminder
+    const remindable = (Date.parse(a.start) - Date.parse(a.createdAt)) / 3600000 > n.reminderHoursBefore;
+    if (hours <= n.reminderHoursBefore && !a.texts.reminderAt && remindable) {
       const m = await autoText(store, 'reminder', client, await apptVars(store, a, settings), 'reminder' as never);
       a.texts.reminderAt = m?.at ?? now.toISOString();
       await store.put('appointments', a);

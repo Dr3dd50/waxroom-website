@@ -49,7 +49,8 @@ export function staffRoutes(store: Store) {
     const settings = await getSettings(store);
     return c.json({
       me: publicStaff(c.get('staff')),
-      staff: (await store.list<Staff>('staff')).map(publicStaff),
+      // owner first, then by name: the order columns appear on the calendar
+      staff: (await store.list<Staff>('staff')).sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'owner' ? -1 : 1)).map(publicStaff),
       services: await store.list<Service>('services'),
       memberships: await store.list<Membership>('memberships'),
       packages: await store.list<Package>('packages'),

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { STAFF, type Staff } from './data';
+import { useCallback, useEffect, useState } from 'react';
+import { api, ApiError } from './api';
+import { BootCtx } from './ctx';
+import type { Boot } from './types';
 import { CalendarView } from './views/Calendar';
 import { ClientsView } from './views/Clients';
 import { CatalogView } from './views/Catalog';
@@ -10,7 +12,6 @@ import { SettingsView } from './views/Settings';
 import { Login } from './views/Login';
 import { Icon, type IconName } from './ui';
 
-export type Me = Staff;
 type View = 'calendar' | 'clients' | 'catalog' | 'referrals' | 'texts' | 'payments' | 'settings';
 
 const NAV: { view: View; label: string; icon: IconName; ownerOnly?: boolean }[] = [
@@ -24,63 +25,90 @@ const NAV: { view: View; label: string; icon: IconName; ownerOnly?: boolean }[] 
 ];
 
 export default function App() {
-  const [me, setMe] = useState<Me | null>(null);
-  const [view, setView] = useState<View>('calendar');
+  const [boot, setBoot] = useState<Boot | null>(null);
+  const [state, setState] = useState<'loading' | 'signed-out' | 'ready'>('loading');
+  const [view, setView] = useState<View>(() => (location.hash.slice(1) as View) || 'calendar');
 
-  if (!me) return <Login onSignIn={(s) => (setMe(s), setView('calendar'))} />;
-  const owner = me.role === 'owner';
+  const load = useCallback(async () => {
+    try {
+      setBoot(await api<Boot>('/bootstrap'));
+      setState('ready');
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) setState('signed-out');
+      else throw e;
+    }
+  }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+  useEffect(() => {
+    history.replaceState(null, '', `#${view}`);
+  }, [view]);
+
+  if (state === 'loading') return <div className="boot">Loading…</div>;
+  if (state === 'signed-out' || !boot) return <Login onSignedIn={load} />;
+
+  const owner = boot.me.role === 'owner';
   const nav = NAV.filter((n) => owner || !n.ownerOnly);
+  const current = nav.some((n) => n.view === view) ? view : 'calendar';
 
   return (
-    <div className="shell">
-      <aside className="side">
-        <div className="side__brand">
-          <img src="logo.png" alt="" />
-          <div>
-            <strong>The Wax Room</strong>
-            <span>Staff</span>
+    <BootCtx.Provider value={{ ...boot, reload: load }}>
+      <div className="shell">
+        <aside className="side">
+          <div className="side__brand">
+            <img src="logo.png" alt="" />
+            <div>
+              <strong>The Wax Room</strong>
+              <span>Staff</span>
+            </div>
           </div>
-        </div>
-        <nav className="side__nav">
-          {nav.map((n) => (
-            <button key={n.view} className={view === n.view ? 'is-on' : ''} onClick={() => setView(n.view)}>
-              <Icon name={n.icon} />
-              <span>{n.label}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="side__me">
-          <span className="avatar" style={{ background: me.color }}>
-            {me.short[0]}
-          </span>
-          <div>
-            <strong>{me.short}</strong>
-            <span>{owner ? 'Owner' : 'Esthetician'}</span>
-          </div>
-          <button className="ghost-btn" onClick={() => setMe(null)} title="Sign out">
-            <Icon name="out" />
-          </button>
-        </div>
-        <label className="side__demo">
-          <span>Prototype with sample clients and appointments. Preview as</span>
-          <select value={me.id} onChange={(e) => setMe(STAFF.find((s) => s.id === e.target.value)!)}>
-            {STAFF.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.short} ({s.role})
-              </option>
+          <nav className="side__nav">
+            {nav.map((n) => (
+              <button key={n.view} className={current === n.view ? 'is-on' : ''} onClick={() => setView(n.view)}>
+                <Icon name={n.icon} />
+                <span>{n.label}</span>
+              </button>
             ))}
-          </select>
-        </label>
-      </aside>
-      <main className="main">
-        {view === 'calendar' ? <CalendarView me={me} key={me.id} /> : null}
-        {view === 'clients' ? <ClientsView me={me} key={me.id} /> : null}
-        {view === 'catalog' && owner ? <CatalogView /> : null}
-        {view === 'referrals' && owner ? <ReferralsView /> : null}
-        {view === 'texts' && owner ? <TextsView /> : null}
-        {view === 'payments' && owner ? <PaymentsView /> : null}
-        {view === 'settings' && owner ? <SettingsView /> : null}
-      </main>
-    </div>
+          </nav>
+          <div className="side__me">
+            <span className="avatar" style={{ background: boot.me.color }}>
+              {boot.me.short[0]}
+            </span>
+            <div>
+              <strong>{boot.me.short}</strong>
+              <span>{owner ? 'Owner' : 'Esthetician'}</span>
+            </div>
+            <button
+              className="ghost-btn"
+              onClick={async () => {
+                await api('/logout', {});
+                setBoot(null);
+                setState('signed-out');
+              }}
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <Icon name="out" />
+            </button>
+          </div>
+          {!boot.live.payments || !boot.live.texts ? (
+            <p className="side__mode">
+              {!boot.live.payments ? 'Payments are simulated until Stripe is connected. ' : ''}
+              {!boot.live.texts ? 'Texts are saved, not sent, until Twilio is connected.' : ''}
+            </p>
+          ) : null}
+        </aside>
+        <main className="main">
+          {current === 'calendar' ? <CalendarView /> : null}
+          {current === 'clients' ? <ClientsView /> : null}
+          {current === 'catalog' ? <CatalogView /> : null}
+          {current === 'referrals' ? <ReferralsView /> : null}
+          {current === 'texts' ? <TextsView /> : null}
+          {current === 'payments' ? <PaymentsView /> : null}
+          {current === 'settings' ? <SettingsView /> : null}
+        </main>
+      </div>
+    </BootCtx.Provider>
   );
 }

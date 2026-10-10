@@ -1301,3 +1301,131 @@ code {
     left: 48px;
   }
 }
+
+/* ── live data additions ── */
+.boot {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  color: var(--muted);
+}
+.side__mode {
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(248, 241, 231, 0.08);
+  font-size: 0.72rem;
+  color: rgba(248, 241, 231, 0.7);
+}
+.form-error {
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  background: #f6dcd5;
+  color: #7c2a19;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+.linkish {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--honey-deep);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  justify-self: start;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+.table tr.is-off td {
+  opacity: 0.5;
+}
+.table tr.is-in td {
+  background: #fdf6e8;
+}
+.table td.msg {
+  max-width: 420px;
+  white-space: pre-line;
+}
+.row-actions--spread {
+  justify-content: space-between;
+  align-items: center;
+}
+.row-actions .grow {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.new-client,
+.drawer-form {
+  display: grid;
+  gap: 0.7rem;
+}
+.new-client input,
+.new-client select,
+.drawer-form select,
+.drawer-form input:not([type='checkbox']):not([type='color']) {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.drawer-form input[type='color'] {
+  width: 64px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.qty {
+  width: 72px !important;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  text-align: right;
+}
+.hours {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.hours select {
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+.field > span {
+  font-weight: 600;
+}
+.field select {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.field input[type='date'] {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.checkout {
+  display: grid;
+  gap: 0.8rem;
+}
+.appt--checked-in {
+  box-shadow: inset 0 0 0 2px var(--green);
+}
+.week__appt.appt--completed {
+  opacity: 0.6;
+}

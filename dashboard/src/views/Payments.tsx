@@ -1,77 +1,88 @@
-import { CLIENTS, TODAY, addDays, appointmentsOn, catalog, clientById, money, nice, serviceById, staffById } from '../data';
+import { useEffect, useState } from 'react';
+import { api } from '../api';
+import { addDays, money, useBoot } from '../ctx';
 import { PageHead, Pill, Stat } from '../ui';
 
+type Pay = { id: string; at: string; clientName?: string; kind: string; amount: number; tip: number; method: string; status: string; simulated: boolean; staffId?: string; error?: string };
+const KIND: Record<string, string> = { checkout: 'Checkout', deposit: 'Deposit', 'cancel-fee': 'Late-cancel fee', 'no-show-fee': 'No-show fee', membership: 'Membership', package: 'Package' };
+
 export function PaymentsView() {
-  const days = Array.from({ length: 7 }, (_, i) => addDays(TODAY, -i));
-  const paid = days.flatMap((d) => appointmentsOn(d)).filter((a) => a.status === 'completed' && a.start < new Date());
-  const gross = paid.reduce((n, a) => n + (a.usesMembership ? 0 : serviceById(a.serviceId).price ?? 0), 0);
-  const tips = paid.reduce((n, a) => n + (a.tip ?? 0), 0);
-  const fees = days.flatMap((d) => appointmentsOn(d)).filter((a) => a.status === 'no-show').reduce((n, a) => n + (serviceById(a.serviceId).price ?? 0), 0);
-  const members = CLIENTS.filter((c) => c.membership);
-  const mrr = members.reduce((n, c) => n + (catalog.memberships.find((m) => m.name === c.membership)?.price ?? 0), 0);
-  const y = addDays(TODAY, -1);
-  const yesterday = Math.round(
-    paid.filter((a) => a.start.toDateString() === y.toDateString()).reduce((n, a) => n + (a.usesMembership ? 0 : serviceById(a.serviceId).price ?? 0) + (a.tip ?? 0), 0) * 0.971,
-  );
-  const byStaff = new Map<string, number>();
-  for (const a of paid) byStaff.set(a.staffId, (byStaff.get(a.staffId) ?? 0) + (a.tip ?? 0));
+  const boot = useBoot();
+  const [days, setDays] = useState(7);
+  const [list, setList] = useState<Pay[] | null>(null);
+  useEffect(() => {
+    setList(null);
+    api<Pay[]>(`/payments?from=${addDays(boot.today, -days + 1)}`).then(setList);
+  }, [days, boot.today]);
+  const paid = (list ?? []).filter((p) => p.status === 'paid');
+  const sum = (f: (p: Pay) => boolean, field: 'amount' | 'tip' = 'amount') => paid.filter(f).reduce((n, p) => n + p[field], 0);
+  const tipsBy = boot.staff.map((s) => ({ s, tips: sum((p) => p.staffId === s.id, 'tip') })).filter((x) => x.tips);
 
   return (
     <div className="page">
-      <PageHead title="Payments" sub="Last 7 days · through Stripe">
-        <Pill tone="green">Stripe connected · payouts daily</Pill>
+      <PageHead title="Payments" sub={boot.live.payments ? 'Through Stripe' : 'Simulated until Stripe is connected'}>
+        <div className="seg seg--toggle">
+          {[1, 7, 30].map((d) => (
+            <button key={d} className={days === d ? 'is-on' : ''} onClick={() => setDays(d)}>
+              {d === 1 ? 'Today' : `${d} days`}
+            </button>
+          ))}
+        </div>
       </PageHead>
       <div className="stats">
-        <Stat label="Services" value={money(gross)} note={`${paid.length} checkouts`} />
-        <Stat label="Tips" value={money(tips)} note="paid out to staff" />
-        <Stat label="Memberships" value={`${money(mrr)}/mo`} note={`${members.length} active members`} />
-        <Stat label="No-show fees" value={money(fees)} note="charged to card on file" />
+        <Stat label="Services" value={money(sum((p) => p.kind === 'checkout' || p.kind === 'deposit'))} note={`${paid.filter((p) => p.kind === 'checkout').length} checkouts`} />
+        <Stat label="Tips" value={money(sum(() => true, 'tip'))} note="owed to staff" />
+        <Stat label="Memberships & packages" value={money(sum((p) => p.kind === 'membership' || p.kind === 'package'))} />
+        <Stat label="Fees" value={money(sum((p) => p.kind.endsWith('fee')))} note="late cancels and no-shows" />
       </div>
       <div className="two two--wide">
         <section className="card-panel">
-          <h2>Recent checkouts</h2>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Client</th>
-                <th>Service</th>
-                <th>Paid</th>
-                <th>Tip</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...paid]
-                .sort((x, y) => +y.start - +x.start)
-                .slice(0, 14)
-                .map((a) => (
-                  <tr key={a.id}>
-                    <td>{a.start.toLocaleDateString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</td>
-                    <td>{clientById(a.clientId).name}</td>
-                    <td>{nice(serviceById(a.serviceId).name)}</td>
-                    <td>{a.usesMembership ? <Pill tone="green">Membership</Pill> : money(serviceById(a.serviceId).price)}</td>
-                    <td>{money(a.tip)}</td>
+          <h2>Transactions</h2>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Client</th>
+                  <th>For</th>
+                  <th>Amount</th>
+                  <th>Tip</th>
+                  <th>How</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(list ?? []).slice(0, 200).map((p) => (
+                  <tr key={p.id}>
+                    <td>{new Date(p.at).toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: '2-digit' })}</td>
+                    <td>{p.clientName}</td>
+                    <td>{KIND[p.kind] ?? p.kind}</td>
+                    <td>{p.status === 'paid' ? money(p.amount) : <Pill tone="red">Failed</Pill>}</td>
+                    <td>{p.tip ? money(p.tip) : '—'}</td>
+                    <td>
+                      {p.method}
+                      {p.simulated && p.method === 'card' ? ' (sim)' : ''}
+                    </td>
                   </tr>
                 ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </section>
         <section className="card-panel">
           <h2>Tips by person</h2>
           <ul className="mini-list">
-            {[...byStaff].map(([id, t]) => (
-              <li key={id}>
+            {tipsBy.map(({ s, tips }) => (
+              <li key={s.id}>
                 <span>
-                  <i className="dot" style={{ background: staffById(id).color }} />
+                  <i className="dot" style={{ background: s.color }} />
                 </span>
-                <strong>{staffById(id).short}</strong>
-                <small>{money(t)}</small>
+                <strong>{s.short}</strong>
+                <small>{money(tips)}</small>
               </li>
             ))}
+            {list && !tipsBy.length ? <li className="muted small">No tips in this period.</li> : null}
           </ul>
-          <h2 className="mt">Next payout</h2>
-          <p className="big">{money(yesterday)}</p>
-          <p className="muted small">Yesterday’s card payments and tips, less Stripe fees. Arrives in the business bank account tomorrow.</p>
+          <p className="muted small mt">Payouts to the bank and card fees are in the Stripe dashboard once it’s connected.</p>
         </section>
       </div>
     </div>

@@ -1,16 +1,28 @@
 import { useState } from 'react';
-import { STAFF, type Staff } from '../data';
+import { api } from '../api';
 
-/** Sign-in. In the real system this is Cognito (email + password, then a code by text). */
-export function Login({ onSignIn }: { onSignIn: (s: Staff) => void }) {
+export function Login({ onSignedIn }: { onSignedIn: () => void }) {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const demo = location.hostname !== 'staff.waxroomrichmond.com';
   return (
     <div className="login">
       <form
         className="login__card"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          onSignIn(STAFF[0]);
+          setBusy(true);
+          setError('');
+          try {
+            await api('/login', { email, password });
+            onSignedIn();
+          } catch (err) {
+            setError((err as Error).message);
+          } finally {
+            setBusy(false);
+          }
         }}
       >
         <img src="logo.png" alt="The Wax Room" className="login__logo" />
@@ -19,24 +31,30 @@ export function Login({ onSignIn }: { onSignIn: (s: Staff) => void }) {
         </h1>
         <label>
           Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@waxroomrichmond.com" />
+          <input id="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
         <label>
           Password
-          <input type="password" placeholder="••••••••" />
+          <input id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
-        <button className="btn btn--honey" type="submit">
-          Sign in
+        {error ? <p className="form-error">{error}</p> : null}
+        <button className="btn btn--honey" type="submit" disabled={busy}>
+          {busy ? 'Signing in…' : 'Sign in'}
         </button>
-        <p className="login__note">We’ll text a 6-digit code to your phone to finish signing in.</p>
-        <div className="login__demo">
-          <span>Prototype: sign in as</span>
-          {STAFF.map((s) => (
-            <button type="button" key={s.id} onClick={() => onSignIn(s)}>
-              {s.short} <small>{s.role}</small>
-            </button>
-          ))}
-        </div>
+        {demo ? (
+          <div className="login__demo">
+            <span>Local demo accounts (password waxroom-demo):</span>
+            {[
+              ['Danielle (owner)', 'waxroomrichmond@gmail.com'],
+              ['Nyeesha', 'nyeesha@demo.local'],
+              ['Chicago', 'chicago@demo.local'],
+            ].map(([label, em]) => (
+              <button type="button" key={em} onClick={() => (setEmail(em), setPassword('waxroom-demo'))}>
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </form>
     </div>
   );
