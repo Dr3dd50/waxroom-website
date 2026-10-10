@@ -13,7 +13,7 @@ import * as r53targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as secrets from 'aws-cdk-lib/aws-secretsmanager';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -181,6 +181,11 @@ function handler(event) {
 
     // ── files (built before deploying) ──
     const siteDist = resolve(root, 'dist');
+    // Until Twilio's registration is approved, the live site books through GlossGenius.
+    // Deploying our own booking takes an explicit -c booking=native.
+    const built = existsSync(resolve(siteDist, 'booking-mode.json')) ? JSON.parse(readFileSync(resolve(siteDist, 'booking-mode.json'), 'utf8')).booking : 'glossgenius';
+    if (built !== (this.node.tryGetContext('booking') ?? 'glossgenius'))
+      throw new Error(`dist/ was built with ${built} booking. Run \`npm run build\` (GlossGenius) or deploy with -c booking=native on purpose.`);
     const staffDist = resolve(root, 'dist-dashboard');
     if (existsSync(siteDist))
       new s3deploy.BucketDeployment(this, 'SiteFiles', { sources: [s3deploy.Source.asset(siteDist)], destinationBucket: siteBucket, distribution: site, distributionPaths: ['/*'], memoryLimit: 1024 });

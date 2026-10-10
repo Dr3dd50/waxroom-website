@@ -37,24 +37,21 @@ owner/employee logins, EventBridge Scheduler for timed texts.
 
 ## Questions for the owner (found in the port)
 
-Answered: Chicago takes wig installs and is bookable online here (it's switched
+Answered: the Luxe Lash Pass is four 1-week fills a month (the only plan
+that matches “saving up to $50”: 4 × $45 = $180 for $125); Chicago takes wig installs and is bookable online here (it's switched
 off on her GlossGenius profile); the yoni steam's regular price is $30; no gift
 cards; GlossGenius has the right hours; old event and former-staff records are
 left out.
 
 Still open:
 
-1. **Luxe Lash Pass** is set up as one of each fill (1, 2, 3 and 4 week) every
-   month for $125. One fill a month would cost more than paying normally (the
-   4-week fill is $100), but its description promises “saving up to $50 every
-   month”. How many fills does it include, and which?
-2. **Luxury Wig Installation** is set to 10 minutes in GlossGenius. How long
+1. **Luxury Wig Installation** is set to 10 minutes in GlossGenius. How long
    should it be booked for?
-3. **Bio Scan membership** allows 31 scans a month (daily). Is that right?
+2. **Bio Scan membership** allows 31 scans a month (daily). Is that right?
 
 ## Running it locally
 
-    npm run dev:all    # API :8787, website :5173 (our booking), dashboard :5174
+    npm run dev:all    # API :8787, website :5173 (GlossGenius booking, as live), :5175 (our booking), dashboard :5174
 
 Sample clients and appointments are generated on first run (`platform/api/.data`;
 delete it to start fresh). Owner sign-in: waxroomrichmond@gmail.com / waxroom-demo;

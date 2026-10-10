@@ -7,7 +7,6 @@ import { Drawer, Icon, PageHead, Pill } from '../ui';
 // Things the GlossGenius port flagged for the owner to confirm.
 const REVIEW: Record<string, string> = {
   'Luxury Wig Installation': 'Set to 10 minutes in GlossGenius. How long should an install be booked for?',
-  'Luxe Lash Pass': 'Set up in GlossGenius as one of each fill (1–4 week) a month. $125 for one fill would cost more than paying normally, but the description promises “saving up to $50 every month”. How many fills, and which?',
   'Bio Scan': '31 scans a month (daily). Is that right?',
 };
 

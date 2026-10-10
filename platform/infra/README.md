@@ -59,5 +59,8 @@ When Twilio's business-texting registration is approved and Stripe is set up:
 3. Import clients and upcoming appointments from GlossGenius
    (`npm run import:glossgenius -- --clients … --appointments …` with
    `TABLE_NAME` set to the table).
-4. `npm run build:native && npx cdk deploy -c attachDomains=true …` — every
-   Book button now uses our booking. To go back, deploy `npm run build` again.
+4. `npm run build:native && npx cdk deploy -c booking=native -c attachDomains=true …`:
+   every Book button now uses our booking. To go back, deploy `npm run build` again.
+
+Until then every deploy uses the GlossGenius version: the stack refuses a
+`dist/` built with our booking unless `-c booking=native` is passed.

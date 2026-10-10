@@ -95,13 +95,20 @@ export async function seed(store: Store) {
     await store.put('services', service);
   }
 
+  // Luxe Lash Pass: GlossGenius has one of each fill length; the description's
+  // "saving up to $50 every month" only works as a 1-week fill every week
+  // (4 × $45 = $180 for $125), the basic fill, so that's what it includes.
+  const oneWeekFill = catalog.services.find((s: { name: string }) => s.name === '1 Week Fill')?.id;
   for (const m of catalog.memberships) {
     const membership: Membership = {
       id: m.id,
       name: m.name,
       description: m.description,
       price: m.price,
-      includes: m.includes.filter((i: { serviceId?: string }) => i.serviceId).map((i: { serviceId: string; quantity: number }) => ({ serviceId: i.serviceId, quantity: i.quantity })),
+      includes:
+        m.name === 'Luxe Lash Pass' && oneWeekFill
+          ? [{ serviceId: oneWeekFill, quantity: 4 }]
+          : m.includes.filter((i: { serviceId?: string }) => i.serviceId).map((i: { serviceId: string; quantity: number }) => ({ serviceId: i.serviceId, quantity: i.quantity })),
       active: true,
       public: m.public,
     };

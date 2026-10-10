@@ -38,5 +38,7 @@ await writeFile(
     (p) => `  <url><loc>${site}${p}</loc></url>`,
   ).join('\n')}\n</urlset>\n`,
 );
+// which booking the build uses, so a deploy can refuse the wrong one
+await writeFile(resolve(dist, 'booking-mode.json'), JSON.stringify({ booking: process.env.VITE_BOOKING === 'native' ? 'native' : 'glossgenius' }) + '\n');
 await writeFile(resolve(dist, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${site}/sitemap.xml\n`);
 await rm(resolve(root, 'dist-ssr'), { recursive: true, force: true });
