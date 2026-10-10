@@ -187,8 +187,32 @@ function handler(event) {
     if (built !== (this.node.tryGetContext('booking') ?? 'glossgenius'))
       throw new Error(`dist/ was built with ${built} booking. Run \`npm run build\` (GlossGenius) or deploy with -c booking=native on purpose.`);
     const staffDist = resolve(root, 'dist-dashboard');
-    if (existsSync(siteDist))
-      new s3deploy.BucketDeployment(this, 'SiteFiles', { sources: [s3deploy.Source.asset(siteDist)], destinationBucket: siteBucket, distribution: site, distributionPaths: ['/*'], memoryLimit: 1024 });
+    if (existsSync(siteDist)) {
+      // Hashed build files never change under the same name: cache them for a year, and keep
+      // old ones (prune: false) for pages still open from before a deploy.
+      const assets = new s3deploy.BucketDeployment(this, 'SiteAssets', {
+        sources: [s3deploy.Source.asset(siteDist)],
+        destinationBucket: siteBucket,
+        exclude: ['*'],
+        include: ['assets/*'],
+        prune: false,
+        cacheControl: [s3deploy.CacheControl.fromString('public, max-age=31536000, immutable')],
+        memoryLimit: 1024,
+      });
+      // Pages, videos and images keep their names between deploys: browsers re-check them on
+      // every visit (a 304 when unchanged), so a deploy, like the booking switch, shows at once.
+      const pages = new s3deploy.BucketDeployment(this, 'SiteFiles', {
+        sources: [s3deploy.Source.asset(siteDist)],
+        destinationBucket: siteBucket,
+        exclude: ['assets/*'],
+        cacheControl: [s3deploy.CacheControl.fromString('public, max-age=0, must-revalidate')],
+        distribution: site,
+        distributionPaths: ['/*'],
+        memoryLimit: 1024,
+      });
+      // new pages go live only after the files they load are there
+      pages.node.addDependency(assets);
+    }
     if (existsSync(staffDist))
       new s3deploy.BucketDeployment(this, 'StaffFiles', { sources: [s3deploy.Source.asset(staffDist)], destinationBucket: staffBucket, distribution: staff, distributionPaths: ['/*'] });
 

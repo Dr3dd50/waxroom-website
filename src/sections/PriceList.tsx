@@ -48,34 +48,36 @@ export function PriceList() {
             </button>
           ))}
         </div>
-        <ul className="price-list" id="price-panel" role="tabpanel" aria-labelledby={`tab-${cat.slug}`} ref={list}>
-          {cat.services.map((s) => (
-            <li className="price" key={s.name}>
-              <details>
-                <summary>
-                  <span className="price__name">{nice(s.name)}</span>
-                  <span className="price__dots" aria-hidden="true" />
-                  <span className="price__meta">{duration(s.duration)}</span>
-                  <span className="price__amt">
-                    {money(s.price)}
-                    {s.priceVaries ? '+' : ''}
-                  </span>
-                </summary>
-                <div className="price__desc">
-                  {s.description ? <p>{s.description}</p> : null}
-                  {s.deposit ? (
-                    <p className="price__note">
-                      {money(s.deposit)} deposit{s.depositNewClientsOnly ? ' for new clients' : ''}
-                    </p>
-                  ) : null}
-                  <a {...bookLink({ service: s.name })} className="link-arrow">
-                    Book {nice(s.name)}
-                  </a>
-                </div>
-              </details>
-            </li>
-          ))}
-        </ul>
+        <div id="price-panel" role="tabpanel" aria-labelledby={`tab-${cat.slug}`}>
+          <ul className="price-list" ref={list}>
+            {cat.services.map((s) => (
+              <li className="price" key={s.name}>
+                <details>
+                  <summary>
+                    <span className="price__name">{nice(s.name)}</span>
+                    <span className="price__dots" aria-hidden="true" />
+                    <span className="price__meta">{duration(s.duration)}</span>
+                    <span className="price__amt">
+                      {money(s.price)}
+                      {s.priceVaries ? '+' : ''}
+                    </span>
+                  </summary>
+                  <div className="price__desc">
+                    {s.description ? <p>{s.description}</p> : null}
+                    {s.deposit ? (
+                      <p className="price__note">
+                        {money(s.deposit)} deposit{s.depositNewClientsOnly ? ' for new clients' : ''}
+                      </p>
+                    ) : null}
+                    <a {...bookLink({ service: s.name })} className="link-arrow">
+                      Book {nice(s.name)}
+                    </a>
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </section>
   );
