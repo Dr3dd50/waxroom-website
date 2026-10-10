@@ -130,7 +130,7 @@ export function draw(ctx, t) {
       const bend = (hash(row + 9, col) - 0.5) * 0.9;
       const mid = [x + Math.cos(a) * len * 0.5, y + Math.sin(a) * len * 0.5];
       const end = [x + Math.cos(a + bend) * len, y + Math.sin(a + bend) * len];
-      stroke(ctx, [[x, y], mid, end], 1, t, { w: 2.4, seed: col * 13 + row, jit: 0.6 });
+      stroke(ctx, [[x, y], mid, end], 1, t, { w: 2.4, seed: col * 13 + row });
     }
   }
 

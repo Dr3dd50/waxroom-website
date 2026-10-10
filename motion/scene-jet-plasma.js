@@ -148,7 +148,7 @@ export function draw(ctx, t) {
   const lvl = 0.5 + 0.5 * (0.5 + 0.5 * wave(t, DURATION, 8));
   for (let i = 0; i < 5; i++) {
     const c0 = pen.at(-7, -150 - i * 13), c1 = pen.at(7, -150 - i * 13);
-    stroke(ctx, [c0, c1], 1, t, { w: 5, color: i / 5 < lvl ? '#7DE3B0' : '#4A4440', seed: 83 + i, jit: 0.4 });
+    stroke(ctx, [c0, c1], 1, t, { w: 5, color: i / 5 < lvl ? '#7DE3B0' : '#4A4440', seed: 83 + i });
   }
   const d = pen.at(0, -222);
   ctx.save();
@@ -177,7 +177,7 @@ export function draw(ctx, t) {
   for (let k = 0; k < 7; k++) {
     const s0 = pen.at(-36 + k * 12, 4);
     const e = pen.at(-36 + k * 12 + Math.sin(t * 50 + k * 3) * 5, 20);
-    stroke(ctx, [s0, [lerp(s0[0], e[0], 0.5) + Math.sin(t * 70 + k) * 4, lerp(s0[1], e[1], 0.5)], e], 1, t, { w: 2.5, color: '#7B5CF0', seed: 100 + k, jit: 2.5 });
+    stroke(ctx, [s0, [lerp(s0[0], e[0], 0.5) + Math.sin(t * 70 + k) * 4, lerp(s0[1], e[1], 0.5)], e], 1, t, { w: 2.5, color: '#7B5CF0', seed: 100 + k });
   }
 
 

@@ -1,6 +1,6 @@
 // Doodle toolkit for the code videos. Everything is a pure function of time `t`
 // (seconds), so a scene renders the same frame every time and loops cleanly.
-// Lines "boil" (re-jitter a few times a second) like hand-drawn animation.
+// Lines are steady, round-capped pen strokes.
 
 export const W = 1600, H = 900, FPS = 30;
 
@@ -23,14 +23,6 @@ export const ease = {
 };
 /** Eased 0→1 between times a and b. */
 export const seg = (t, a, b, e = ease.inOut) => e(prog(t, a, b));
-
-// Deterministic noise so boiling lines are reproducible frame to frame.
-function hash(n) {
-  n = (n << 13) ^ n;
-  return 1 - ((n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824;
-}
-const BOIL_RATE = 8; // re-jitters per second
-export const boilFrame = (t) => Math.floor(t * BOIL_RATE);
 
 // ── shapes as point lists ───────────────────────────────────────────────────
 export function line(x0, y0, x1, y1, n = 16) {
@@ -70,16 +62,12 @@ export function spline(points, per = 12) {
 export const translate = (pts, dx, dy) => pts.map(([x, y]) => [x + dx, y + dy]);
 
 // ── drawing ─────────────────────────────────────────────────────────────────
-/**
- * Draw the first `p` (0–1) of a path in a wobbly pen line.
- * `seed` keeps each stroke's wobble distinct; `jit` is the boil amplitude in px.
- */
-export function stroke(ctx, pts, p, t, { w = 6, color = INK, seed = 1, jit = 1.6, alpha = 1 } = {}) {
+/** Draw the first `p` (0–1) of a path as a pen line. (`t` and `seed` are kept for call-site symmetry.) */
+export function stroke(ctx, pts, p, t, { w = 6, color = INK, alpha = 1 } = {}) {
   if (p <= 0 || pts.length < 2) return;
   const lens = [0];
   for (let i = 1; i < pts.length; i++) lens.push(lens[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
   const total = lens[lens.length - 1], upto = total * clamp(p);
-  const b = boilFrame(t);
   ctx.save();
   ctx.globalAlpha *= alpha;
   ctx.strokeStyle = color;
@@ -95,35 +83,11 @@ export function stroke(ctx, pts, p, t, { w = 6, color = INK, seed = 1, jit = 1.6
       x = lerp(pts[i - 1][0], x, k);
       y = lerp(pts[i - 1][1], y, k);
     }
-    x += hash(seed * 7919 + i * 31 + b * 101) * jit;
-    y += hash(seed * 104729 + i * 17 + b * 211) * jit;
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
     if (lens[i] > upto) break;
   }
   ctx.stroke();
-  ctx.restore();
-}
-
-/** Marker-style hatch fill inside a closed shape, revealed by `p`. */
-export function hatch(ctx, shape, p, t, { color = HONEY, gap = 14, angle = -0.6, w = 9, seed = 3, alpha = 0.9 } = {}) {
-  if (p <= 0) return;
-  const xs = shape.map((q) => q[0]), ys = shape.map((q) => q[1]);
-  const x0 = Math.min(...xs) - 40, x1 = Math.max(...xs) + 40, y0 = Math.min(...ys) - 40, y1 = Math.max(...ys) + 40;
-  ctx.save();
-  ctx.beginPath();
-  shape.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-  ctx.closePath();
-  ctx.clip();
-  const span = (x1 - x0) + (y1 - y0);
-  const count = Math.ceil(span / gap);
-  const shown = Math.floor(count * clamp(p));
-  const dx = Math.cos(angle), dy = Math.sin(angle);
-  for (let i = 0; i < shown; i++) {
-    const ox = x0 + i * gap;
-    const a = [ox, y1], b2 = [ox + dx * span, y1 + dy * span];
-    stroke(ctx, line(a[0], a[1], b2[0], b2[1], 6), 1, t, { color, w, seed: seed + i, jit: 2.2, alpha });
-  }
   ctx.restore();
 }
 
@@ -136,8 +100,7 @@ export function write(ctx, text, x, y, p, t, { size = 64, color = INK, align = '
   ctx.textBaseline = 'middle';
   const w = ctx.measureText(text).width;
   const left = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
-  const j = hash(boilFrame(t) * 13 + text.length) * 1.2;
-  ctx.translate(x, y + j);
+  ctx.translate(x, y);
   ctx.rotate(rot);
   ctx.translate(-x, -y);
   ctx.beginPath();
@@ -148,39 +111,12 @@ export function write(ctx, text, x, y, p, t, { size = 64, color = INK, align = '
   ctx.restore();
 }
 
-/** Four-point sparkle that pops in with `p`. */
-export function sparkle(ctx, x, y, s, p, t, { color = HONEY, seed = 9 } = {}) {
-  if (p <= 0) return;
-  const k = ease.back(clamp(p)) * s;
-  stroke(ctx, line(x, y - k, x, y + k, 4), 1, t, { color, w: 5, seed, jit: 1 });
-  stroke(ctx, line(x - k, y, x + k, y, 4), 1, t, { color, w: 5, seed: seed + 1, jit: 1 });
-}
-
-/** Little "✓" tick. */
-export function tick(ctx, x, y, s, p, t, opts = {}) {
-  stroke(ctx, [[x - s, y], [x - s * 0.3, y + s * 0.7], [x + s, y - s * 0.9]], p, t, { w: 7, color: HONEY_DEEP, ...opts });
-}
-
 /** Paper background with a faint dot grid, like a sketchbook page. */
 export function paper(ctx) {
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(33,23,16,0.07)';
   for (let x = 40; x < W; x += 48) for (let y = 30; y < H; y += 48) ctx.fillRect(x, y, 3, 3);
-}
-
-/**
- * Wraps a scene so it loops seamlessly: draws on, holds, then the whole page fades
- * back to blank paper over the last `fade` seconds, matching frame 0.
- */
-export function loopFade(ctx, t, duration, fade, draw) {
-  paper(ctx);
-  const a = 1 - prog(t, duration - fade, duration - 0.1);
-  if (a <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = a;
-  draw();
-  ctx.restore();
 }
 
 // ── fills, shapes and loop helpers for the detailed scenes ─────────────────────
