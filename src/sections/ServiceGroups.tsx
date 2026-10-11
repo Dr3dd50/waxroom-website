@@ -1,9 +1,11 @@
 // Home-page services, grouped by the problem they solve: one doodle tile per group,
-// each opening into every named service, built to pull visitors into /services/ pages.
+// each opening into every named service. A tile leads to its /services/ page; a named
+// service goes straight to booking it.
 import { useRef } from 'react';
 import { CodeVideo } from '../components/CodeVideo';
 import { SERVICE_GROUPS, findServicePage, groupHref, groupServices } from '../content/services';
 import { business, duration, money } from '../data';
+import { bookLink } from '../lib/booking';
 import { gsap, useGSAP } from '../lib/motion';
 
 const nice = (n: string) => (n === n.toUpperCase() ? n.toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase()) : n);
@@ -36,7 +38,7 @@ function ServiceDropdown({ g }: { g: Group }) {
       <ul>
         {g.services.map((s) => (
           <li key={s.name}>
-            <a href={s.href}>
+            <a {...bookLink({ service: s.name })}>
               <span>{nice(s.name)}</span>
               <small>
                 {duration(s.duration)} · {money(s.price)}

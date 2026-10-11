@@ -44,7 +44,8 @@ function ReviewStrip() {
 const nice = (n: string) => (n === n.toUpperCase() ? n.toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase()) : n);
 const GROUPS = SERVICE_GROUPS.map((g) => ({ ...g, href: groupHref(g), services: groupServices(g, business.categories) }));
 
-/** Services ▾ — groups on the left (by problem); the hovered group's named services on the right. */
+/** Services ▾ — groups on the left (by problem); the hovered group's named services on the right,
+ * each going straight to booking that service. */
 function ServicesMenu({ onNavigate }: { onNavigate: () => void }) {
   const [open, setOpen] = useState(false);
   const [group, setGroup] = useState(0);
@@ -103,7 +104,7 @@ function ServicesMenu({ onNavigate }: { onNavigate: () => void }) {
           <ul>
             {g.services.map((sv) => (
               <li key={sv.name}>
-                <a href={sv.href} onClick={onNavigate}>
+                <a {...bookLink({ service: sv.name })} onClick={onNavigate}>
                   <span>{nice(sv.name)}</span>
                   <small>${sv.price}{sv.priceVaries ? '+' : ''}</small>
                 </a>
@@ -194,7 +195,7 @@ export function Nav({ isHome }: { isHome: boolean }) {
                   Book {x.label.toLowerCase()} →
                 </a>
                 {x.services.map((sv) => (
-                  <a key={sv.name} href={sv.href} onClick={() => setOpen(false)}>
+                  <a key={sv.name} {...bookLink({ service: sv.name })} onClick={() => setOpen(false)}>
                     {nice(sv.name)}
                   </a>
                 ))}
