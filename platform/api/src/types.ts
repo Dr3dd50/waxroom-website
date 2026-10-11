@@ -191,4 +191,4 @@ export type Settings = {
   referrals: { enabled: boolean; friendGets: number; referrerGets: number };
 };
 
-export type Collection = 'staff' | 'services' | 'memberships' | 'packages' | 'clients' | 'appointments' | 'referrals' | 'messages' | 'payments' | 'settings' | 'tokens';
+export type Collection = 'staff' | 'services' | 'memberships' | 'packages' | 'clients' | 'appointments' | 'referrals' | 'messages' | 'payments' | 'settings' | 'tokens' | 'metaOutbox';

@@ -3,6 +3,7 @@
 // until their keys are set.
 
 import { fileURLToPath } from 'node:url';
+import tracking from '../../../src/data/tracking.json';
 
 const env = process.env;
 
@@ -25,6 +26,13 @@ export const config = {
     secretKey: env.STRIPE_SECRET_KEY,
     publishableKey: env.STRIPE_PUBLISHABLE_KEY,
     webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+  },
+  /** Meta pixel + Conversions API. The pixel id is shared with the website (src/data/tracking.json). */
+  meta: {
+    pixelId: env.META_PIXEL_ID || tracking.metaPixelId || undefined,
+    token: env.META_CAPI_ACCESS_TOKEN,
+    // only while testing in Events Manager → Test events; remove it afterwards
+    testCode: env.META_TEST_EVENT_CODE,
   },
   twilio: {
     accountSid: env.TWILIO_ACCOUNT_SID,

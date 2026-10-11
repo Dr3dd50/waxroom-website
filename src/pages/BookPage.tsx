@@ -5,6 +5,7 @@ import { api, cents, dateOf, minutes, timeOf, TZ } from '../lib/api';
 import { business } from '../data';
 import { jumpToTop } from '../lib/motion';
 import { NATIVE, glossGeniusService } from '../lib/booking';
+import { attribution, trackConversion } from '../lib/tracking';
 import { SERVICE_GROUPS, findServicePage, groupCategories } from '../content/services';
 
 type Svc = { id: string; name: string; category: string; price: number; priceVaries: boolean; duration: number; deposit: number | null; depositNewClientsOnly: boolean; description: string | null; staffIds: string[] };
@@ -268,7 +269,10 @@ function NativeBooking() {
                 publishableKey={config.stripePublishableKey}
                 submitLabel="Book appointment"
                 onSaved={async (extra) => {
+                  const a = attribution();
                   const r = await api<Booked>('/public/bookings/confirm', {
+                    tracking: a,
+                    url: location.href,
                     clientId: details.clientId,
                     setupId: details.setup.setupId,
                     serviceId: service.id,
@@ -282,6 +286,7 @@ function NativeBooking() {
                   } catch {
                     /* private mode */
                   }
+                  trackConversion('Schedule', a, { content_name: service.name, content_category: service.category, value: r.price / 100, currency: 'USD' });
                   setBooked(r);
                 }}
               />
@@ -369,7 +374,7 @@ function ServicePicker({ services, focus, onPick, hrefFor, note }: PickerProps) 
               return (
                 <li key={s.id}>
                   {hrefFor ? (
-                    <a className="svc-row" href={hrefFor(s)}>
+                    <a className="svc-row" href={hrefFor(s)} data-book-service={s.name}>
                       {inner}
                     </a>
                   ) : (

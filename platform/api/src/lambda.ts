@@ -1,7 +1,7 @@
 // AWS entry points: the API (behind CloudFront at /api/*) and the 15-minute
-// scheduled run that sends timed texts. Keys (Stripe, Twilio, the session
-// secret) live in Secrets Manager and are loaded once per cold start, before
-// the app reads its configuration.
+// scheduled run that sends timed texts and retries Meta events that failed.
+// Keys (Stripe, Twilio, Meta, the session secret) live in Secrets Manager and
+// are loaded once per cold start, before the app reads its configuration.
 import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 
 async function boot() {
@@ -11,9 +11,10 @@ async function boot() {
   }
   const { makeApp, makeStore } = await import('./app');
   const { runDueTexts } = await import('./services/notify');
+  const { retryMetaEvents } = await import('./services/meta');
   const { handle } = await import('hono/aws-lambda');
   const store = await makeStore();
-  return { handler: handle(makeApp(store)), tick: () => runDueTexts(store) };
+  return { handler: handle(makeApp(store)), tick: async () => ({ texts: await runDueTexts(store), meta: await retryMetaEvents(store) }) };
 }
 const ready = boot();
 

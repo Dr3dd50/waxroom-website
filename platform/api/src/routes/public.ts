@@ -11,9 +11,40 @@ import { upsertClient, type ClientInput } from '../services/clients';
 import { payments } from '../services/payments';
 import { twilioLive } from '../config';
 import { apptVars, autoText, cancelAppointment, createAppointment, feeFor, finalizeBooking } from '../services/appointments';
+import { readTracking, requestInfo, sendMetaEvent } from '../services/meta';
+import { config } from '../config';
+
+/** Where on our site an event happened, for Meta: only our own pages are accepted. */
+function pageUrl(raw: unknown, fallback: string) {
+  try {
+    const u = new URL(String(raw));
+    return u.origin === new URL(config.siteUrl).origin ? u.href.slice(0, 500) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export function publicRoutes(store: Store) {
   const r = new Hono();
+
+  // Meta: the server copy of a browser event that has no other server step (a tap
+  // that leaves for GlossGenius to book). Only these names, so the endpoint can't be
+  // used to report purchases. Always 204: tracking never shows the visitor an error.
+  const BROWSER_EVENTS = new Set(['InitiateCheckout']);
+  r.post('/track', async (c) => {
+    const b = await c.req.json<{ event?: string; tracking?: unknown; url?: string; service?: string }>().catch(() => ({}) as Record<string, never>);
+    const tracking = readTracking(b.tracking);
+    if (b.event && BROWSER_EVENTS.has(b.event) && tracking.eventId) {
+      await sendMetaEvent(store, {
+        name: b.event,
+        tracking,
+        url: pageUrl(b.url, `${config.siteUrl}/book/`),
+        request: requestInfo((h) => c.req.header(h)),
+        custom: typeof b.service === 'string' && b.service ? { content_name: b.service.slice(0, 120), content_category: 'booking' } : undefined,
+      });
+    }
+    return c.body(null, 204);
+  });
 
   r.get('/config', async (c) => {
     const s = await getSettings(store);
@@ -86,7 +117,7 @@ export function publicRoutes(store: Store) {
 
   // Step 2: card saved → book the time (checked again), take any deposit, text the confirmation.
   r.post('/bookings/confirm', async (c) => {
-    const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string }; serviceId: string; staffId?: string | null; start: string; referralCode?: string; notes?: string }>();
+    const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string }; serviceId: string; staffId?: string | null; start: string; referralCode?: string; notes?: string; tracking?: unknown; url?: string }>();
     const client = await store.get<Client>('clients', b.clientId);
     const service = await store.get<Service>('services', b.serviceId);
     if (!client || !service || !service.bookableOnline) throw bad('Something went wrong. Please start again.');
@@ -100,6 +131,15 @@ export function publicRoutes(store: Store) {
     if (!staffId) throw new HttpError(409, 'That time was just taken. Please pick another.');
     const appt = await createAppointment(store, { client, isNewClient: false, service, staffId, start: b.start, source: 'online', referralCode: b.referralCode, notes: b.notes });
     await finalizeBooking(store, appt, client);
+    // Meta: the booking, with the browser's event id so the two copies count once
+    await sendMetaEvent(store, {
+      name: 'Schedule',
+      tracking: readTracking(b.tracking),
+      url: pageUrl(b.url, `${config.siteUrl}/book/`),
+      request: requestInfo((h) => c.req.header(h)),
+      person: { email: client.email, phone: client.phone, first: client.first, last: client.last, id: client.id },
+      custom: { content_name: service.name, content_category: service.category, value: appt.price / 100, currency: 'USD' },
+    });
     return c.json(await describe(appt));
   });
 
@@ -192,7 +232,7 @@ export function publicRoutes(store: Store) {
 
   r.post('/memberships/:id/confirm', async (c) => {
     const m = await store.get<Membership>('memberships', c.req.param('id'));
-    const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string } }>();
+    const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string }; tracking?: unknown; url?: string }>();
     const client = await store.get<Client>('clients', b.clientId);
     if (!m || !client) throw bad('Something went wrong. Please start again.');
     client.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
@@ -201,6 +241,14 @@ export function publicRoutes(store: Store) {
     client.membership = { membershipId: m.id, since: nowIso(), status: 'active', subscriptionId: sub.id, periodStart: nowIso() };
     await store.put('clients', client);
     await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'membership', amount: m.price, tip: 0, method: 'card', status: 'paid', providerId: sub.id, simulated: !payments.live() });
+    await sendMetaEvent(store, {
+      name: 'Subscribe',
+      tracking: readTracking(b.tracking),
+      url: pageUrl(b.url, `${config.siteUrl}/join/`),
+      request: requestInfo((h) => c.req.header(h)),
+      person: { email: client.email, phone: client.phone, first: client.first, last: client.last, id: client.id },
+      custom: { content_name: m.name, value: m.price / 100, currency: 'USD', predicted_ltv: (m.price * 12) / 100 },
+    });
     return c.json({ ok: true, membership: m.name, price: money(m.price), card: `${client.card.brand} •• ${client.card.last4}` });
   });
 
@@ -216,7 +264,7 @@ export function publicRoutes(store: Store) {
 
   r.post('/packages/:id/confirm', async (c) => {
     const p = await store.get<Package>('packages', c.req.param('id'));
-    const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string } }>();
+    const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string }; tracking?: unknown; url?: string }>();
     const client = await store.get<Client>('clients', b.clientId);
     if (!p || !client) throw bad('Something went wrong. Please start again.');
     client.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
@@ -226,6 +274,14 @@ export function publicRoutes(store: Store) {
     client.packages = [...(client.packages ?? []), { packageId: p.id, boughtAt: nowIso(), expiresAt, remaining: Object.fromEntries(p.items.map((i) => [i.serviceId, i.quantity])) }];
     await store.put('clients', client);
     await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'package', amount: p.price, tip: 0, method: 'card', status: 'paid', providerId: charge.id, simulated: charge.simulated });
+    await sendMetaEvent(store, {
+      name: 'Purchase',
+      tracking: readTracking(b.tracking),
+      url: pageUrl(b.url, `${config.siteUrl}/join/`),
+      request: requestInfo((h) => c.req.header(h)),
+      person: { email: client.email, phone: client.phone, first: client.first, last: client.last, id: client.id },
+      custom: { content_name: p.name, content_type: 'product', value: p.price / 100, currency: 'USD' },
+    });
     return c.json({ ok: true, package: p.name, price: money(p.price), card: `${client.card.brand} •• ${client.card.last4}`, expiresAt });
   });
 

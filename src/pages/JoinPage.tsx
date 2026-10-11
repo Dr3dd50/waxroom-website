@@ -1,5 +1,6 @@
 // Joining a membership or buying a package: details, card, done.
 import { useEffect, useState } from 'react';
+import { attribution, trackConversion } from '../lib/tracking';
 import { CardForm, type CardSetup } from '../components/CardForm';
 import { api, cents } from '../lib/api';
 import { DetailsForm } from './BookPage';
@@ -64,7 +65,9 @@ export function JoinPage() {
                     submitLabel={kind === 'membership' ? `Join for ${cents(offer.price)} a month` : `Pay ${cents(offer.price)}`}
                     note={kind === 'membership' ? 'Billed monthly to this card. Cancel anytime by texting us before your next billing date.' : undefined}
                     onSaved={async (extra) => {
-                      const r = await api<{ card: string }>(`/public/${base}/${offer.id}/confirm`, { clientId: details.clientId, setupId: details.setup.setupId, ...extra });
+                      const a = attribution();
+                      const r = await api<{ card: string }>(`/public/${base}/${offer.id}/confirm`, { clientId: details.clientId, setupId: details.setup.setupId, tracking: a, url: location.href, ...extra });
+                      trackConversion(kind === 'membership' ? 'Subscribe' : 'Purchase', a, { content_name: offer.name, value: offer.price / 100, currency: 'USD' });
                       setDone(r);
                     }}
                   />

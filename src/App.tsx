@@ -13,6 +13,7 @@ import { groupForPage } from './content/services';
 import { GalleryPage } from './pages/GalleryPage';
 import { headFor, resolve } from './routes';
 import { gsap, handleHashLinks, ScrollTrigger, scrollToHash, startSmoothScroll } from './lib/motion';
+import { startTracking, trackView } from './lib/tracking';
 
 export default function App({ path }: { path: string }) {
   const route = resolve(path);
@@ -23,6 +24,9 @@ export default function App({ path }: { path: string }) {
   useEffect(() => {
     document.title = headFor(route).title;
     startSmoothScroll();
+    startTracking();
+    if (route.kind === 'group') trackView(route.group.label, 'umbrella');
+    if (route.kind === 'service') trackView(route.page.name, groupForPage(route.page.slug).label);
     const stopHashLinks = handleHashLinks();
     // Honey progress bar along the top edge.
     const bar = gsap.to('.progress', {

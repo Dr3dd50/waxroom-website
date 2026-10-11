@@ -46,7 +46,7 @@ export class WaxRoomStack extends Stack {
     });
     // Filled in by hand in the AWS console (or CLI) when the keys exist; nothing secret lives in the code.
     const appSecret = new secrets.Secret(this, 'AppKeys', {
-      description: 'The Wax Room: session secret, owner login, Stripe and Twilio keys',
+      description: 'The Wax Room: session secret, owner login, Stripe, Twilio and Meta keys',
       generateSecretString: {
         secretStringTemplate: JSON.stringify({
           OWNER_EMAIL: 'waxroomrichmond@gmail.com',
@@ -57,6 +57,8 @@ export class WaxRoomStack extends Stack {
           TWILIO_ACCOUNT_SID: '',
           TWILIO_AUTH_TOKEN: '',
           TWILIO_MESSAGING_SERVICE_SID: '',
+          META_CAPI_ACCESS_TOKEN: '',
+          META_TEST_EVENT_CODE: '',
         }),
         generateStringKey: 'SESSION_SECRET',
         passwordLength: 48,

@@ -11,7 +11,7 @@ import { business } from '../data';
 
 export const NATIVE = import.meta.env.VITE_BOOKING === 'native';
 
-type LinkProps = { href: string; target?: string; rel?: string };
+type LinkProps = { href: string; target?: string; rel?: string; 'data-book-service'?: string };
 const external = (href: string): LinkProps => ({ href, target: '_blank', rel: 'noopener' });
 
 /** What a Book button is for: a group (umbrella), the service page it's on, or one service. */
@@ -26,7 +26,8 @@ export function bookLink(t: BookTarget = {}): LinkProps {
   if (t.service) {
     if (NATIVE) return { href: `/book/?service=${encodeURIComponent(t.service)}` };
     const token = TOKENS.get(t.service.toLowerCase());
-    if (token) return { href: glossGeniusService(token) };
+    // tagged so the tap is reported to Meta as starting a booking (lib/tracking)
+    if (token) return { href: glossGeniusService(token), 'data-book-service': t.service };
   }
   const q = new URLSearchParams();
   if (t.group) q.set('group', t.group);

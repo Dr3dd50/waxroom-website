@@ -64,3 +64,46 @@ When Twilio's business-texting registration is approved and Stripe is set up:
 
 Until then every deploy uses the GlossGenius version: the stack refuses a
 `dist/` built with our booking unless `-c booking=native` is passed.
+
+## 4. Meta pixel and Conversions API
+
+Off until a pixel id is set. What gets reported:
+
+| Event | When | Sent from |
+| --- | --- | --- |
+| PageView | every page | browser |
+| ViewContent | an umbrella or service page | browser |
+| InitiateCheckout | a tap on a service that books on GlossGenius | browser + server, one event id |
+| Schedule | a booking confirmed on our own booking (after the switch) | browser + server, one event id |
+| Subscribe / Purchase | a membership / package bought on our site | browser + server, one event id |
+
+Visitors whose browser sends Global Privacy Control, or who opt out from the
+footer's "Your privacy choices", are never tracked (no pixel, no cookies, no
+server copy). Email, phone and names leave only as SHA-256 hashes. A server
+send that fails is kept and retried by the 15-minute scheduled run.
+
+Setup (business.facebook.com, the business portfolio that owns the ad account):
+
+1. **Find the right pixel.** Events Manager → Data sources. GlossGenius's
+   booking pages fire pixel `493010155397281`; if that's in your Events
+   Manager, it's yours: use it, so a visit to this site and the booking on
+   GlossGenius land in one pixel. Otherwise use your own pixel.
+2. Put its id in `src/data/tracking.json` (`metaPixelId`) and rebuild the site.
+   Pixel ids aren't secret.
+3. Give yourself **Full control** of the dataset (Settings → Users → People →
+   you → Assign assets → Datasets), or the next step's link stays grey.
+4. Events Manager → the pixel → **Settings → Conversions API → Set up direct
+   integration → Generate access token**. Not the "Gateway" wizard and not a
+   partner integration: both duplicate what this does.
+5. Put the token in the `AppKeys` secret as `META_CAPI_ACCESS_TOKEN`
+   (Secrets Manager → Edit; the console merges fields). While testing, also
+   set `META_TEST_EVENT_CODE` to the code on the pixel's **Test events** tab
+   (just the value, e.g. `TEST12345`).
+6. In the pixel's Settings turn **off** "Track events automatically without
+   code": it fires guessed events without event ids, which double-count.
+7. Optional: Settings → Traffic permissions → allow list `waxroomrichmond.com`.
+8. Check: with Test events open, tap a service to book on the site. Expect
+   InitiateCheckout from **Browser and Server**, marked **Deduplicated**.
+9. **Remove `META_TEST_EVENT_CODE`** from the secret. From here events count.
+10. After about two weeks, read Event Match Quality in Events Manager.
+
