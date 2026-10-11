@@ -222,8 +222,10 @@ function handler(event) {
 
     if (zone && props.attachDomains) {
       for (const [id, name, dist] of [['Apex', domain, site], ['Www', www, site], ['StaffHost', staffHost, staff]] as const) {
-        new route53.ARecord(this, `${id}A`, { zone, recordName: name, target: route53.RecordTarget.fromAlias(new r53targets.CloudFrontTarget(dist)) });
-        new route53.AaaaRecord(this, `${id}Aaaa`, { zone, recordName: name, target: route53.RecordTarget.fromAlias(new r53targets.CloudFrontTarget(dist)) });
+        // deleteExisting: the domain's A/AAAA records point at the current site; replace them in
+        // place (email and other record types are left alone)
+        new route53.ARecord(this, `${id}A`, { zone, recordName: name, target: route53.RecordTarget.fromAlias(new r53targets.CloudFrontTarget(dist)), deleteExisting: true });
+        new route53.AaaaRecord(this, `${id}Aaaa`, { zone, recordName: name, target: route53.RecordTarget.fromAlias(new r53targets.CloudFrontTarget(dist)), deleteExisting: true });
       }
     }
 
