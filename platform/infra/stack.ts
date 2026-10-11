@@ -76,6 +76,8 @@ export class WaxRoomStack extends Stack {
         format: OutputFormat.ESM,
         target: 'node22',
         banner: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
+        // bundle the AWS SDK too, rather than rely on the copy (and version) the Lambda runtime ships
+        externalModules: [],
       },
       environment: {
         TABLE_NAME: table.tableName,
