@@ -53,6 +53,10 @@ const T = {
 };
 
 const POT = { x: 1440, y: 150 };
+// Below the leg, in close-up coordinates (the wide shot uses the same numbers, shrunk):
+const SHELF_W = 374; // the cart's top shelf under the warmer
+const SHEET_TOP = 600, BED_TOP = 756, BED_BOTTOM = 916; // sheet, then the black bed
+const EMBOSS = P / 5, EMBOSS_Y = 836; // the bed's embossed texture (repeats with the pan)
 
 function warmer(ctx, t) {
   shape(ctx, rrect(1318, 120, 244, 190, 26), t, { fillColor: '#FFFFFF', w: 5, seed: 200 });
@@ -93,17 +97,43 @@ function stripShape(a, b, lip) {
   return [...top, ...cap, ...bot.reverse(), ...tail];
 }
 
+/** The leg's hairs in close-up coordinates, panned by `pan`, skipping waxed world x. */
+function hairs(ctx, t, pan, waxed, span = 1700, w = 2.4) {
+  for (let wx = Math.floor((pan - 60) / HAIR_STEP) * HAIR_STEP; wx < pan + span; wx += HAIR_STEP) {
+    if (waxed(wx)) continue;
+    const col = (((Math.round(wx / HAIR_STEP) % 20) + 20) % 20);
+    for (let row = 0; row < 7; row++) {
+      const r = hash(col, row);
+      const x = wx - pan + r * 16;
+      const y = lerp(yTop(wx) + 34, yBot(wx) - 34, (row + 0.5) / 7) + (hash(row, col) - 0.5) * 22;
+      // each hair: a short curved stroke leaning with the growth (toward the ankle, right)
+      const len = 13 + hash(col + 3, row) * 9;
+      const a = 0.45 + (hash(col, row + 5) - 0.5) * 0.5;
+      const bend = (hash(row + 9, col) - 0.5) * 0.9;
+      const mid = [x + Math.cos(a) * len * 0.5, y + Math.sin(a) * len * 0.5];
+      const end = [x + Math.cos(a + bend) * len, y + Math.sin(a + bend) * len];
+      stroke(ctx, [[x, y], mid, end], 1, t, { w, seed: col * 13 + row });
+    }
+  }
+}
+
 function drawClose(ctx, t) {
   const pan = P * seg(t, T.pan[0], T.pan[1], ease.inOut);
   const sx = (wx) => wx - pan; // world → screen
 
   ctx.save();
-  // towel on the treatment bed
-  fill(ctx, [[0, 610], [1600, 610], [1600, 800], [0, 800]], '#FFFFFF');
-  stroke(ctx, line(0, 800, 1600, 800, 20), 1, t, { w: 4, color: MUTED, seed: 1 });
+  // the cart's top shelf under the warmer, behind the leg
+  shape(ctx, rrect(POT.x - SHELF_W / 2, 306, SHELF_W, 34, 14), t, { fillColor: '#D8D2CA', w: 5, seed: 3 });
+  // the sheet over the black waxing bed (embossed texture slides with the leg)
+  fill(ctx, [[0, SHEET_TOP], [1600, SHEET_TOP], [1600, BED_TOP], [0, BED_TOP]], '#FFFFFF');
+  fill(ctx, [[0, BED_TOP], [1600, BED_TOP], [1600, 900], [0, 900]], BED_BLACK);
+  for (let k = Math.floor(pan / EMBOSS) - 1; k * EMBOSS < pan + 1700; k++) {
+    stroke(ctx, ellipse(sx(k * EMBOSS + 40), EMBOSS_Y, 36, 22), 1, t, { w: 5, color: '#332E2A', seed: 4 + (k & 3) });
+  }
+  stroke(ctx, line(0, BED_TOP, 1600, BED_TOP, 20), 1, t, { w: 6, seed: 1 });
   for (let k = -1; k < 5; k++) {
     const fx = sx(k * P + 140);
-    stroke(ctx, spline([[fx, 690], [fx + 40, 740], [fx + 30, 790]], 4), 1, t, { w: 3, color: MUTED, seed: 2 + ((k + 10) % 3) });
+    stroke(ctx, spline([[fx, 676], [fx + 40, 712], [fx + 30, 748]], 4), 1, t, { w: 3, color: MUTED, seed: 2 + ((k + 10) % 3) });
   }
 
   // the leg (world-space contour, periodic every P)
@@ -120,24 +150,10 @@ function drawClose(ctx, t) {
   // where the strip is being pulled from (world x); hair inside the section
   // disappears behind the peel, and everything left of the section is smooth
   const peel = lerp(X1, X0, seg(t, T.pull[0], T.pull[1], ease.in));
-  for (let wx = Math.floor((pan - 60) / HAIR_STEP) * HAIR_STEP; wx < pan + 1700; wx += HAIR_STEP) {
+  hairs(ctx, t, pan, (wx) => {
     const inSection = wx >= X0 && wx <= X1;
-    const waxed = wx < X0 || (inSection && wx >= peel && t >= T.pull[0]) || (inSection && t >= T.pull[1]);
-    if (waxed) continue;
-    const col = (((Math.round(wx / HAIR_STEP) % 20) + 20) % 20);
-    for (let row = 0; row < 7; row++) {
-      const r = hash(col, row);
-      const x = sx(wx) + r * 16;
-      const y = lerp(yTop(wx) + 34, yBot(wx) - 34, (row + 0.5) / 7) + (hash(row, col) - 0.5) * 22;
-      // each hair: a short curved stroke leaning with the growth (toward the ankle, right)
-      const len = 13 + hash(col + 3, row) * 9;
-      const a = 0.45 + (hash(col, row + 5) - 0.5) * 0.5;
-      const bend = (hash(row + 9, col) - 0.5) * 0.9;
-      const mid = [x + Math.cos(a) * len * 0.5, y + Math.sin(a) * len * 0.5];
-      const end = [x + Math.cos(a + bend) * len, y + Math.sin(a + bend) * len];
-      stroke(ctx, [[x, y], mid, end], 1, t, { w: 2.4, seed: col * 13 + row });
-    }
-  }
+    return wx < X0 || (inSection && wx >= peel && t >= T.pull[0]) || (inSection && t >= T.pull[1]);
+  });
 
   // ── the wax strip ──
   const applied = seg(t, T.apply[0], T.apply[1], ease.inOut);
@@ -239,57 +255,76 @@ function drawClose(ctx, t) {
   void clamp;
 }
 
-// ── wide shot: the whole leg on the treatment bed, warmer on a cart at the foot ──
-// Laid out so the close-up's frame (1600×900 shrunk by ZOOM around TARGET) lands
-// exactly on the shin, and the warmer in the close-up's corner lands on the cart.
+// ── wide shot: the whole leg on the treatment bed, warmer on a cart behind it ──
+// The close-up is the 1600×900 frame shrunk by ZOOM around TARGET. Everything inside
+// that patch is drawn from the close-up's own geometry (leg outline, sheet, bed, cart
+// shelf, warmer), so zooming in and out reads as one camera move, not two pictures.
+// The patch spans the shin, knee to ankle; thigh and foot lie outside it.
 const ZOOM = 2.4;
-// Laid out around AT, then the whole wide shot is shifted right by DX so the leg sits mid-frame.
-const AT = [700, 470], DX = 150;
+const L = 160; // the patch's left edge in the wide shot (just below the knee)
+const AT = [L + 800 / ZOOM, 470];
+const R = AT[0] + 800 / ZOOM; // right edge, short of the ankle
+const DX = 190; // the whole wide shot shifts right so the leg sits mid-frame
 const TARGET = [AT[0] + DX, AT[1]];
-const toWide = ([x, y]) => [AT[0] + (x - 800) / ZOOM, AT[1] + (y - 450) / ZOOM];
+const wx = (x) => AT[0] + (x - 800) / ZOOM; // close-up → wide
+const wy = (y) => AT[1] + (y - 450) / ZOOM;
+const cx = (x) => 800 + (x - AT[0]) * ZOOM; // wide → close-up
 
 function drawWide(ctx, t) {
   ctx.save();
   ctx.translate(DX, 0);
-  const top = toWide([800, yTop(800)])[1], bot = toWide([800, yBot(800)])[1];
-  const potBase = toWide([1440, 310]);
+  const potBase = [wx(POT.x), wy(310)];
+  const bedBot = wy(BED_BOTTOM);
 
-  // floor, cart at the foot of the bed, the bed itself with its towel
+  // floor; the cart (behind the bed); the bed with its sheet
   stroke(ctx, line(-DX - 40, 780, 1640 - DX, 780, 30), 1, t, { w: 4, color: MUTED });
-  shape(ctx, rrect(potBase[0] - 78, potBase[1] - 2, 156, 14, 6), t, { fillColor: '#D8D2CA', w: 4 });
-  shape(ctx, rrect(potBase[0] - 78, 640, 156, 12, 6), t, { fillColor: '#D8D2CA', w: 4 });
+  shape(ctx, rrect(potBase[0] - SHELF_W / 2 / ZOOM, wy(306), SHELF_W / ZOOM, 34 / ZOOM, 6), t, { fillColor: '#D8D2CA', w: 4 });
   stroke(ctx, line(potBase[0] - 66, potBase[1] + 12, potBase[0] - 66, 772, 6), 1, t, { w: 5 });
   stroke(ctx, line(potBase[0] + 66, potBase[1] + 12, potBase[0] + 66, 772, 6), 1, t, { w: 5 });
   shape(ctx, ellipse(potBase[0] - 66, 774, 9, 9), t, { fillColor: '#2A2622', w: 3 });
   shape(ctx, ellipse(potBase[0] + 66, 774, 9, 9), t, { fillColor: '#2A2622', w: 3 });
-  shape(ctx, rrect(-DX - 60, bot + 44, 1000 + DX, 66, 20), t, { fillColor: BED_BLACK, w: 5 }); // the salon's black waxing bed
-  for (let x = -DX - 30; x < 920; x += 44) shape(ctx, ellipse(x + ((x * 7) % 9), bot + 77, 15, 9), t, { w: 2.5, color: '#332E2A' });
-  stroke(ctx, line(90, bot + 110, 90, 780, 4), 1, t, { w: 6 });
-  stroke(ctx, line(870, bot + 110, 870, 780, 4), 1, t, { w: 6 });
-  shape(ctx, spline([[-DX - 60, bot - 2], [950, bot - 2], [960, bot + 46], [-DX - 60, bot + 46]], 4), t, { fillColor: '#FFFFFF', w: 4 });
+  const bedL = -DX - 60, bedR = 960;
+  shape(ctx, rrect(bedL, wy(BED_TOP), bedR - bedL, bedBot - wy(BED_TOP), 14), t, { fillColor: BED_BLACK, w: 5 }); // the salon's black waxing bed
+  for (let k = Math.floor(cx(bedL) / EMBOSS); wx(k * EMBOSS + 40) < bedR - 20; k++) {
+    stroke(ctx, ellipse(wx(k * EMBOSS + 40), wy(EMBOSS_Y), 36 / ZOOM, 22 / ZOOM), 1, t, { w: 2.5, color: '#332E2A' });
+  }
+  stroke(ctx, line(90, bedBot, 90, 780, 4), 1, t, { w: 6 });
+  stroke(ctx, line(880, bedBot, 880, 780, 4), 1, t, { w: 6 });
+  fill(ctx, [[bedL, wy(SHEET_TOP)], [bedR - 10, wy(SHEET_TOP)], [bedR - 10, wy(BED_TOP)], [bedL, wy(BED_TOP)]], '#FFFFFF');
+  stroke(ctx, line(bedL, wy(BED_TOP), bedR, wy(BED_TOP), 20), 1, t, { w: 3 });
   ctx.save();
-  const origin = toWide([0, 0]);
-  ctx.translate(origin[0], origin[1]);
+  ctx.translate(wx(0), wy(0));
   ctx.scale(1 / ZOOM, 1 / ZOOM);
   warmer(ctx, t);
   spatula(ctx, t, POT.x - 6, POT.y - 4, 0.38, 1);
   ctx.restore();
 
-  // the leg, side view: thigh at the left, knee, shin, ankle, foot with toes up at the right.
-  // At the target the shin spans exactly the height the close-up shows.
-  const legTop = spline([[-DX - 60, top - 74], [160, top - 56], [300, top - 30], [380, top - 4], [560, top], [700, top], [800, top + 6], [856, top + 22], [880, top + 8], [900, top - 70], [918, top - 92], [936, top - 70], [944, bot - 30], [936, bot]], 8);
-  const legBot = spline([[936, bot], [860, bot + 2], [800, bot - 6], [700, bot], [600, bot + 4], [420, bot + 6], [200, bot + 8], [-DX - 60, bot + 8]], 8);
+  // the leg, side view: thigh off to the left, knee, shin (the close-up's outline,
+  // sampled), ankle, foot with toes up at the right
+  const shinTop = [], shinBot = [];
+  for (let x = L; x <= R + 0.1; x += 8) {
+    shinTop.push([x, wy(yTop(cx(x)))]);
+    shinBot.push([x, wy(yBot(cx(x)))]);
+  }
+  const [lt, lb] = [shinTop[0][1], shinBot[0][1]];
+  const [rt, rb] = [shinTop[shinTop.length - 1][1], shinBot[shinBot.length - 1][1]];
+  const legTop = [...spline([[-DX - 60, lt - 70], [L - 150, lt - 46], [L - 60, lt - 12], [L, lt]], 8), ...shinTop.slice(1), ...spline([[R, rt], [R + 30, rt + 8], [R + 52, rt + 20], [R + 72, rt + 6], [R + 90, rt - 70], [R + 108, rt - 92], [R + 126, rt - 70], [R + 134, rb - 30], [R + 126, rb]], 8).slice(1)];
+  const legBot = [...spline([[R + 126, rb], [R + 60, rb + 2], [R, rb]], 8), ...shinBot.slice().reverse().slice(1), ...spline([[L, lb], [L - 80, lb + 4], [-DX - 60, lb + 8]], 8).slice(1)];
   fill(ctx, [...legTop, ...legBot], SKIN);
-  fill(ctx, [...legBot.map(([x, y]) => [x, y - 26]), ...legBot.slice().reverse()], SKIN_SHADE, 0.55);
+  fill(ctx, [...legBot.map(([x, y]) => [x, y - 64 / ZOOM]), ...legBot.slice().reverse()], SKIN_SHADE, 0.55);
   stroke(ctx, legTop, 1, t, { w: 5 });
   stroke(ctx, legBot, 1, t, { w: 5 });
-  stroke(ctx, spline([[350, top + 40], [366, top + 62], [356, top + 86]], 4), 1, t, { w: 3, color: MUTED }); // knee
-  stroke(ctx, spline([[852, top + 40], [864, top + 64]], 3), 1, t, { w: 3, color: MUTED }); // ankle bone
-  // unwaxed hair from the section onward, smooth skin before it
-  for (let x = Math.round(toWide([X0, 0])[0]); x < 850; x += 8) {
-    const y0 = lerp(top + 10, bot - 10, ((x * 37) % 100) / 100);
-    stroke(ctx, [[x, y0], [x + 3, y0 + 2], [x + 6, y0 + 4]], 1, t, { w: 1.8 });
-  }
+  stroke(ctx, spline([[L - 26, lt + 40], [L - 10, lt + 62], [L - 20, lt + 86]], 4), 1, t, { w: 3, color: MUTED }); // knee
+  stroke(ctx, spline([[R + 48, rt + 40], [R + 60, rt + 64]], 3), 1, t, { w: 3, color: MUTED }); // ankle bone
+  // the close-up's own hairs (unwaxed from the section onward), shrunk to the wide shot
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(L, 0, R - L + 20, 900);
+  ctx.clip();
+  ctx.translate(wx(0), wy(0));
+  ctx.scale(1 / ZOOM, 1 / ZOOM);
+  hairs(ctx, t, 0, (x) => x < X0, 1700, 4);
+  ctx.restore();
   ctx.restore();
 }
 

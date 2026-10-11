@@ -33,8 +33,9 @@ export function zoomLoop(ctx, t, o) {
   ctx.translate(-tx, -ty);
   o.wide(ctx, t);
 
-  // The close-up fades in through a soft oval that widens to cover the frame,
-  // so it never shows as a hard-edged box over the wide shot.
+  // The close-up fades in with soft edges on all four sides, so neither its rectangle
+  // nor the wide shot behind it shows: the feather is wide while the camera travels
+  // and shrinks to nothing exactly as the close-up fills the frame.
   const a = clamp((k - 0.55) / 0.45);
   if (a > 0) {
     const close = closeLayer(ctx.canvas);
@@ -44,16 +45,19 @@ export function zoomLoop(ctx, t, o) {
     c.fillStyle = PAPER;
     c.fillRect(0, 0, W, H);
     o.close(c, closeT);
-    if (a < 1) {
-      const r = lerp(120, 1300, ease.inOut(a));
+    const f = 460 * (1 - ease.inOut(a)); // feather width, close-up pixels
+    if (f > 0.5) {
       c.globalCompositeOperation = 'destination-in';
-      c.translate(W / 2, H / 2);
-      c.scale(1, H / W);
-      const g = c.createRadialGradient(0, 0, r * 0.55, 0, 0, r);
-      g.addColorStop(0, 'rgba(0,0,0,1)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = g;
-      c.fillRect(-W, -W, 2 * W, 2 * W);
+      for (const [x1, y1, len] of [[W, 0, W], [0, H, H]]) {
+        const g = c.createLinearGradient(0, 0, x1, y1);
+        const e = Math.min(f / len, 0.5);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(e, 'rgba(0,0,0,1)');
+        g.addColorStop(1 - e, 'rgba(0,0,0,1)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = g;
+        c.fillRect(0, 0, W, H);
+      }
     }
     ctx.save();
     ctx.globalAlpha *= ease.out(a);
