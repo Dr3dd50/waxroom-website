@@ -124,8 +124,8 @@ export function paper(ctx) {
 export const TAU = Math.PI * 2;
 export const GLOVE = '#9DBCF2';
 export const WOOD = '#E9CF9E';
-export const SKIN = '#F3D9C4';
-export const SKIN_SHADE = '#E7C3A8';
+export const SKIN = '#C68E63';
+export const SKIN_SHADE = '#A9714A';
 export const PLASMA = '#9B7BFF';
 
 /** Solid fill of a closed point list. */
