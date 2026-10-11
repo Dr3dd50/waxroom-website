@@ -11,12 +11,13 @@ import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 
-// New packages since the last `npm install` (after a git pull, say): install them first,
-// or the sites start without them.
+// New packages since the last install (after a git pull, say): install them first, or
+// the sites start without them. `npm ci` installs exactly what package-lock.json lists
+// and never rewrites it, so the next git pull isn't blocked by a local lockfile change.
 const lock = resolve(root, 'package-lock.json'), installed = resolve(root, 'node_modules/.package-lock.json');
 if (!existsSync(installed) || statSync(lock).mtimeMs > statSync(installed).mtimeMs) {
-  console.log('Packages changed since the last install: running npm install…');
-  const r = spawnSync('npm install', { cwd: root, stdio: 'inherit', shell: true });
+  console.log('Packages changed since the last install: running npm ci…');
+  const r = spawnSync('npm ci', { cwd: root, stdio: 'inherit', shell: true });
   if (r.status) process.exit(r.status);
   if (existsSync(installed)) utimesSync(installed, new Date(), new Date()); // installed as of now, even if npm changed nothing
 }
