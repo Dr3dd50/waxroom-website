@@ -46,27 +46,27 @@ export function Footer({ bookBar = true }: { bookBar?: boolean }) {
   );
 }
 
-/** Opt out of ad tracking (Meta pixel and its server copy) in this browser. Hidden until a pixel is set up. */
+/** Opt out of tracking (Meta pixel, its server copy, and PostHog) in this browser. Hidden until one is set up. */
 function PrivacyChoices() {
   const state = privacyState();
   if (state === 'not-set-up') return null;
   return (
     <details className="footer__policy">
       <summary>Your privacy choices</summary>
-      <p>We use Meta's pixel to see which of our ads bring people in. We never sell your information.</p>
+      <p>We use Meta's pixel to see which of our ads bring people in, and PostHog to see how the site is used. We never sell your information.</p>
       {state === 'browser-signal' ? (
         <p>Your browser sends a Global Privacy Control signal, so we don't track this browser.</p>
       ) : state === 'opted-out' ? (
         <p>
           You've opted out on this browser.{' '}
           <button type="button" className="linkish" onClick={() => setOptOut(false)}>
-            Turn ad tracking back on
+            Turn tracking back on
           </button>
         </p>
       ) : (
         <p>
           <button type="button" className="linkish" onClick={() => setOptOut(true)}>
-            Opt out of ad tracking on this browser
+            Opt out of tracking on this browser
           </button>
         </p>
       )}

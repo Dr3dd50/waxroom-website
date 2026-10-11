@@ -1,8 +1,10 @@
-// Meta pixel, owned in one place. Every fbq call on the site goes through here.
+// Visitor tracking, owned in one place: the Meta pixel (every fbq call on the site
+// goes through here) and PostHog product analytics.
 //
-// - Off until a pixel id is set in src/data/tracking.json (or VITE_META_PIXEL_ID).
+// - Each is off until configured in src/data/tracking.json (or VITE_META_PIXEL_ID).
 // - No banner (US business, opt-out law): visitors whose browser sends Global Privacy
-//   Control, or who opt out from the footer link, are never tracked, browser or server.
+//   Control, or who opt out from the footer link, are never tracked, browser or server,
+//   by either tool.
 // - Writes Meta's _fbp / _fbc cookies itself, before fbevents.js loads, so a click id
 //   from an ad survives even when an ad-blocker stops the pixel; the server copy of each
 //   conversion then still matches the visitor.
@@ -11,6 +13,7 @@
 import trackingConfig from '../data/tracking.json';
 
 const PIXEL_ID: string = import.meta.env.VITE_META_PIXEL_ID || trackingConfig.metaPixelId;
+const POSTHOG = trackingConfig.posthog;
 const OPT_OUT = 'wr_tracking_off';
 const DEBUG = 'wr_tracking_debug'; // set to 1 in localStorage to try it on localhost
 
@@ -45,7 +48,7 @@ const store = {
 
 /** Why tracking is on or off for this visitor. */
 export function privacyState(): 'on' | 'opted-out' | 'browser-signal' | 'not-set-up' {
-  if (!PIXEL_ID) return 'not-set-up';
+  if (!PIXEL_ID && !POSTHOG.key) return 'not-set-up';
   if (typeof navigator !== 'undefined' && navigator.globalPrivacyControl) return 'browser-signal';
   if (store.get(OPT_OUT) === '1') return 'opted-out';
   return 'on';
@@ -117,15 +120,36 @@ function loadPixel() {
   document.head.appendChild(s);
 }
 
+type PostHog = typeof import('posthog-js').default;
+let posthog: PostHog | null = null;
+const queued: [string, Record<string, unknown>][] = [];
+/** A product-analytics event; held until PostHog has loaded. */
+function capture(event: string, props: Record<string, unknown> = {}) {
+  if (posthog) posthog.capture(event, props);
+  else if (POSTHOG.key && allowed()) queued.push([event, props]);
+}
+
+/** PostHog, loaded as its own file so pages don't carry it for visitors who opted out. */
+function startPostHog() {
+  import('posthog-js').then(({ default: ph }) => {
+    ph.init(POSTHOG.key, {
+      api_host: POSTHOG.host,
+      defaults: '2025-05-24', // pageviews and page leaves, including the booking steps
+      person_profiles: 'identified_only',
+      session_recording: { maskAllInputs: true }, // names, phones, emails and cards never recorded
+    });
+    posthog = ph;
+    for (const [e, p] of queued.splice(0)) ph.capture(e, p);
+  }, () => {});
+}
+
 let started = false;
-/** Once per page load: cookies, pixel, PageView, and the Book-tap listener. */
+let metaStarted = false;
+/** Once per page load: PostHog, then cookies, pixel, PageView, and the Book-tap listener. */
 export function startTracking() {
   if (started || !allowed()) return;
   started = true;
-  ensureMetaCookies();
-  loadPixel();
-  window.fbq!('init', PIXEL_ID);
-  window.fbq!('track', 'PageView');
+  if (POSTHOG.key) startPostHog();
   // A tap on a service that books on GlossGenius: the visitor leaves the site, so the
   // event goes out now, from the browser and (by beacon, which survives the page
   // unloading) from our server.
@@ -133,12 +157,18 @@ export function startTracking() {
     const a = (e.target as Element).closest?.('a[data-book-service]');
     if (a) trackBookTap(a.getAttribute('data-book-service') ?? '');
   });
+  if (!PIXEL_ID) return;
+  metaStarted = true;
+  ensureMetaCookies();
+  loadPixel();
+  window.fbq!('init', PIXEL_ID);
+  window.fbq!('track', 'PageView');
 }
 
 const viewed = new Set<string>();
 /** A service or umbrella page was viewed (once per page load, however often it's called). */
 export function trackView(name: string, category: string) {
-  if (!started || !name || viewed.has(name)) return;
+  if (!metaStarted || !name || viewed.has(name)) return;
   viewed.add(name);
   window.fbq?.('track', 'ViewContent', { content_name: name, content_category: category });
 }
@@ -147,7 +177,7 @@ export type Attribution = { consent: 'allowed' | 'denied'; fbp?: string; fbc?: s
 
 /** Call once per attempt and send it with the request as `tracking`; the server reuses the event id. */
 export function attribution(): Attribution {
-  if (!allowed()) return { consent: 'denied' };
+  if (!allowed() || !PIXEL_ID) return { consent: 'denied' };
   const out: Attribution = { consent: 'allowed' };
   const fbp = readCookie('_fbp'), fbc = readCookie('_fbc'), id = newEventId();
   if (fbp) out.fbp = fbp;
@@ -157,14 +187,17 @@ export function attribution(): Attribution {
 }
 
 /** After the server accepted it, with the same attribution: Meta pairs the two copies. */
+const PRODUCT_EVENT = { Schedule: 'booking confirmed', Subscribe: 'membership joined', Purchase: 'package bought' } as const;
 export function trackConversion(name: 'Schedule' | 'Subscribe' | 'Purchase', a: Attribution, data: Record<string, unknown>) {
-  if (!started || !a.eventId) return; // a browser-only copy would count on its own
+  if (started) capture(PRODUCT_EVENT[name], data);
+  if (!metaStarted || !a.eventId) return; // a browser-only Meta copy would count on its own
   window.fbq?.('track', name, data, { eventID: a.eventId });
 }
 
 function trackBookTap(service: string) {
+  capture('booking started', { service, booking_site: 'glossgenius' });
   const a = attribution();
-  if (!started || !a.eventId) return;
+  if (!metaStarted || !a.eventId) return;
   window.fbq?.('track', 'InitiateCheckout', { content_name: service, content_category: 'booking' }, { eventID: a.eventId });
   const body = JSON.stringify({ event: 'InitiateCheckout', tracking: a, url: location.href, service });
   try {
@@ -177,6 +210,7 @@ function trackBookTap(service: string) {
 /** The footer's opt-out: stops the pixel and removes Meta's cookies from this browser. */
 export function setOptOut(off: boolean) {
   store.set(OPT_OUT, off ? '1' : null);
+  if (off) posthog?.opt_out_capturing();
   if (off) {
     for (const name of ['_fbp', '_fbc']) {
       document.cookie = `${name}=; path=/; max-age=0${cookieDomain()}`;

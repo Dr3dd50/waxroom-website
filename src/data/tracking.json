@@ -1,3 +1,7 @@
 {
-  "metaPixelId": ""
+  "metaPixelId": "",
+  "posthog": {
+    "key": "phc_nYCgwevBkfFWNGdDK5xtNqGZben6wYmNaV8kM5FGRTuy",
+    "host": "https://us.i.posthog.com"
+  }
 }
