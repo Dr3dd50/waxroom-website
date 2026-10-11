@@ -62,6 +62,16 @@ export function spline(points, per = 12) {
 export const translate = (pts, dx, dy) => pts.map(([x, y]) => [x + dx, y + dy]);
 
 // ── drawing ─────────────────────────────────────────────────────────────────
+// Pen width multiplier. The zoom camera sets it to 1/zoom while it draws the wide
+// shot, so lines keep their weight on screen as the camera pushes in (the drawing
+// gains detail rather than its strokes swelling into bars).
+let LINE = 1;
+/** Set the pen width multiplier; returns the previous one. */
+export function lineScale(k) {
+  const prev = LINE;
+  LINE = k;
+  return prev;
+}
 /** Draw the first `p` (0–1) of a path as a pen line, optionally dashed. (`t` and `seed` are kept for call-site symmetry.) */
 export function stroke(ctx, pts, p, t, { w = 6, color = INK, alpha = 1, dash } = {}) {
   if (p <= 0 || pts.length < 2) return;
@@ -71,7 +81,7 @@ export function stroke(ctx, pts, p, t, { w = 6, color = INK, alpha = 1, dash } =
   ctx.save();
   ctx.globalAlpha *= alpha;
   ctx.strokeStyle = color;
-  ctx.lineWidth = w;
+  ctx.lineWidth = w * LINE;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   if (dash) ctx.setLineDash(dash);

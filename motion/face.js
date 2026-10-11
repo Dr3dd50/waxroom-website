@@ -37,6 +37,8 @@ export const BROW_L = spline([[676, 410], [712, 398], [758, 404]], 5);
 export const BROW_R = spline([[842, 404], [888, 398], [924, 410]], 5);
 export const EYE_L = spline([[680, 448], [704, 460], [736, 462], [760, 452]], 6);
 export const EYE_R = spline([[840, 452], [864, 462], [896, 460], [920, 448]], 6);
+/** Under-eye gel pad for lash work: its top edge follows the right eye's lash line. */
+export const PAD_R = spline([[836, 455], [864, 464], [896, 462], [924, 450], [946, 472], [920, 504], [872, 514], [838, 500], [830, 476], [836, 455]], 6);
 export const NOSE = spline([[790, 432], [784, 500], [776, 548]], 5);
 export const NOSTRILS = [
   spline([[766, 556], [780, 566], [794, 562]], 4),
@@ -101,6 +103,8 @@ export function drawClient(ctx, t, { underEyePad = false, lines = true, bed = fa
   shape(ctx, BAND, t, { fillColor: '#FFFFFF', w: 5, seed: 27 });
   stroke(ctx, BROW_L, 1, t, { w: 7, seed: 28 });
   stroke(ctx, BROW_R, 1, t, { w: 7, seed: 29 });
+  // the lash artist's gel pad sits right under the lash line, the lashes lying over it
+  if (underEyePad) shape(ctx, PAD_R, t, { fillColor: '#FFFFFF', w: 3, seed: 90 });
   [EYE_L, EYE_R].forEach((eye, e) => {
     stroke(ctx, eye, 1, t, { w: 5, seed: 30 + e });
     for (let i = 0; i < 7; i++) {
@@ -117,8 +121,4 @@ export function drawClient(ctx, t, { underEyePad = false, lines = true, bed = fa
   stroke(ctx, LIPS_BOT, 1, t, { w: 4, seed: 38 });
   if (lines) LINES.forEach((l, i) => stroke(ctx, l, 1, t, { w: 3, color: MUTED, seed: 60 + i }));
 
-  if (underEyePad) {
-    const pad = spline([[836, 470], [870, 478], [910, 474], [938, 458], [944, 478], [918, 506], [872, 514], [836, 500], [830, 484], [836, 470]], 6);
-    shape(ctx, pad, t, { fillColor: '#FFFFFF', w: 3, seed: 90 });
-  }
 }

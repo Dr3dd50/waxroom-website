@@ -6,7 +6,7 @@
 // 1600×900 frame shrunk by `zoom` around `target`) and fades in as the camera
 // arrives, so the two read as one continuous picture.
 
-import { W, H, PAPER, clamp, ease, lerp } from './doodle.js';
+import { W, H, PAPER, clamp, ease, lerp, lineScale } from './doodle.js';
 
 /**
  * @param {object} o
@@ -17,6 +17,8 @@ import { W, H, PAPER, clamp, ease, lerp } from './doodle.js';
  * @param {(ctx, t) => void} o.wide   draws the wide shot (static: it must look the same at both ends)
  * @param {(ctx, t) => void} o.close  draws the close-up loop (its t=0 and t=closeDuration must match)
  * @param {number[]} [o.times]       [zoomInStart, zoomInEnd, zoomOutStart, zoomOutEnd]
+ * @param {number} [o.fadeFrom]     how far into the zoom (0–1) the close-up starts to show; deep
+ *                                  zooms start sooner, before the wide shot's outlines swell
  */
 export function zoomLoop(ctx, t, o) {
   const [inA, inB, outA, outB] = o.times ?? [0.4, 1.6, o.duration - 1.4, o.duration - 0.3];
@@ -31,12 +33,16 @@ export function zoomLoop(ctx, t, o) {
   ctx.translate(sx, sy);
   ctx.scale(s, s);
   ctx.translate(-tx, -ty);
+  // pen lines hold their on-screen weight while the camera pushes in
+  const pen = lineScale(1 / s);
   o.wide(ctx, t);
+  lineScale(pen);
 
   // The close-up fades in with soft edges on all four sides, so neither its rectangle
   // nor the wide shot behind it shows: the feather is wide while the camera travels
   // and shrinks to nothing exactly as the close-up fills the frame.
-  const a = clamp((k - 0.55) / 0.45);
+  const from = o.fadeFrom ?? 0.55;
+  const a = clamp((k - from) / (1 - from));
   if (a > 0) {
     const close = closeLayer(ctx.canvas);
     const c = close.getContext('2d');

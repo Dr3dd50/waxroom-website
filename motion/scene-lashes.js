@@ -14,7 +14,7 @@ import {
   stroke, fill, shape, spline, line, bezier, lerp, seg, ease, write, rrect,
 } from './doodle.js';
 import { zoomLoop } from './camera.js';
-import { drawClient } from './face.js';
+import { drawClient, EYE_R } from './face.js';
 
 // The close-up's own loop; the full video adds a zoom in and out around it.
 const CLOSE = 8;
@@ -32,10 +32,29 @@ const T = {
   pan: [5.2, 7.5],
 };
 
-// Gentle waviness repeats every S, the distance panned per loop, so the seam lines up.
-const lashY = (wx) => 360 + 3 * Math.sin((TAU * wx) / S);
-const lidCrease = (wx) => 170 + 4 * Math.sin((TAU * wx) / S + 1);
-const padTop = (wx) => lashY(wx) + 26;
+// ── where the close-up sits on the wide shot ──
+// The camera frames only the middle of her right eye (the close-up is the 1600×900
+// frame shrunk by ZOOM around TARGET), so the lash line crosses the whole close-up
+// and curves exactly as the eye does in the wide shot.
+const ZOOM = 33;
+const EYE_X = 880; // centre of the framed stretch of eye, wide-shot x
+/** The right eye's lash line in the wide shot (y at wide x), from the face drawing. */
+function eyeY(x) {
+  for (let i = 1; i < EYE_R.length; i++) {
+    const [x0, y0] = EYE_R[i - 1], [x1, y1] = EYE_R[i];
+    if (x <= x1) return lerp(y0, y1, (x - x0) / (x1 - x0 || 1));
+  }
+  return EYE_R[EYE_R.length - 1][1];
+}
+const TARGET = [EYE_X, eyeY(EYE_X) + 90 / ZOOM]; // close-up y 360 lands on the lash line
+/** The eye's curve in close-up pixels at screen x (0 at the centre). */
+const curve = (x) => (eyeY(EYE_X + (x - 800) / ZOOM) - eyeY(EYE_X)) * ZOOM;
+
+// The lash line at screen x for the lash at world x: the eye's curve (fixed on screen)
+// plus a gentle waviness that repeats every S, the distance panned per loop.
+const lashY = (x, wx) => 360 + curve(x) + 3 * Math.sin((TAU * wx) / S);
+const lidCrease = (x, wx) => 170 + curve(x) * 0.8 + 4 * Math.sin((TAU * wx) / S + 1);
+const padTop = (x, wx) => lashY(x, wx) + 26;
 
 /** A lash as a curve from its root: natural lashes short, extensions long and bold. */
 function lashCurve(x, y, len, lean, curl) {
@@ -80,9 +99,9 @@ function drawClose(ctx, t) {
   // eyelid skin above the lash line, gel pad below
   const lid = [], pad = [], crease = [];
   for (let x = -40; x <= 1640; x += 16) {
-    lid.push([x, lashY(x + pan)]);
-    pad.push([x, padTop(x + pan)]);
-    crease.push([x, lidCrease(x + pan)]);
+    lid.push([x, lashY(x, x + pan)]);
+    pad.push([x, padTop(x, x + pan)]);
+    crease.push([x, lidCrease(x, x + pan)]);
   }
   fill(ctx, [[-40, 0], [1640, 0], ...lid.slice().reverse()], SKIN);
   fill(ctx, [...crease, [1640, 0], [-40, 0]], SKIN_SHADE, 0.35);
@@ -100,7 +119,7 @@ function drawClose(ctx, t) {
   // plus the current one once it has been bonded)
   const bonded = seg(t, T.bond[0], T.bond[0] + 0.3);
   for (let wx = Math.floor((pan - 200) / S) * S; wx < pan + 1800; wx += S) {
-    const x = sx(wx), y = lashY(wx);
+    const x = sx(wx), y = lashY(x, wx);
     const k = Math.round(wx / S);
     const spread = wx === cur - S ? -1 : wx === cur + S ? 1 : 0;
     const push = spread * iso * 46;
@@ -133,14 +152,14 @@ function drawClose(ctx, t) {
   // ── isolation tweezer (left hand side): parts the lashes either side of the target ──
   const isoK = seg(t, T.isoIn[0], T.isoIn[1], ease.out) * (1 - seg(t, T.isoOut[0], T.isoOut[1], ease.in));
   if (isoK > 0.001) {
-    const tipX = lerp(-160, sx(cur) - 2, isoK), tipY = lerp(40, lashY(cur) + 150, isoK);
+    const tipX = lerp(-160, sx(cur) - 2, isoK), tipY = lerp(40, lashY(sx(cur), cur) + 150, isoK);
     tweezerStraight(ctx, t, tipX, tipY, -2.3, 40 + iso * 70, 400);
   }
 
   // ── placement tweezer (right hand side) with an extension in its tips ──
   const inK = seg(t, T.placeIn[0], T.placeIn[1], ease.inOut);
   const outK = seg(t, T.placeOut[0], T.placeOut[1], ease.inOut);
-  const target = [sx(cur) + 52, lashY(cur) + 190];
+  const target = [sx(cur) + 52, lashY(sx(cur), cur) + 190];
   const parked = [1720, -160];
   const pos = t < T.placeOut[0] ? [lerp(parked[0], target[0], inK), lerp(parked[1], target[1], inK)] : [lerp(target[0], parked[0], outK), lerp(target[1], parked[1], outK)];
   // a slight settle while the bond takes
@@ -149,7 +168,7 @@ function drawClose(ctx, t) {
     const holding = t < T.release[0];
     if (holding) {
       // extension held at mid-length, a drop of adhesive on its base
-      const ex = sx(cur) + 1 + (pos[0] - target[0]), ey = lashY(cur) + 16 + (pos[1] - target[1]) + settle;
+      const ex = sx(cur) + 1 + (pos[0] - target[0]), ey = lashY(sx(cur), cur) + 16 + (pos[1] - target[1]) + settle;
       stroke(ctx, lashCurve(ex, ey, 360, 12, 26), 1, t, { w: 8, seed: 500, color: INK });
       fill(ctx, [[ex - 6, ey - 4], [ex + 6, ey - 4], [ex + 5, ey + 12], [ex - 5, ey + 12]], '#F4F1EA', 0.95);
     }
@@ -175,10 +194,6 @@ function drawClose(ctx, t) {
 }
 
 // ── wide shot: the client lying back with the gel pad under her right eye ──
-// The close-up's lash line (y = 360) sits 90/ZOOM above the frame centre, so the
-// target is placed that far below the wide shot's lash line.
-const ZOOM = 9;
-const TARGET = [882, 461 + 90 / ZOOM];
 
 function drawWide(ctx, t) {
   drawClient(ctx, t, { underEyePad: true, lines: false, bed: true });
@@ -194,5 +209,5 @@ function drawWide(ctx, t) {
 }
 
 export function draw(ctx, t) {
-  zoomLoop(ctx, t, { duration: DURATION, closeDuration: CLOSE, target: TARGET, zoom: ZOOM, wide: drawWide, close: drawClose });
+  zoomLoop(ctx, t, { duration: DURATION, closeDuration: CLOSE, target: TARGET, zoom: ZOOM, fadeFrom: 0.35, wide: drawWide, close: drawClose });
 }

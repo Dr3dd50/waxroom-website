@@ -22,6 +22,8 @@ export const DURATION = 10;
 export const POSTER = 0; // the wide shot
 const PART_Y = 470;
 const HAIR = '#3B2A1E';
+// what shows under the strands: scalp through thin hair, then the hair filling in
+const THIN = '#94735A', FULL = '#64493A';
 const STEP = 12;
 const PASS = { from: 250, to: 1350, y: 482 }; // the nozzle's run along the part
 const T = { glide: [0.3, 4.6], lift: [4.6, 5.2], grow: [5.0, 7.0], back: [7.0, 7.9] };
@@ -56,8 +58,8 @@ function applicator(ctx, t, [x, y], on) {
 function drawClose(ctx, t) {
   // under the hair: scalp shows through while it's thin
   const under = ctx.createLinearGradient(0, 0, 1600, 0);
-  under.addColorStop(0, lerpColor('#A98468', '#5A4130', grown(0, t)));
-  under.addColorStop(1, lerpColor('#A98468', '#5A4130', grown(1600, t)));
+  under.addColorStop(0, lerpColor(THIN, FULL, grown(0, t)));
+  under.addColorStop(1, lerpColor(THIN, FULL, grown(1600, t)));
   fill(ctx, [[0, 0], [1600, 0], [1600, 900], [0, 900]], under);
   const top = [], bot = [];
   for (let x = -20; x <= 1620; x += 12) {
@@ -124,7 +126,10 @@ function lerpColor(a, b, k) {
 
 // ── wide shot: looking down on the client's head, nose to the right, the part
 // running front to back, with the applicator resting on it ──
-const ZOOM = 4.5;
+// The close-up is the 1600×900 frame shrunk by ZOOM around TARGET: at 6× that patch
+// (267×150) lies wholly inside the head, so every corner of the close-up is hair,
+// as it is in the wide shot, and the zoom never shows the shoulders through it.
+const ZOOM = 6;
 const HEAD = [800, 440, 215, 170]; // centre and radii of the head seen from above
 const TARGET = [800, HEAD[1] - (PART_Y - 450) / ZOOM];
 
@@ -144,7 +149,9 @@ function drawWide(ctx, t) {
   shape(ctx, ellipse(830, hy - headHalf(30 / rx) + 4, 26, 16), t, { fillColor: SKIN_SHADE, w: 4 });
   shape(ctx, ellipse(830, hy + headHalf(30 / rx) - 4, 26, 16), t, { fillColor: SKIN_SHADE, w: 4 });
   shape(ctx, ellipse(hx + rx + 2, hy, 22, 18), t, { fillColor: SKIN, w: 4 });
-  shape(ctx, headOutline(), t, { fillColor: '#5A4130', w: 6 });
+  // halfway between thin and full: the wide shot opens and closes the loop, and the close-up
+  // starts thin and ends full, so it sits between the two
+  shape(ctx, headOutline(), t, { fillColor: lerpColor(THIN, FULL, 0.5), w: 6 });
   // hair combed out from the part to either side
   ctx.save();
   ctx.beginPath();
@@ -159,7 +166,8 @@ function drawWide(ctx, t) {
     }
   }
   ctx.restore();
-  stroke(ctx, line(hx - rx + 30, hy, hx + rx - 24, hy, 12), 1, t, { w: 10, color: SKIN });
+  // the part, as wide as the close-up shows it before the hair grows in
+  stroke(ctx, line(hx - rx + 30, hy, hx + rx - 24, hy, 12), 1, t, { w: (2 * partW(800, 0)) / ZOOM, color: SKIN });
   stroke(ctx, headOutline(), 1, t, { w: 6, color: INK });
 
   // the handpiece, drawn as in the close-up and shrunk to this scale
