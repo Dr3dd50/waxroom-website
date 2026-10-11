@@ -15,7 +15,8 @@ import trackingConfig from '../data/tracking.json';
 const PIXEL_ID: string = import.meta.env.VITE_META_PIXEL_ID || trackingConfig.metaPixelId;
 const POSTHOG = trackingConfig.posthog;
 const OPT_OUT = 'wr_tracking_off';
-const DEBUG = 'wr_tracking_debug'; // set to 1 in localStorage to try it on localhost
+const DEBUG = 'wr_tracking_debug'; // on localhost, tracking runs only when this is 1 (?tracking=on sets it)
+const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/;
 
 type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...a: unknown[]) => void; queue: unknown[]; push: unknown; loaded: boolean; version: string };
 declare global {
@@ -54,12 +55,19 @@ export function privacyState(): 'on' | 'opted-out' | 'browser-signal' | 'not-set
   return 'on';
 }
 
-function allowed() {
-  if (typeof window === 'undefined' || privacyState() !== 'on') return false;
-  if (navigator.webdriver || window.top !== window.self) return false; // bots, embeds
-  if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && store.get(DEBUG) !== '1') return false;
-  return true;
+/** Why tracking won't run in this browser, or null when it will. */
+function blockedBy(): string | null {
+  if (typeof window === 'undefined') return 'server';
+  const state = privacyState();
+  if (state === 'not-set-up') return 'nothing is set up in src/data/tracking.json';
+  if (state === 'browser-signal') return 'this browser sends Global Privacy Control (Brave, DuckDuckGo, or a privacy setting)';
+  if (state === 'opted-out') return 'you opted out in the footer (Your privacy choices)';
+  if (navigator.webdriver) return 'this is an automated browser';
+  if (window.top !== window.self) return 'the page is inside a frame';
+  if (LOCAL.test(location.hostname) && store.get(DEBUG) !== '1') return 'this is your own computer: add ?tracking=on to the address to turn it on (?tracking=off to stop)';
+  return null;
 }
+const allowed = () => blockedBy() === null;
 
 function readCookie(name: string) {
   for (const part of document.cookie ? document.cookie.split(';') : []) {
@@ -75,7 +83,7 @@ function readCookie(name: string) {
   return null;
 }
 
-const cookieDomain = () => (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) ? '' : `; domain=.${location.hostname.replace(/^www\./, '')}`);
+const cookieDomain = () => (LOCAL.test(location.hostname) ? '' : `; domain=.${location.hostname.replace(/^www\./, '')}`);
 
 /** Our own copy of Meta's cookies: a new ad click replaces _fbc, a reload keeps it. */
 function ensureMetaCookies() {
@@ -132,6 +140,7 @@ function capture(event: string, props: Record<string, unknown> = {}) {
 /** PostHog, loaded as its own file so pages don't carry it for visitors who opted out. */
 function startPostHog() {
   import('posthog-js').then(({ default: ph }) => {
+    if (LOCAL.test(location.hostname)) console.info('[tracking] PostHog is on; events go to', POSTHOG.host);
     ph.init(POSTHOG.key, {
       api_host: POSTHOG.host,
       defaults: '2025-05-24', // pageviews and page leaves, including the booking steps
@@ -140,14 +149,22 @@ function startPostHog() {
     });
     posthog = ph;
     for (const [e, p] of queued.splice(0)) ph.capture(e, p);
-  }, () => {});
+  }, (err) => console.warn('[tracking] PostHog could not load (if you just pulled new code, run npm install):', err));
 }
 
 let started = false;
 let metaStarted = false;
 /** Once per page load: PostHog, then cookies, pixel, PageView, and the Book-tap listener. */
 export function startTracking() {
-  if (started || !allowed()) return;
+  if (started) return;
+  // ?tracking=on / off: try tracking on your own computer without opening the console
+  const flag = new URLSearchParams(location.search).get('tracking');
+  if (flag === 'on' || flag === 'off') store.set(DEBUG, flag === 'on' ? '1' : null);
+  const why = blockedBy();
+  if (why) {
+    if (LOCAL.test(location.hostname)) console.info(`[tracking] off: ${why}`);
+    return;
+  }
   started = true;
   if (POSTHOG.key) startPostHog();
   // A tap on a service that books on GlossGenius: the visitor leaves the site, so the

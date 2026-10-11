@@ -5,10 +5,21 @@
 //   Dashboard  http://localhost:5174      (owner: waxroomrichmond@gmail.com / waxroom-demo)
 // Tools run straight through node rather than npx, so this works the same on
 // Windows, macOS and Linux.
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, statSync, utimesSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
+
+// New packages since the last `npm install` (after a git pull, say): install them first,
+// or the sites start without them.
+const lock = resolve(root, 'package-lock.json'), installed = resolve(root, 'node_modules/.package-lock.json');
+if (!existsSync(installed) || statSync(lock).mtimeMs > statSync(installed).mtimeMs) {
+  console.log('Packages changed since the last install: running npm install…');
+  const r = spawnSync('npm install', { cwd: root, stdio: 'inherit', shell: true });
+  if (r.status) process.exit(r.status);
+  if (existsSync(installed)) utimesSync(installed, new Date(), new Date()); // installed as of now, even if npm changed nothing
+}
 const tsx = resolve(root, 'node_modules/tsx/dist/cli.mjs');
 const vite = resolve(root, 'node_modules/vite/bin/vite.js');
 
