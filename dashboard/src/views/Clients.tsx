@@ -139,7 +139,7 @@ function ClientCard({ id, onChanged }: { id: string; onChanged: () => Promise<vo
             {c.first} {c.last}
           </h2>
           <p className="muted">
-            {phone(c.phone)}
+            {c.contactHidden ? 'Phone and email: owner only' : phone(c.phone)}
             {c.email ? ` · ${c.email}` : ''}
           </p>
         </div>

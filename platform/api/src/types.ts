@@ -19,6 +19,8 @@ export type Staff = {
   schedule?: WeekSchedule;
   /** Days or hours off: nothing can be booked online in these windows. */
   timeOff?: TimeOff[];
+  /** Texts about bookings and cancellations on their calendar (and, for the owner, everyone's). Missing = on. */
+  alerts?: boolean;
 };
 
 export type TimeOff = { id: string; from: string; to: string; note: string };
@@ -39,6 +41,8 @@ export type Service = {
   bookableOnline: boolean;
   /** Short note texted with the reminder ("let hair grow to ¼ inch…"). */
   prepTip?: string;
+  /** Days after a visit to text a rebooking nudge, if nothing is booked. null = no nudge. */
+  rebookAfterDays?: number | null;
 };
 
 export type Membership = {
@@ -81,7 +85,7 @@ export type Client = {
   credit: number;
   referralCode: string;
   referredBy?: string;
-  membership?: { membershipId: string; since: string; status: 'active' | 'past_due' | 'cancelled'; subscriptionId?: string; periodStart: string };
+  membership?: { membershipId: string; since: string; status: 'pending' | 'active' | 'past_due' | 'cancelled'; subscriptionId?: string; periodStart: string };
   packages?: { packageId: string; boughtAt: string; expiresAt: string | null; remaining: Record<string, number> }[];
   lastVisitAt?: string;
   rebookNudgedFor?: string;
@@ -105,9 +109,12 @@ export type Appointment = {
   manageToken: string;
   createdAt: string;
   newClient: boolean;
-  deposit?: { amount: number; status: 'paid' | 'failed' | 'applied' | 'refunded'; paymentId?: string };
+  /** pending: the client's bank asked them to approve it; the time is held until they do. */
+  deposit?: { amount: number; status: 'pending' | 'paid' | 'failed' | 'applied' | 'refunded'; paymentId?: string };
   referral?: { referrerId: string; code: string; friendDiscount: number };
   texts: { bookedAt?: string; confirmRequestAt?: string; reminderAt?: string; confirmedAt?: string };
+  /** Bumped on every change, so a calendar that already has the event replaces it. */
+  calendarSeq?: number;
   checkout?: Checkout;
   cancel?: { at: string; by: 'client' | 'staff'; fee: number; feeStatus: 'none' | 'charged' | 'failed' | 'waived'; noShow: boolean };
 };
@@ -146,9 +153,11 @@ export type Message = {
   to: string;
   from?: string;
   clientId?: string;
-  kind: 'booking' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff';
+  kind: 'booking' | 'moved' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff' | 'alert';
   body: string;
-  status: 'sent' | 'simulated' | 'failed' | 'received';
+  status: 'sent' | 'simulated' | 'failed' | 'received' | 'queued';
+  /** Queued: held until this time (a staff text that came in during quiet hours). */
+  sendAfter?: string;
   providerId?: string;
   error?: string;
 };
@@ -189,6 +198,20 @@ export type Settings = {
   notifications: { confirmHoursBefore: number; reminderHoursBefore: number; rebookAfterDays: number; quietStart: number; quietEnd: number };
   automations: Record<string, { enabled: boolean; text: string }>;
   referrals: { enabled: boolean; friendGets: number; referrerGets: number };
+  /** Online booking on our own site. Closed until a GlossGenius import is done and the owner opens it. */
+  onlineBooking: { open: boolean; changedAt?: string; changedBy?: string };
+  /** The last GlossGenius import (clients and appointments). */
+  glossGeniusImport?: ImportReport & { by: string };
+  /** Texts to staff when appointments are booked, moved or cancelled. */
+  staffAlerts: { enabled: boolean };
+  /** Employees see clients' phone numbers and emails only when the owner allows it. */
+  privacy: { employeesSeeContact: boolean };
 };
 
-export type Collection = 'staff' | 'services' | 'memberships' | 'packages' | 'clients' | 'appointments' | 'referrals' | 'messages' | 'payments' | 'settings' | 'tokens' | 'metaOutbox';
+export type ImportReport = {
+  at: string;
+  clients?: { added: number; matched: number; skipped: number };
+  appointments?: { added: number; updated: number; unchanged: number; unmatched: number; problems: string[] };
+};
+
+export type Collection = 'staff' | 'services' | 'memberships' | 'packages' | 'clients' | 'appointments' | 'referrals' | 'messages' | 'payments' | 'settings' | 'tokens' | 'metaOutbox' | 'outbox';

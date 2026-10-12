@@ -17,6 +17,8 @@ const { makeApp, makeStore } = await import('../src/app');
 const { runDueTexts } = await import('../src/services/notify');
 const { addDays, zoned, zonedToUtc } = await import('../src/lib/time');
 const store = await makeStore();
+// online booking opens after the GlossGenius import (gate.test.ts covers that); open it here
+await store.put('settings', { ...(await store.get<any>('settings', 'settings')), onlineBooking: { open: true } });
 const app = makeApp(store);
 
 let cookie = '';

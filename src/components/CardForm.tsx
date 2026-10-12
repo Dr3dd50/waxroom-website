@@ -1,9 +1,16 @@
 // Saving a card: Stripe's own card field when Stripe is connected; until then a
 // labelled practice form, so the booking flow can be tried end to end.
+//
+// After the card is saved, a payment taken right away (a deposit, a package, the
+// first month of a membership) can come back asking the client to approve it with
+// their bank. `onSaved` then returns what to approve and what to do after it; the form
+// shows the bank's step, and if that fails, offers to try the approval again.
 import { useEffect, useRef, useState } from 'react';
 import type { Stripe, StripeElements } from '@stripe/stripe-js';
+import type { NeedsApproval } from '../lib/api';
 
 export type CardSetup = { simulated: boolean; setupId: string; clientSecret: string | null };
+export type Approval = { approve: NeedsApproval; after: () => Promise<void> };
 
 export function CardForm({
   setup,
@@ -16,7 +23,7 @@ export function CardForm({
   publishableKey: string | null;
   submitLabel: string;
   note?: string;
-  onSaved: (extra: { simulatedCard?: { number: string } }) => Promise<void>;
+  onSaved: (extra: { simulatedCard?: { number: string } }) => Promise<void | Approval>;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const stripe = useRef<Stripe | null>(null);
@@ -24,6 +31,8 @@ export function CardForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [num, setNum] = useState('4242 4242 4242 4242');
+  // a payment waiting on the bank's approval (the card itself is already saved)
+  const [pending, setPending] = useState<Approval | null>(null);
   const live = !setup.simulated && !!publishableKey && !!setup.clientSecret;
 
   useEffect(() => {
@@ -49,14 +58,28 @@ export function CardForm({
     setError('');
     setBusy(true);
     try {
-      if (live) {
-        const r = await stripe.current!.confirmSetup({ elements: elements.current!, redirect: 'if_required' });
-        if (r.error) throw new Error(r.error.message);
-        await onSaved({});
-      } else {
-        if (num.replace(/\D/g, '').length < 15) throw new Error('Enter a card number.');
-        await onSaved({ simulatedCard: { number: num } });
+      let next = pending;
+      if (!next) {
+        let r: Approval | undefined;
+        if (live) {
+          const s = await stripe.current!.confirmSetup({ elements: elements.current!, redirect: 'if_required' });
+          if (s.error) throw new Error(s.error.message);
+          r = (await onSaved({})) ?? undefined;
+        } else {
+          if (num.replace(/\D/g, '').length < 15) throw new Error('Enter a card number.');
+          r = (await onSaved({ simulatedCard: { number: num } })) ?? undefined;
+        }
+        if (!r) return;
+        next = r;
+        setPending(r);
       }
+      // the bank's own approval screen (practice mode: approved straight away)
+      if (live) {
+        const a = await stripe.current!.confirmCardPayment(next.approve.clientSecret, { payment_method: next.approve.paymentMethodId });
+        if (a.error) throw new Error(`${a.error.message ?? 'Your bank didn’t approve the payment.'} You can try the approval again.`);
+      }
+      await next.after();
+      setPending(null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -66,10 +89,11 @@ export function CardForm({
 
   return (
     <form className="cardform" onSubmit={submit}>
+      {pending ? <p className="cardform__note">Your card is saved. Your bank asked you to approve this payment.</p> : null}
       {live ? (
-        <div ref={box} className="cardform__stripe" />
+        <div ref={box} className="cardform__stripe" hidden={!!pending} />
       ) : (
-        <div className="cardform__practice">
+        <div className="cardform__practice" hidden={!!pending}>
           <p className="cardform__flag">Practice mode: Stripe isn’t connected yet, so nothing is charged.</p>
           <label className="field">
             Card number
@@ -94,7 +118,7 @@ export function CardForm({
         </p>
       ) : null}
       <button className="btn btn--honey btn--wide" disabled={busy}>
-        {busy ? 'One moment…' : submitLabel}
+        {busy ? 'One moment…' : pending ? 'Approve the payment' : submitLabel}
       </button>
     </form>
   );

@@ -10,7 +10,9 @@ import { getSettings, isFree, slotsFor } from '../services/availability';
 import { upsertClient, type ClientInput } from '../services/clients';
 import { payments } from '../services/payments';
 import { twilioLive } from '../config';
-import { apptVars, autoText, cancelAppointment, createAppointment, feeFor, finalizeBooking } from '../services/appointments';
+import { apptVars, cancelAppointment, completeDeposit, createAppointment, feeFor, finalizeOnlineBooking, manageLink, moveAppointment } from '../services/appointments';
+import { googleCalendarUrl, icsFor } from '../services/calendar';
+import { grantPackage } from '../services/clients';
 import { readTracking, requestInfo, sendMetaEvent } from '../services/meta';
 import { config } from '../config';
 
@@ -22,6 +24,43 @@ function pageUrl(raw: unknown, fallback: string) {
   } catch {
     return fallback;
   }
+}
+
+/** New online bookings, memberships and packages: only once the owner has opened online booking. */
+async function requireOpen(store: Store) {
+  const s = await getSettings(store);
+  if (!s.onlineBooking?.open) throw new HttpError(403, 'Online booking here isn’t open yet. Please book on GlossGenius for now.');
+}
+
+/** The Meta event for a finished booking (sent once the deposit, if any, has gone through). */
+async function bookedEvent(store: Store, appt: Appointment, client: Client, b: { tracking?: unknown; url?: string }, header: (h: string) => string | undefined) {
+  const service = (await store.get<Service>('services', appt.serviceId))!;
+  await sendMetaEvent(store, {
+    name: 'Schedule',
+    tracking: readTracking(b.tracking),
+    url: pageUrl(b.url, `${config.siteUrl}/book/`),
+    request: requestInfo(header),
+    person: { email: client.email, phone: client.phone, first: client.first, last: client.last, id: client.id },
+    custom: { content_name: service.name, content_category: service.category, value: appt.price / 100, currency: 'USD' },
+  });
+}
+
+/** The client's calendar invite for a booking, at /api/cal/<token> (the link in their texts). */
+export function calendarRoutes(store: Store) {
+  const r = new Hono();
+  r.get('/:token', async (c) => {
+    const t = await store.get<{ id: string; appointmentId: string }>('tokens', c.req.param('token').replace(/\.ics$/, ''));
+    const appt = t && (await store.get<Appointment>('appointments', t.appointmentId));
+    if (!appt) return c.text('We couldn’t find that booking.', 404);
+    const service = (await store.get<Service>('services', appt.serviceId))!;
+    const staff = await store.get<Staff>('staff', appt.staffId);
+    return c.body(icsFor(appt, service, staff?.short ?? 'us', manageLink(appt)), 200, {
+      'Content-Type': 'text/calendar; charset=utf-8',
+      'Content-Disposition': 'inline; filename="wax-room-appointment.ics"',
+      'Cache-Control': 'no-store',
+    });
+  });
+  return r;
 }
 
 export function publicRoutes(store: Store) {
@@ -49,6 +88,7 @@ export function publicRoutes(store: Store) {
   r.get('/config', async (c) => {
     const s = await getSettings(store);
     return c.json({
+      booking: s.onlineBooking?.open ? 'open' : 'closed',
       payments: payments.live() ? 'stripe' : 'simulated',
       texts: twilioLive() ? 'twilio' : 'simulated',
       stripePublishableKey: payments.publishableKey(),
@@ -107,6 +147,7 @@ export function publicRoutes(store: Store) {
 
   // Step 1: who's booking, and a card form to fill in.
   r.post('/bookings/start', async (c) => {
+    await requireOpen(store);
     const body = await c.req.json<{ client: ClientInput }>();
     const { client } = await upsertClient(store, body.client);
     client.customerId = await payments.ensureCustomer(client);
@@ -117,6 +158,7 @@ export function publicRoutes(store: Store) {
 
   // Step 2: card saved → book the time (checked again), take any deposit, text the confirmation.
   r.post('/bookings/confirm', async (c) => {
+    await requireOpen(store);
     const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string }; serviceId: string; staffId?: string | null; start: string; referralCode?: string; notes?: string; tracking?: unknown; url?: string }>();
     const client = await store.get<Client>('clients', b.clientId);
     const service = await store.get<Service>('services', b.serviceId);
@@ -130,16 +172,20 @@ export function publicRoutes(store: Store) {
     for (const id of staffIds) if (await isFree(store, id, b.start, service.duration)) staffId = id;
     if (!staffId) throw new HttpError(409, 'That time was just taken. Please pick another.');
     const appt = await createAppointment(store, { client, isNewClient: false, service, staffId, start: b.start, source: 'online', referralCode: b.referralCode, notes: b.notes });
-    await finalizeBooking(store, appt, client);
+    const done = await finalizeOnlineBooking(store, appt, client);
+    // the bank wants the client to approve the deposit: the page shows that, then calls /deposit
+    if (done.needsAuth) return c.json({ needsAuthentication: true, token: appt.manageToken, ...done.needsAuth });
     // Meta: the booking, with the browser's event id so the two copies count once
-    await sendMetaEvent(store, {
-      name: 'Schedule',
-      tracking: readTracking(b.tracking),
-      url: pageUrl(b.url, `${config.siteUrl}/book/`),
-      request: requestInfo((h) => c.req.header(h)),
-      person: { email: client.email, phone: client.phone, first: client.first, last: client.last, id: client.id },
-      custom: { content_name: service.name, content_category: service.category, value: appt.price / 100, currency: 'USD' },
-    });
+    await bookedEvent(store, appt, client, b, (h) => c.req.header(h));
+    return c.json(await describe(appt));
+  });
+
+  // Step 3, only when the deposit needed the client's approval: check it went through.
+  r.post('/booking/:token/deposit', async (c) => {
+    const b = await c.req.json<{ tracking?: unknown; url?: string }>().catch(() => ({}));
+    const appt = await completeDeposit(store, await byToken(c.req.param('token')));
+    const client = (await store.get<Client>('clients', appt.clientId))!;
+    await bookedEvent(store, appt, client, b, (h) => c.req.header(h));
     return c.json(await describe(appt));
   });
 
@@ -171,6 +217,7 @@ export function publicRoutes(store: Store) {
       cancelFee: ['booked', 'confirmed'].includes(appt.status) ? feeFor(appt, settings, false) : 0,
       canCancelOnline: settings.policies.allowOnlineCancellations,
       windowHours: settings.policies.cancellationWindowHours,
+      calendar: { ics: `${config.siteUrl}/api/cal/${appt.manageToken}`, google: googleCalendarUrl(appt, (await store.get<Service>('services', appt.serviceId))!, manageLink(appt)) },
     };
   }
 
@@ -187,29 +234,14 @@ export function publicRoutes(store: Store) {
     const appt = await byToken(c.req.param('token'));
     const settings = await getSettings(store);
     const b = await c.req.json<{ start: string }>();
-    if (!['booked', 'confirmed'].includes(appt.status)) throw bad('This booking can’t be changed.');
+    if (!['booked', 'confirmed'].includes(appt.status) || appt.deposit?.status === 'pending') throw bad('This booking can’t be changed.');
     if ((Date.parse(appt.start) - Date.now()) / 3600000 < settings.policies.cancellationWindowHours)
       throw bad(`Changes within ${settings.policies.cancellationWindowHours} hours need a call or text to the studio.`);
     const service = (await store.get<Service>('services', appt.serviceId))!;
     const offered = (await slotsFor(store, service, zoned(b.start).day, appt.staffId)).some((s) => s.start === b.start);
-    if (!offered || !(await isFree(store, appt.staffId, b.start, service.duration, appt.id))) throw new HttpError(409, 'That time isn’t available. Please pick another.');
-    // the id carries the start time, so a new time is a new record
-    await store.delete('appointments', appt.id);
-    const moved: Appointment = { ...appt, id: `${b.start}_${rid(4)}`, start: b.start, end: new Date(Date.parse(b.start) + service.duration * 60000).toISOString(), status: 'booked', texts: {} };
-    await store.put('appointments', moved);
-    await store.put('tokens', { id: moved.manageToken, appointmentId: moved.id });
-    const client = (await store.get<Client>('clients', moved.clientId))!;
-    await finalizeRescheduleText(moved, client);
-    return c.json(await describe(moved));
+    if (!offered) throw new HttpError(409, 'That time isn’t available. Please pick another.');
+    return c.json(await describe(await moveAppointment(store, appt, { start: b.start, staffId: appt.staffId }, { client: true })));
   });
-
-  async function finalizeRescheduleText(appt: Appointment, client: Client) {
-    const m = await autoText(store, 'booking', client, await apptVars(store, appt), 'booking' as never);
-    if (m) {
-      appt.texts.bookedAt = m.at;
-      await store.put('appointments', appt);
-    }
-  }
 
   r.get('/referral/:code', async (c) => {
     const settings = await getSettings(store);
@@ -221,6 +253,7 @@ export function publicRoutes(store: Store) {
 
   // Memberships: same two steps as booking, then a monthly subscription.
   r.post('/memberships/:id/start', async (c) => {
+    await requireOpen(store);
     const m = await store.get<Membership>('memberships', c.req.param('id'));
     if (!m?.active) throw new HttpError(404, 'That membership isn’t available.');
     const { client } = await upsertClient(store, (await c.req.json<{ client: ClientInput }>()).client);
@@ -231,29 +264,56 @@ export function publicRoutes(store: Store) {
   });
 
   r.post('/memberships/:id/confirm', async (c) => {
+    await requireOpen(store);
     const m = await store.get<Membership>('memberships', c.req.param('id'));
     const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string }; tracking?: unknown; url?: string }>();
     const client = await store.get<Client>('clients', b.clientId);
     if (!m || !client) throw bad('Something went wrong. Please start again.');
     client.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
-    const sub = await payments.subscribe(client.customerId!, client.card, m);
+    const sub = await payments.subscribe(client.customerId!, client.card, m, true);
     if (sub.priceId && !m.stripePriceId) await store.put('memberships', { ...m, stripePriceId: sub.priceId });
-    client.membership = { membershipId: m.id, since: nowIso(), status: 'active', subscriptionId: sub.id, periodStart: nowIso() };
+    if (sub.error) {
+      await store.put('clients', client);
+      throw new HttpError(402, `The first month didn’t go through: ${sub.error}. Try another card.`);
+    }
+    client.membership = { membershipId: m.id, since: nowIso(), status: sub.active ? 'active' : 'pending', subscriptionId: sub.id, periodStart: nowIso() };
     await store.put('clients', client);
-    await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'membership', amount: m.price, tip: 0, method: 'card', status: 'paid', providerId: sub.id, simulated: !payments.live() });
+    if (sub.needsAuth) return c.json({ needsAuthentication: true, ...sub.needsAuth });
+    return c.json(await joined(client, m, sub.invoiceId ?? sub.id, b, (h) => c.req.header(h)));
+  });
+
+  // The bank wanted the client to approve the first month: is the membership running now?
+  r.post('/memberships/:id/approved', async (c) => {
+    const m = await store.get<Membership>('memberships', c.req.param('id'));
+    const b = await c.req.json<{ clientId: string; tracking?: unknown; url?: string }>();
+    const client = await store.get<Client>('clients', b.clientId);
+    if (!m || !client?.membership?.subscriptionId || client.membership.membershipId !== m.id) throw bad('Something went wrong. Please start again.');
+    if (client.membership.status === 'active') return c.json(await joined(client, m, null, b, (h) => c.req.header(h)));
+    const s = await payments.subscriptionActive(client.membership.subscriptionId);
+    if (!s.active) throw new HttpError(402, 'The first month wasn’t approved. Please try again or use another card.');
+    client.membership.status = 'active';
+    await store.put('clients', client);
+    return c.json(await joined(client, m, s.invoiceId ?? client.membership.subscriptionId, b, (h) => c.req.header(h)));
+  });
+
+  /** A membership that's running: record the first month (once) and tell Meta. */
+  async function joined(client: Client, m: Membership, paymentRef: string | null, b: { tracking?: unknown; url?: string }, header: (h: string) => string | undefined) {
+    if (paymentRef && !(await store.list<{ providerId?: string }>('payments')).some((p) => p.providerId === paymentRef))
+      await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'membership', amount: m.price, tip: 0, method: 'card', status: 'paid', providerId: paymentRef, simulated: !payments.live() });
     await sendMetaEvent(store, {
       name: 'Subscribe',
       tracking: readTracking(b.tracking),
       url: pageUrl(b.url, `${config.siteUrl}/join/`),
-      request: requestInfo((h) => c.req.header(h)),
+      request: requestInfo(header),
       person: { email: client.email, phone: client.phone, first: client.first, last: client.last, id: client.id },
       custom: { content_name: m.name, value: m.price / 100, currency: 'USD', predicted_ltv: (m.price * 12) / 100 },
     });
-    return c.json({ ok: true, membership: m.name, price: money(m.price), card: `${client.card.brand} •• ${client.card.last4}` });
-  });
+    return { ok: true, membership: m.name, price: money(m.price), card: client.card ? `${client.card.brand} •• ${client.card.last4}` : null };
+  }
 
   // Packages: pay once, visits are used at checkout until they run out or expire.
   r.post('/packages/:id/start', async (c) => {
+    await requireOpen(store);
     const p = await store.get<Package>('packages', c.req.param('id'));
     if (!p?.active) throw new HttpError(404, 'That package isn’t available.');
     const { client } = await upsertClient(store, (await c.req.json<{ client: ClientInput }>()).client);
@@ -263,27 +323,43 @@ export function publicRoutes(store: Store) {
   });
 
   r.post('/packages/:id/confirm', async (c) => {
+    await requireOpen(store);
     const p = await store.get<Package>('packages', c.req.param('id'));
     const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string }; tracking?: unknown; url?: string }>();
     const client = await store.get<Client>('clients', b.clientId);
     if (!p || !client) throw bad('Something went wrong. Please start again.');
     client.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
-    const charge = await payments.charge(client.customerId!, client.card, p.price, p.name, { packageId: p.id });
-    if (!charge.ok) throw new HttpError(402, `The card was declined (${charge.error ?? 'unknown reason'}).`);
-    const expiresAt = p.expiresMonths ? new Date(Date.now() + p.expiresMonths * 30.44 * 86400000).toISOString() : null;
-    client.packages = [...(client.packages ?? []), { packageId: p.id, boughtAt: nowIso(), expiresAt, remaining: Object.fromEntries(p.items.map((i) => [i.serviceId, i.quantity])) }];
     await store.put('clients', client);
-    await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'package', amount: p.price, tip: 0, method: 'card', status: 'paid', providerId: charge.id, simulated: charge.simulated });
+    const charge = await payments.charge(client.customerId!, client.card, p.price, p.name, { packageId: p.id, clientId: client.id, kind: 'package' }, true);
+    if (charge.needsAuth) return c.json({ needsAuthentication: true, paymentId: charge.id, ...charge.needsAuth });
+    if (!charge.ok) throw new HttpError(402, `The card was declined (${charge.error ?? 'unknown reason'}).`);
+    return c.json(await bought(client, p, charge.id, charge.simulated, b, (h) => c.req.header(h)));
+  });
+
+  // The bank wanted the client to approve the package payment: check it went through.
+  r.post('/packages/:id/approved', async (c) => {
+    const p = await store.get<Package>('packages', c.req.param('id'));
+    const b = await c.req.json<{ clientId: string; paymentId: string; tracking?: unknown; url?: string }>();
+    const client = await store.get<Client>('clients', b.clientId);
+    if (!p || !client || !b.paymentId) throw bad('Something went wrong. Please start again.');
+    const s = await payments.paymentStatus(b.paymentId);
+    const matches = s.amount === -1 || (s.amount === p.price && s.metadata.packageId === p.id && s.metadata.clientId === client.id);
+    if (!s.succeeded || !matches) throw new HttpError(402, 'The payment wasn’t approved. Please try again or use another card.');
+    return c.json(await bought(client, p, b.paymentId, !payments.live(), b, (h) => c.req.header(h)));
+  });
+
+  async function bought(client: Client, p: Package, paymentId: string, simulated: boolean, b: { tracking?: unknown; url?: string }, header: (h: string) => string | undefined) {
+    const { expiresAt } = await grantPackage(store, client, p, paymentId, simulated);
     await sendMetaEvent(store, {
       name: 'Purchase',
       tracking: readTracking(b.tracking),
       url: pageUrl(b.url, `${config.siteUrl}/join/`),
-      request: requestInfo((h) => c.req.header(h)),
+      request: requestInfo(header),
       person: { email: client.email, phone: client.phone, first: client.first, last: client.last, id: client.id },
       custom: { content_name: p.name, content_type: 'product', value: p.price / 100, currency: 'USD' },
     });
-    return c.json({ ok: true, package: p.name, price: money(p.price), card: `${client.card.brand} •• ${client.card.last4}`, expiresAt });
-  });
+    return { ok: true, package: p.name, price: money(p.price), card: client.card ? `${client.card.brand} •• ${client.card.last4}` : null, expiresAt };
+  }
 
   return r;
 }

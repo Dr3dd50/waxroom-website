@@ -9,9 +9,12 @@ import { getSettings, isFree } from './availability';
 import { futureAppointments, hasVisited } from './clients';
 import { payments } from './payments';
 import { fill, sendText } from './sms';
+import { alertStaff, type Actor } from './alerts';
+import { calendarLink } from './calendar';
 
 export const manageLink = (a: Appointment) => `${config.siteUrl}/booking/?t=${a.manageToken}`;
-export const bookingLink = () => `${config.siteUrl}/book/`;
+/** Our booking page, opened on one service when there is one. */
+export const bookingLink = (service?: Service) => `${config.siteUrl}/book/${service ? `?service=${encodeURIComponent(nice(service.name))}` : ''}`;
 export const referralLink = (c: Client) => `${config.siteUrl}/r/${c.referralCode}`;
 
 /** Text one of the automatic messages, if it's switched on and the client wants texts. */
@@ -33,6 +36,7 @@ export async function apptVars(store: Store, a: Appointment, settings?: Settings
     day: fmtDay(a.start, s.timezone),
     time: fmtTime(a.start, s.timezone),
     manage_link: manageLink(a),
+    calendar_link: calendarLink(a),
     booking_link: bookingLink(),
     prep_tip: service.prepTip ?? '',
     window: String(s.policies.cancellationWindowHours),
@@ -97,33 +101,141 @@ export async function createAppointment(store: Store, n: NewAppointment) {
   return appt;
 }
 
-/** Deposit (when the service asks for one), then the booking confirmation text. */
-export async function finalizeBooking(store: Store, appt: Appointment, client: Client) {
-  const service = (await store.get<Service>('services', appt.serviceId))!;
-  const deposit = service.deposit && (!service.depositNewClientsOnly || appt.newClient) ? service.deposit : 0;
-  if (deposit) {
-    const r = await payments.charge(client.customerId ?? '', client.card, deposit, `Deposit: ${service.name}`, { appointmentId: appt.id });
-    appt.deposit = { amount: deposit, status: r.ok ? 'paid' : 'failed', paymentId: r.id };
-    await store.put('payments', {
-      id: `${nowIso()}_${rid(4)}`,
-      at: nowIso(),
-      clientId: client.id,
-      appointmentId: appt.id,
-      kind: 'deposit',
-      amount: deposit,
-      tip: 0,
-      method: 'card',
-      status: r.ok ? 'paid' : 'failed',
-      providerId: r.id,
-      simulated: r.simulated,
-      error: r.error,
-    });
-    if (!r.ok) throw new HttpError(402, `The ${money(deposit)} deposit didn’t go through: ${r.error ?? 'card declined'}. Try another card.`);
-  }
+/** The deposit a booking needs, if any. */
+export function depositFor(service: Service, appt: Appointment) {
+  return service.deposit && (!service.depositNewClientsOnly || appt.newClient) ? service.deposit : 0;
+}
+
+/** Record a deposit attempt on the appointment and in payments. */
+async function recordDeposit(store: Store, appt: Appointment, client: Client, amount: number, status: 'paid' | 'failed', providerId: string, simulated: boolean, error?: string) {
+  appt.deposit = { amount, status, paymentId: providerId };
+  await store.put('payments', {
+    id: `${nowIso()}_${rid(4)}`,
+    at: nowIso(),
+    clientId: client.id,
+    appointmentId: appt.id,
+    kind: 'deposit',
+    amount,
+    tip: 0,
+    method: 'card',
+    status,
+    providerId,
+    simulated,
+    error,
+  });
+}
+
+/** The booking is final: the client's confirmation text and the team's heads-up. */
+export async function announceBooking(store: Store, appt: Appointment, client: Client, actor: Actor) {
   const msg = await autoText(store, 'booking', client, await apptVars(store, appt), 'booking' as never);
   if (msg) appt.texts.bookedAt = msg.at;
   await store.put('appointments', appt);
+  await alertStaff(store, appt, { kind: 'booked' }, actor);
   return appt;
+}
+
+/** Take a booking back off the calendar (its deposit failed or was never approved). */
+export async function releaseBooking(store: Store, appt: Appointment) {
+  await store.delete('appointments', appt.id);
+  await store.delete('tokens', appt.manageToken);
+  const ref = (await store.list<Referral>('referrals')).find((r) => r.appointmentId === appt.id);
+  if (ref) await store.delete('referrals', ref.id);
+}
+
+/**
+ * Online booking: the deposit (when the service asks for one), then the texts.
+ * A declined deposit gives the time back. When the bank wants the client to approve
+ * it, the time is held and the page shows that step (then `completeDeposit`).
+ */
+export async function finalizeOnlineBooking(store: Store, appt: Appointment, client: Client) {
+  const service = (await store.get<Service>('services', appt.serviceId))!;
+  const deposit = depositFor(service, appt);
+  if (deposit) {
+    const r = await payments.charge(client.customerId ?? '', client.card, deposit, `Deposit: ${service.name}`, { appointmentId: appt.id, kind: 'deposit' }, true);
+    if (r.needsAuth) {
+      appt.deposit = { amount: deposit, status: 'pending', paymentId: r.id };
+      await store.put('appointments', appt);
+      return { appt, needsAuth: r.needsAuth };
+    }
+    if (!r.ok) {
+      await recordDeposit(store, appt, client, deposit, 'failed', r.id, r.simulated, r.error);
+      await releaseBooking(store, appt);
+      throw new HttpError(402, `The ${money(deposit)} deposit didn’t go through: ${r.error ?? 'card declined'}. Try another card.`);
+    }
+    await recordDeposit(store, appt, client, deposit, 'paid', r.id, r.simulated);
+  }
+  return { appt: await announceBooking(store, appt, client, { client: true }) };
+}
+
+/** The client approved the deposit with their bank: check it with Stripe, then the booking is final. */
+export async function completeDeposit(store: Store, appt: Appointment) {
+  if (appt.deposit?.status === 'paid') return appt; // the webhook got here first
+  if (appt.deposit?.status !== 'pending' || !appt.deposit.paymentId) throw bad('There’s no deposit waiting on this booking.');
+  if (appt.status === 'cancelled') throw new HttpError(409, 'This time was released. Please book again.');
+  const client = (await store.get<Client>('clients', appt.clientId))!;
+  const p = await payments.paymentStatus(appt.deposit.paymentId);
+  const matches = p.amount === -1 || (p.amount === appt.deposit.amount && p.metadata.appointmentId === appt.id);
+  if (!p.succeeded || !matches) throw new HttpError(402, 'The deposit wasn’t approved. Please try again or use another card.');
+  await recordDeposit(store, appt, client, appt.deposit.amount, 'paid', appt.deposit.paymentId, !payments.live());
+  return announceBooking(store, appt, client, { client: true });
+}
+
+/** Holds whose deposit was never approved: release them after 20 minutes. */
+export async function releaseUnpaidHolds(store: Store, now = new Date()) {
+  const cutoff = new Date(now.getTime() - 20 * 60000).toISOString();
+  let released = 0;
+  for (const a of await store.range<Appointment>('appointments', now.toISOString(), '9999')) {
+    if (a.deposit?.status !== 'pending' || a.createdAt > cutoff) continue;
+    await payments.cancelPayment(a.deposit.paymentId ?? '');
+    await releaseBooking(store, a);
+    released++;
+  }
+  return released;
+}
+
+/**
+ * Booked at the desk. The client isn't there to approve anything, so a deposit that
+ * doesn't go through is noted on the appointment and the booking stands.
+ */
+export async function finalizeStaffBooking(store: Store, appt: Appointment, client: Client, staff: Staff) {
+  const service = (await store.get<Service>('services', appt.serviceId))!;
+  const deposit = client.card ? depositFor(service, appt) : 0;
+  if (deposit) {
+    const r = await payments.charge(client.customerId ?? '', client.card, deposit, `Deposit: ${service.name}`, { appointmentId: appt.id, kind: 'deposit' });
+    await recordDeposit(store, appt, client, deposit, r.ok ? 'paid' : 'failed', r.id, r.simulated, r.error);
+  }
+  return announceBooking(store, appt, client, { staff });
+}
+
+/** A new time (and maybe a new person): reminders start over, the client and team are told. */
+export async function moveAppointment(store: Store, appt: Appointment, to: { start: string; staffId: string }, actor: Actor) {
+  const byStaff = 'staff' in actor;
+  if (!['booked', 'confirmed', ...(byStaff ? ['checked-in'] : [])].includes(appt.status)) throw bad('This booking can’t be changed.');
+  const service = (await store.get<Service>('services', appt.serviceId))!;
+  if (!(await isFree(store, to.staffId, to.start, service.duration, appt.id))) throw new HttpError(409, 'That time isn’t available. Please pick another.');
+  // the id carries the start time, so a new time is a new record
+  await store.delete('appointments', appt.id);
+  const moved: Appointment = {
+    ...appt,
+    id: `${to.start}_${rid(4)}`,
+    staffId: to.staffId,
+    start: to.start,
+    end: new Date(Date.parse(to.start) + service.duration * 60000).toISOString(),
+    // a client's own change asks them to confirm again; the desk's keeps what it was
+    status: byStaff ? appt.status : 'booked',
+    texts: {},
+    calendarSeq: (appt.calendarSeq ?? 0) + 1,
+  };
+  await store.put('appointments', moved);
+  await store.put('tokens', { id: moved.manageToken, appointmentId: moved.id });
+  const client = (await store.get<Client>('clients', moved.clientId))!;
+  if (moved.start !== appt.start || moved.staffId !== appt.staffId) {
+    const m = await autoText(store, 'moved', client, await apptVars(store, moved), 'moved' as never);
+    if (m) moved.texts.bookedAt = m.at;
+    await store.put('appointments', moved);
+    await alertStaff(store, moved, { kind: 'moved', from: { start: appt.start, staffId: appt.staffId } }, actor);
+  }
+  return moved;
 }
 
 export function feeFor(appt: Appointment, settings: Settings, noShow: boolean) {
@@ -133,7 +245,7 @@ export function feeFor(appt: Appointment, settings: Settings, noShow: boolean) {
 }
 
 /** Cancel (or mark a no-show). Policy fees go on the card on file unless staff waive them. */
-export async function cancelAppointment(store: Store, appt: Appointment, opts: { by: 'client' | 'staff'; noShow?: boolean; waive?: boolean }) {
+export async function cancelAppointment(store: Store, appt: Appointment, opts: { by: 'client' | 'staff'; noShow?: boolean; waive?: boolean; staff?: Staff }) {
   if (['cancelled', 'no-show', 'completed'].includes(appt.status)) throw bad('This appointment can’t be cancelled now.');
   const settings = await getSettings(store);
   const client = (await store.get<Client>('clients', appt.clientId))!;
@@ -163,12 +275,14 @@ export async function cancelAppointment(store: Store, appt: Appointment, opts: {
   }
   appt.status = opts.noShow ? 'no-show' : 'cancelled';
   appt.cancel = { at: nowIso(), by: opts.by, fee: opts.waive ? 0 : fee, feeStatus, noShow: !!opts.noShow };
+  appt.calendarSeq = (appt.calendarSeq ?? 0) + 1;
   await store.put('appointments', appt);
   const ref = (await store.list<Referral>('referrals')).find((r) => r.appointmentId === appt.id && r.status === 'booked');
   if (ref) await store.put('referrals', { ...ref, status: 'cancelled' });
   if (!opts.noShow) {
     const feeNote = feeStatus === 'charged' ? ` A ${money(fee)} late-cancellation fee was charged per our policy.` : '';
     await autoText(store, 'cancel', client, { ...(await apptVars(store, appt, settings)), fee_note: feeNote }, 'cancel' as never);
+    await alertStaff(store, appt, { kind: 'cancelled', fee: feeStatus === 'waived' ? 0 : fee, feeCharged: feeStatus === 'charged' }, opts.staff ? { staff: opts.staff } : { client: true });
   }
   return appt;
 }

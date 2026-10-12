@@ -1,16 +1,25 @@
 // Card payments. With STRIPE_SECRET_KEY set this is Stripe: a customer per
-// client, a saved card (SetupIntent) when they book, off-session charges for
+// client, a saved card (SetupIntent) when they book, charges to that card for
 // deposits, checkouts and policy fees, and subscriptions for memberships.
 // Without a key every call is simulated, so the whole flow can be tried locally.
+//
+// A charge made while the client is on the booking page can come back asking the
+// client to approve it with their bank (3-D Secure). Then `needsAuth` carries what
+// the page needs to show that step, and the server checks the result afterwards.
 import Stripe from 'stripe';
 import { config, stripeLive } from '../config';
 import type { Card, Client, Membership } from '../types';
 import { rid } from '../lib/util';
 
 let stripe: Stripe | null = null;
-const api = () => (stripe ??= new Stripe(config.stripe.secretKey!));
+// fetch rather than node's http module: the same client runs on Lambda and in tests
+const api = () => (stripe ??= new Stripe(config.stripe.secretKey!, { httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries: 2 }));
 
-export type ChargeResult = { ok: boolean; id: string; simulated: boolean; error?: string };
+export type NeedsAuth = { clientSecret: string; paymentMethodId: string };
+export type ChargeResult = { ok: boolean; id: string; simulated: boolean; error?: string; needsAuth?: NeedsAuth };
+
+/** A simulated card ending 3184 (Stripe's own test number for it) asks for approval, so that step can be tried locally. */
+const simAsksApproval = (card?: Card) => card?.paymentMethodId.startsWith('pm_sim_') && card.last4 === '3184';
 
 export const payments = {
   live: stripeLive,
@@ -18,7 +27,7 @@ export const payments = {
 
   async ensureCustomer(c: Client) {
     if (!stripeLive()) return c.customerId ?? `cus_sim_${rid()}`;
-    if (c.customerId) return c.customerId;
+    if (c.customerId && !c.customerId.startsWith('cus_sim_')) return c.customerId;
     const cus = await api().customers.create({ name: `${c.first} ${c.last}`, email: c.email || undefined, phone: c.phone, metadata: { clientId: c.id } });
     return cus.id;
   },
@@ -26,7 +35,8 @@ export const payments = {
   /** Start saving a card. Returns what the booking page needs to show the card form. */
   async startCardSetup(customerId: string) {
     if (!stripeLive()) return { simulated: true as const, setupId: `seti_sim_${rid()}`, clientSecret: null };
-    const si = await api().setupIntents.create({ customer: customerId, usage: 'off_session', automatic_payment_methods: { enabled: true } });
+    // cards only: they're what can be charged later for fees and checkout
+    const si = await api().setupIntents.create({ customer: customerId, usage: 'off_session', payment_method_types: ['card'] });
     return { simulated: false as const, setupId: si.id, clientSecret: si.client_secret };
   },
 
@@ -43,38 +53,100 @@ export const payments = {
     return { brand: cap(pm.card?.brand ?? 'card'), last4: pm.card?.last4 ?? '••••', paymentMethodId: pm.id };
   },
 
-  /** Charge the saved card without the client present (deposits, checkouts, fees). */
-  async charge(customerId: string, card: Card | undefined, amount: number, description: string, metadata: Record<string, string>): Promise<ChargeResult> {
+  /**
+   * Charge the saved card. `clientPresent` when the client is on the page and can
+   * approve a payment their bank flags; otherwise (fees, checkout at the desk) a
+   * flagged payment is simply declined.
+   */
+  async charge(customerId: string, card: Card | undefined, amount: number, description: string, metadata: Record<string, string>, clientPresent = false): Promise<ChargeResult> {
     if (amount <= 0) return { ok: true, id: 'none', simulated: !stripeLive() };
     if (!card) return { ok: false, id: '', simulated: !stripeLive(), error: 'No card on file' };
-    if (!stripeLive()) return { ok: true, id: `pi_sim_${rid()}`, simulated: true };
+    if (!stripeLive()) {
+      const id = `pi_sim_${rid()}`;
+      if (simAsksApproval(card)) {
+        if (!clientPresent) return { ok: false, id, simulated: true, error: 'The bank asked the cardholder to approve this payment' };
+        return { ok: false, id, simulated: true, error: 'authentication_required', needsAuth: { clientSecret: `${id}_secret_sim`, paymentMethodId: card.paymentMethodId } };
+      }
+      return { ok: true, id, simulated: true };
+    }
     try {
-      const pi = await api().paymentIntents.create({
-        amount,
-        currency: 'usd',
-        customer: customerId,
-        payment_method: card.paymentMethodId,
-        off_session: true,
-        confirm: true,
-        description,
-        metadata,
-      });
+      const pi = await api().paymentIntents.create({ amount, currency: 'usd', customer: customerId, payment_method: card.paymentMethodId, off_session: true, confirm: true, description, metadata });
       return { ok: pi.status === 'succeeded', id: pi.id, simulated: false, error: pi.status === 'succeeded' ? undefined : pi.status };
     } catch (e) {
-      return { ok: false, id: '', simulated: false, error: (e as Error).message };
+      const err = e as Stripe.errors.StripeError & { raw?: { payment_intent?: Stripe.PaymentIntent } };
+      const pi = err.raw?.payment_intent;
+      if (err.code === 'authentication_required' && pi?.client_secret) {
+        if (!clientPresent) return { ok: false, id: pi.id, simulated: false, error: 'The bank asked the cardholder to approve this payment' };
+        return { ok: false, id: pi.id, simulated: false, error: 'authentication_required', needsAuth: { clientSecret: pi.client_secret, paymentMethodId: card.paymentMethodId } };
+      }
+      return { ok: false, id: pi?.id ?? '', simulated: false, error: err.message };
     }
   },
 
-  /** Start a monthly membership on the saved card. */
-  async subscribe(customerId: string, card: Card, m: Membership): Promise<{ id: string; priceId?: string }> {
-    if (!stripeLive()) return { id: `sub_sim_${rid()}` };
+  /** After the client approved a payment on the page: did it go through, and for what? */
+  async paymentStatus(id: string): Promise<{ succeeded: boolean; amount: number; customer: string | null; metadata: Record<string, string> }> {
+    if (!stripeLive() || id.startsWith('pi_sim_')) return { succeeded: id.startsWith('pi_sim_'), amount: -1, customer: null, metadata: {} };
+    const pi = await api().paymentIntents.retrieve(id);
+    return { succeeded: pi.status === 'succeeded', amount: pi.amount, customer: typeof pi.customer === 'string' ? pi.customer : (pi.customer?.id ?? null), metadata: pi.metadata };
+  },
+
+  /** Give up on a payment the client never approved, so it can't go through later. */
+  async cancelPayment(id: string) {
+    if (!stripeLive() || !id || id.startsWith('pi_sim_')) return;
+    try {
+      await api().paymentIntents.cancel(id);
+    } catch {
+      /* already succeeded or cancelled: the webhook deals with a late success */
+    }
+  },
+
+  async refund(id: string) {
+    if (!stripeLive() || !id || id.startsWith('pi_sim_')) return;
+    await api().refunds.create({ payment_intent: id });
+  },
+
+  /**
+   * Start a monthly membership on the saved card. The first month is charged now:
+   * `active` when it went through, `needsAuth` when the bank wants the client's
+   * approval, `error` (and nothing left behind) when it was declined.
+   */
+  async subscribe(customerId: string, card: Card, m: Membership, clientPresent = false): Promise<{ id: string; priceId?: string; invoiceId?: string; active: boolean; needsAuth?: NeedsAuth; error?: string }> {
+    if (!stripeLive()) {
+      const id = `sub_sim_${rid()}`;
+      if (simAsksApproval(card)) {
+        if (!clientPresent) return { id, active: false, error: 'The bank asked the cardholder to approve this payment' };
+        return { id, active: false, needsAuth: { clientSecret: `pi_sim_${rid()}_secret_sim`, paymentMethodId: card.paymentMethodId } };
+      }
+      return { id, active: true };
+    }
     let priceId = m.stripePriceId;
     if (!priceId) {
       const price = await api().prices.create({ currency: 'usd', unit_amount: m.price, recurring: { interval: 'month' }, product_data: { name: m.name, metadata: { membershipId: m.id } } });
       priceId = price.id;
     }
-    const sub = await api().subscriptions.create({ customer: customerId, items: [{ price: priceId }], default_payment_method: card.paymentMethodId, metadata: { membershipId: m.id } });
-    return { id: sub.id, priceId };
+    const sub = await api().subscriptions.create({
+      customer: customerId,
+      items: [{ price: priceId }],
+      default_payment_method: card.paymentMethodId,
+      payment_behavior: 'allow_incomplete',
+      off_session: !clientPresent,
+      metadata: { membershipId: m.id },
+      expand: ['latest_invoice.payment_intent'],
+    });
+    const invoice = sub.latest_invoice as (Stripe.Invoice & { payment_intent?: Stripe.PaymentIntent | null }) | null;
+    const pi = invoice?.payment_intent ?? null;
+    if (sub.status === 'active' || sub.status === 'trialing') return { id: sub.id, priceId, invoiceId: invoice?.id, active: true };
+    if (clientPresent && pi?.status === 'requires_action' && pi.client_secret)
+      return { id: sub.id, priceId, invoiceId: invoice?.id, active: false, needsAuth: { clientSecret: pi.client_secret, paymentMethodId: card.paymentMethodId } };
+    await api().subscriptions.cancel(sub.id).catch(() => {});
+    return { id: sub.id, priceId, active: false, error: pi?.last_payment_error?.message ?? 'The card was declined' };
+  },
+
+  /** A membership whose first payment needed the client's approval: is it running now? */
+  async subscriptionActive(id: string) {
+    if (!stripeLive() || id.startsWith('sub_sim_')) return { active: id.startsWith('sub_sim_'), invoiceId: undefined as string | undefined };
+    const sub = await api().subscriptions.retrieve(id);
+    return { active: sub.status === 'active' || sub.status === 'trialing', invoiceId: typeof sub.latest_invoice === 'string' ? sub.latest_invoice : sub.latest_invoice?.id };
   },
 
   async cancelSubscription(id: string) {

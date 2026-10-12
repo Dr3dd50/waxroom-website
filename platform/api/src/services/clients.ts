@@ -1,5 +1,5 @@
 import type { Store } from '../store/store';
-import type { Appointment, Client } from '../types';
+import type { Appointment, Client, Package, Payment } from '../types';
 import { bad, nowIso, rid, toE164 } from '../lib/util';
 
 export async function findClientByPhone(store: Store, phone: string) {
@@ -57,4 +57,20 @@ export async function hasVisited(store: Store, clientId: string) {
 export async function futureAppointments(store: Store, clientId: string) {
   const now = nowIso();
   return (await store.range<Appointment>('appointments', now, '9999')).filter((a) => a.clientId === clientId && !['cancelled', 'no-show'].includes(a.status));
+}
+
+/**
+ * A paid package goes on the client's account, once per payment: the booking page
+ * and Stripe's webhook can both report the same payment.
+ */
+export async function grantPackage(store: Store, client: Client, p: Package, paymentId: string, simulated: boolean) {
+  const existing = (await store.list<Payment>('payments')).find((x) => x.providerId === paymentId && x.kind === 'package');
+  const fresh = (await store.get<Client>('clients', client.id)) ?? client;
+  if (existing) return { expiresAt: fresh.packages?.find((k) => k.packageId === p.id)?.expiresAt ?? null, already: true };
+  const expiresAt = p.expiresMonths ? new Date(Date.now() + p.expiresMonths * 30.44 * 86400000).toISOString() : null;
+  fresh.packages = [...(fresh.packages ?? []), { packageId: p.id, boughtAt: nowIso(), expiresAt, remaining: Object.fromEntries(p.items.map((i) => [i.serviceId, i.quantity])) }];
+  await store.put('clients', fresh);
+  Object.assign(client, fresh);
+  await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'package', amount: p.price, tip: 0, method: 'card', status: 'paid', providerId: paymentId, simulated });
+  return { expiresAt, already: false };
 }

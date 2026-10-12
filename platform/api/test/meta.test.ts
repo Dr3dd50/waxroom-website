@@ -35,6 +35,8 @@ const { makeApp, makeStore } = await import('../src/app');
 const { retryMetaEvents } = await import('../src/services/meta');
 const { addDays, zoned } = await import('../src/lib/time');
 const store = await makeStore();
+// online booking opens after the GlossGenius import (gate.test.ts covers that); open it here
+await store.put('settings', { ...(await store.get<any>('settings', 'settings')), onlineBooking: { open: true } });
 const app = makeApp(store);
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 

@@ -47,23 +47,42 @@ time, so:
 
 ## 3. Switching booking from GlossGenius to ours
 
-When Twilio's business-texting registration is approved and Stripe is set up:
+Our booking reaches clients only when two things are true: the website was
+deployed with it (`build:native`), and the owner has opened it in the dashboard
+(Settings → Online booking), which needs a GlossGenius import first. Until the
+owner opens it, the website's Book, membership and package buttons keep going to
+GlossGenius, even on the `build:native` version, and the API refuses new online
+bookings. So deploying the native build early changes nothing for clients.
 
 1. Fill the keys into the `AppKeys` secret (Secrets Manager → the secret → Edit):
    `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`,
    `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`.
-2. In Stripe, add a webhook to the `StripeWebhook` output URL for
-   `invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`.
+   The API reads them when it starts; to restart it now, run
+   `aws lambda update-function-configuration --function-name <the WaxRoom-Api… function> --description "keys updated"`.
+2. In Stripe (Developers → Webhooks → Add endpoint), send these events to the
+   `StripeWebhook` output URL: `invoice.paid`, `invoice.payment_failed`,
+   `customer.subscription.deleted`, `payment_intent.succeeded`. Its signing secret is
+   `STRIPE_WEBHOOK_SECRET`. Any API version works.
    In Twilio, set the Messaging Service's incoming-message webhook to the
    `TwilioWebhook` output URL.
-3. Import clients and upcoming appointments from GlossGenius
-   (`npm run import:glossgenius -- --clients … --appointments …` with
-   `TABLE_NAME` set to the table).
-4. `npm run build:native && npx cdk deploy -c booking=native -c attachDomains=true …`:
-   every Book button now uses our booking. To go back, deploy `npm run build` again.
+3. Each team member's mobile number goes in Settings → Team, for their booking
+   texts.
+4. `npm run build:native && npx cdk deploy -c booking=native -c attachDomains=true …`.
+5. Dashboard → Settings → Online booking: upload the GlossGenius clients and
+   appointments exports, check them, import, look over the calendar, then open
+   online booking. Import again as often as needed while GlossGenius is still
+   taking bookings: its bookings block those times here, and its cancellations
+   come across. (The same import runs from the command line:
+   `npm run import:glossgenius -- --clients … --appointments …` with `TABLE_NAME` set.)
+6. In GlossGenius, turn off its rebooking reminders once ours are on. From the
+   moment online booking opens, our system sends a rebooking text when each
+   service's rebooking time has passed.
 
-Until then every deploy uses the GlossGenius version: the stack refuses a
-`dist/` built with our booking unless `-c booking=native` is passed.
+To go back: close online booking in the dashboard (clients go to GlossGenius
+again straight away), or deploy `npm run build`.
+
+Every deploy uses the GlossGenius version unless `-c booking=native` is passed: the
+stack refuses a `dist/` built with our booking otherwise.
 
 ## 4. Meta pixel and Conversions API
 

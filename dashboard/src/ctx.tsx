@@ -15,6 +15,7 @@ export const dateLong = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDa
 export const dateShort = (iso: string) => new Date(iso).toLocaleDateString('en-US', { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric' });
 export const phone = (e164: string) => {
   const d = e164.replace(/\D/g, '').slice(-10);
+  if (!d) return ''; // hidden from employees unless the owner allows it
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 };
 

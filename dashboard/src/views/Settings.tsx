@@ -3,6 +3,7 @@ import { api } from '../api';
 import { DAY_KEYS, useBoot } from '../ctx';
 import type { Staff } from '../types';
 import { Drawer, PageHead, Pill, Toggle } from '../ui';
+import { OnlineBooking } from './OnlineBooking';
 
 const ORDER = [1, 2, 3, 4, 5, 6, 0];
 const hr = (h: number) => `${h === 12 ? 12 : h % 12}${h >= 12 ? 'pm' : 'am'}`;
@@ -23,6 +24,7 @@ export function SettingsView() {
   return (
     <div className="page">
       <PageHead title="Settings" sub="Carried over from GlossGenius. Changes apply to online booking right away." />
+      <OnlineBooking />
       <div className="two two--wide">
         <section className="card-panel">
           <h2>Business hours</h2>
@@ -136,6 +138,21 @@ export function SettingsView() {
             </button>
             {saved ? <span className="muted small">{saved}</span> : null}
           </div>
+          <h2 className="mt">Team texts and privacy</h2>
+          <dl className="kv kv--settings">
+            <dt>Text the team about bookings, moves and cancellations</dt>
+            <dd>
+              <Toggle on={s.staffAlerts.enabled} onChange={(v) => save({ staffAlerts: { enabled: v } })} label="Team texts" />
+            </dd>
+            <dt>Employees can see client phone numbers and emails</dt>
+            <dd>
+              <Toggle on={s.privacy.employeesSeeContact} onChange={(v) => save({ privacy: { employeesSeeContact: v } })} label="Employees see client contact details" />
+            </dd>
+          </dl>
+          <p className="muted small mt">
+            Each person gets texts about their own appointments, and you get a copy of every one. Turn it off for one person under Team. The texts never include client
+            numbers. With contact details hidden, employees still see names, visits and notes, and can still text a client from the dashboard.
+          </p>
           <h2 className="mt">Connections</h2>
           <dl className="kv kv--settings">
             <dt>Stripe (payments)</dt>
@@ -168,7 +185,8 @@ function TeamEditor({ m, onClose }: { m: Staff | null; onClose: () => void }) {
             name: f.get('name'),
             short: f.get('short'),
             email: f.get('email'),
-            phone: f.get('phone') || undefined,
+            phone: f.get('phone') ?? undefined,
+            alerts: f.get('alerts') === 'on',
             color: f.get('color'),
             role: f.get('role'),
             bookable: f.get('bookable') === 'on',
@@ -200,8 +218,11 @@ function TeamEditor({ m, onClose }: { m: Staff | null; onClose: () => void }) {
           <input name="email" type="email" defaultValue={m?.email} required />
         </label>
         <label className="field">
-          Mobile
-          <input name="phone" defaultValue={m?.phone} />
+          Mobile (for booking texts)
+          <input name="phone" type="tel" defaultValue={m?.phone} />
+        </label>
+        <label className="check">
+          <input type="checkbox" name="alerts" defaultChecked={m?.alerts ?? true} /> Text them when appointments are booked, moved or cancelled
         </label>
         <div className="two">
           <label className="field">

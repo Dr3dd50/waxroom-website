@@ -175,6 +175,8 @@ function ServiceEditor({ service, cats, onClose }: { service: Service | null; ca
             depositNewClientsOnly: f.get('depositWho') === 'new',
             description: String(f.get('description')) || null,
             prepTip: String(f.get('prepTip')) || undefined,
+            // blank: no rebooking text for this service
+            rebookAfterDays: Number(f.get('rebookWeeks')) ? Math.round(Number(f.get('rebookWeeks')) * 7) : null,
             staffIds,
             active: f.get('active') === 'on',
           };
@@ -233,6 +235,10 @@ function ServiceEditor({ service, cats, onClose }: { service: Service | null; ca
         <label className="field">
           Reminder tip (texted the day before)
           <input name="prepTip" defaultValue={service?.prepTip ?? ''} />
+        </label>
+        <label className="field">
+          Rebooking text after (weeks; blank for none)
+          <input name="rebookWeeks" type="number" min="1" max="52" step="0.5" defaultValue={service ? (service.rebookAfterDays ? service.rebookAfterDays / 7 : '') : 6} />
         </label>
         <fieldset className="field">
           <legend>Who performs it</legend>

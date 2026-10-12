@@ -2,10 +2,10 @@
 import { Hono } from 'hono';
 import { config } from './config';
 import { HttpError } from './lib/util';
-import { publicRoutes } from './routes/public';
+import { calendarRoutes, publicRoutes } from './routes/public';
 import { staffRoutes } from './routes/staff';
 import { webhookRoutes } from './routes/webhooks';
-import { hashPassword, seed } from './seed';
+import { hashPassword, seed, upgrade } from './seed';
 import { DynamoStore } from './store/dynamo';
 import { FileStore } from './store/file';
 import type { Store } from './store/store';
@@ -14,6 +14,7 @@ import type { Settings, Staff } from './types';
 export async function makeStore(): Promise<Store> {
   const store: Store = config.tableName ? new DynamoStore(config.tableName) : new FileStore(config.dataFile);
   if (!(await store.get<Settings>('settings', 'settings'))) await seed(store);
+  await upgrade(store);
   // owner password added to the keys after the first deploy: set it once
   if (config.owner.password) {
     const owner = (await store.list<Staff>('staff')).find((s) => s.role === 'owner' && !s.passwordHash);
@@ -31,6 +32,7 @@ export function makeApp(store: Store) {
   });
   app.get('/health', (c) => c.json({ ok: true }));
   app.route('/public', publicRoutes(store));
+  app.route('/cal', calendarRoutes(store));
   app.route('/staff', staffRoutes(store));
   app.route('/webhooks', webhookRoutes(store));
   return app;

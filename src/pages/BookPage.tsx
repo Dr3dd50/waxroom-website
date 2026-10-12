@@ -1,7 +1,7 @@
 // Online booking: service → who → when → details → card → booked.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CardForm, type CardSetup } from '../components/CardForm';
-import { api, cents, dateOf, minutes, timeOf, TZ } from '../lib/api';
+import { api, cents, dateOf, minutes, needsApproval, timeOf, TZ, type NeedsApproval } from '../lib/api';
 import { business } from '../data';
 import { jumpToTop } from '../lib/motion';
 import { NATIVE, glossGeniusService } from '../lib/booking';
@@ -10,9 +10,9 @@ import { SERVICE_GROUPS, findServicePage, groupCategories } from '../content/ser
 
 type Svc = { id: string; name: string; category: string; price: number; priceVaries: boolean; duration: number; deposit: number | null; depositNewClientsOnly: boolean; description: string | null; staffIds: string[] };
 type Catalog = { staff: { id: string; short: string; color: string }[]; services: Svc[] };
-type Config = { payments: 'stripe' | 'simulated'; texts: 'twilio' | 'simulated'; stripePublishableKey: string | null; referrals: { enabled: boolean; friendGets: number }; policies: { cancellationPolicy: string; cancellationWindowHours: number; cancellationFeePercent: number } };
+export type Config = { booking: 'open' | 'closed'; payments: 'stripe' | 'simulated'; texts: 'twilio' | 'simulated'; stripePublishableKey: string | null; referrals: { enabled: boolean; friendGets: number }; policies: { cancellationPolicy: string; cancellationWindowHours: number; cancellationFeePercent: number } };
 type Slot = { start: string; staffIds: string[] };
-type Booked = { token: string; start: string; service: string; staff: string; price: number; deposit: number; referralDiscount: number; card: string | null; first: string };
+type Booked = { token: string; start: string; service: string; staff: string; price: number; deposit: number; referralDiscount: number; card: string | null; first: string; calendar?: { ics: string; google: string } };
 
 const CATEGORY_LABEL: Record<string, string> = {
   'Intimate Waxing': 'Brazilian & intimate waxing',
@@ -64,7 +64,38 @@ const GG_SERVICES: Svc[] = business.categories.flatMap((c) =>
 );
 
 export function BookPage() {
-  return NATIVE ? <NativeBooking /> : <GlossGeniusMenu />;
+  return NATIVE ? <OurBookingWhenOpen /> : <GlossGeniusMenu />;
+}
+
+/**
+ * Our own booking only once the owner has opened it (after the GlossGenius import).
+ * Until then, or if the booking system can't be reached, this page works as on the
+ * live site: the menu, with each service opening its calendar on GlossGenius.
+ */
+function OurBookingWhenOpen() {
+  const [config, setConfig] = useState<Config | null | 'closed'>(null);
+  useEffect(() => {
+    api<Config>('/public/config').then(
+      (c) => {
+        if (c.booking === 'open') return setConfig(c);
+        const wanted = new URLSearchParams(location.search).get('service')?.toLowerCase();
+        const gg = wanted && GG_SERVICES.find((s) => s.name.toLowerCase() === wanted);
+        if (gg) location.replace(glossGeniusService(gg.id));
+        else setConfig('closed');
+      },
+      () => setConfig('closed'),
+    );
+  }, []);
+  if (config === 'closed') return <GlossGeniusMenu />;
+  if (!config)
+    return (
+      <section className="book">
+        <div className="container">
+          <p className="muted">Loading the menu…</p>
+        </div>
+      </section>
+    );
+  return <NativeBooking config={config} />;
 }
 
 /** Live site: our menu, opened on the right umbrella; a service opens its calendar on GlossGenius. */
@@ -85,10 +116,9 @@ function GlossGeniusMenu() {
   );
 }
 
-function NativeBooking() {
+function NativeBooking({ config }: { config: Config }) {
   const focus = useFocus();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [config, setConfig] = useState<Config | null>(null);
   const [loadError, setLoadError] = useState('');
   const [service, setService] = useState<Svc | null>(null);
   const [staffId, setStaffId] = useState<string | null | undefined>(undefined); // undefined = not chosen, null = anyone
@@ -99,10 +129,9 @@ function NativeBooking() {
   const referral = useMemo(() => (typeof window === 'undefined' ? null : readReferral()), []);
 
   useEffect(() => {
-    Promise.all([api<Catalog>('/public/catalog'), api<Config>('/public/config')])
-      .then(([cat, cfg]) => {
+    api<Catalog>('/public/catalog')
+      .then((cat) => {
         setCatalog(cat);
-        setConfig(cfg);
         const wanted = new URLSearchParams(location.search).get('service')?.toLowerCase();
         const pre = wanted && cat.services.find((s) => s.name.toLowerCase() === wanted);
         if (pre) pickService(pre, cat);
@@ -270,7 +299,16 @@ function NativeBooking() {
                 submitLabel="Book appointment"
                 onSaved={async (extra) => {
                   const a = attribution();
-                  const r = await api<Booked>('/public/bookings/confirm', {
+                  const finish = (r: Booked) => {
+                    try {
+                      localStorage.removeItem('wr_referral');
+                    } catch {
+                      /* private mode */
+                    }
+                    trackConversion('Schedule', a, { content_name: service.name, content_category: service.category, value: r.price / 100, currency: 'USD' });
+                    setBooked(r);
+                  };
+                  const r = await api<Booked | (NeedsApproval & { token: string })>('/public/bookings/confirm', {
                     tracking: a,
                     url: location.href,
                     clientId: details.clientId,
@@ -281,13 +319,10 @@ function NativeBooking() {
                     referralCode: referral?.code,
                     ...extra,
                   });
-                  try {
-                    localStorage.removeItem('wr_referral');
-                  } catch {
-                    /* private mode */
-                  }
-                  trackConversion('Schedule', a, { content_name: service.name, content_category: service.category, value: r.price / 100, currency: 'USD' });
-                  setBooked(r);
+                  // the deposit needs the bank's approval: the time is held while the client approves it
+                  if (needsApproval(r))
+                    return { approve: r, after: async () => finish(await api<Booked>(`/public/booking/${r.token}/deposit`, { tracking: a, url: location.href })) };
+                  finish(r as Booked);
                 }}
               />
             </div>
@@ -304,6 +339,7 @@ function NativeBooking() {
                 {config?.texts === 'simulated' ? ' (Texting isn’t switched on yet, so this one is saved instead of sent.)' : ''}
               </p>
               <div className="book__actions">
+                {booked.calendar ? <CalendarButtons calendar={booked.calendar} /> : null}
                 <a className="btn btn--dark" href={`/booking/?t=${booked.token}`}>
                   View or change booking
                 </a>
@@ -566,5 +602,19 @@ export function DetailsForm({
         {busy ? 'One moment…' : cta}
       </button>
     </form>
+  );
+}
+
+/** Add the booking to the client's calendar: a calendar file (Apple, Outlook, most phones) or Google. */
+export function CalendarButtons({ calendar }: { calendar: { ics: string; google: string } }) {
+  return (
+    <>
+      <a className="btn btn--honey" href={calendar.ics}>
+        Add to calendar
+      </a>
+      <a className="btn btn--ghost" href={calendar.google} target="_blank" rel="noopener">
+        Add to Google Calendar
+      </a>
+    </>
   );
 }

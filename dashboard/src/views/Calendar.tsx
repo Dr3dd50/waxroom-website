@@ -305,7 +305,7 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
               {client.first} {client.last}
             </h3>
             <p className="muted">
-              {phone(client.phone)}
+              {client.contactHidden ? 'Phone and email: owner only' : phone(client.phone)}
               {client.email ? ` · ${client.email}` : ''}
             </p>
             {client.notes ? <p className="note">{client.notes}</p> : null}
@@ -603,7 +603,7 @@ function NewAppointment({ day: initialDay, onClose, onBooked }: { day: string; o
             {client.first} · {nice(sv.name)}
           </h3>
           <p className="muted">
-            {dateLong(day)} at {slot && time(slot)}. Confirmation texted to {phone(client.phone)}.
+            {dateLong(day)} at {slot && time(slot)}. Confirmation texted to {client.contactHidden ? 'the client' : phone(client.phone)}.
             {client.card ? '' : ' No card on file yet: add one in Clients before the visit.'}
           </p>
           <button className="btn btn--dark" onClick={onClose}>

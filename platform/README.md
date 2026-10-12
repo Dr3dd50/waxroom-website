@@ -13,7 +13,7 @@ behind it.
 | Booking | on the website | Pick service → staff → time → details → card on file (Stripe) |
 | API | AWS | Appointments, availability, clients, catalog, referrals, webhooks |
 | Payments | Stripe | Card on file, deposits, checkout, no-show fees, membership subscriptions, referral credit |
-| Texts | Twilio | Confirmations, reminders, rebooking nudges, marketing campaigns (opt-in only) |
+| Texts | Twilio | Confirmations, reminders, calendar links, rebooking nudges timed per service, team texts for bookings, moves and cancellations, marketing campaigns (opt-in only) |
 
 Hosting is AWS, alongside the CloudFront distribution that already serves the
 domain: the dashboard as its own static site on the `employee` subdomain, the
@@ -65,6 +65,19 @@ Stripe and Twilio stay simulated until their keys are set.
   checking in, checking out, moving, cancelling and no-shows on their own
   appointments; their own working hours and time off. No totals, prices,
   offers, referrals, services or settings.
+
+## Running alongside GlossGenius
+
+Online booking here stays closed until the GlossGenius clients and appointments
+are imported (dashboard → Settings → Online booking) and the owner opens it.
+While it's closed, the website sends people to GlossGenius. Imported GlossGenius
+appointments block their times on our calendar but get no texts from us, since
+GlossGenius sends its own. Import again whenever needed: it adds what's new and
+brings GlossGenius cancellations across.
+
+The owner decides whether employees see client phone numbers and emails
+(Settings → Team texts and privacy). Hidden is the default. Team texts never
+include client numbers either way.
 
 ## Two versions of the website
 

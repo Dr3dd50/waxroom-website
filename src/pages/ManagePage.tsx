@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api, cents, dateOf, timeOf, TZ } from '../lib/api';
 import { business, phoneDisplay } from '../data';
+import { CalendarButtons } from './BookPage';
 
 type Booking = {
   token: string;
@@ -19,6 +20,7 @@ type Booking = {
   cancelFee: number;
   canCancelOnline: boolean;
   windowHours: number;
+  calendar?: { ics: string; google: string };
 };
 
 export function ManagePage() {
@@ -89,6 +91,7 @@ export function ManagePage() {
 
             {upcoming && mode === 'view' ? (
               <div className="book__actions">
+                {b.calendar ? <CalendarButtons calendar={b.calendar} /> : null}
                 {!inWindow ? (
                   <button className="btn btn--dark" onClick={() => setMode('move')}>
                     Change time

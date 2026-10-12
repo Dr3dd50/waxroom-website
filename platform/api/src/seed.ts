@@ -38,18 +38,55 @@ const PREP: Record<string, string> = {
 };
 
 export const DEFAULT_AUTOMATIONS: Settings['automations'] = {
-  booking: { enabled: true, text: 'Hi {first}! You’re booked for {service} with {staff} on {date} at {time}. Manage your booking: {manage_link}' },
+  booking: { enabled: true, text: 'Hi {first}! You’re booked for {service} with {staff} on {date} at {time}. Add it to your calendar: {calendar_link} Manage your booking: {manage_link}' },
+  moved: { enabled: true, text: 'Hi {first}, your {service} is now {date} at {time} with {staff}. Update your calendar: {calendar_link} Manage your booking: {manage_link}' },
   'confirm-request': {
     enabled: true,
     text: 'Hi {first}, see you {day} at {time} for {service}. Reply C to confirm. Need to change it? {manage_link} Cancellations within {window} hours are charged {fee}%.',
   },
   reminder: { enabled: true, text: 'Reminder: {service} tomorrow at {time} at The Wax Room, 11162 Hull Street Rd N. {prep_tip}' },
   receipt: { enabled: true, text: 'Thanks {first}! You paid {total}. Share your link and you both get {referral_amount}: {referral_link}' },
-  rebook: { enabled: true, text: 'Hi {first}, it’s been about 6 weeks since your {service}. Ready for the next one? {booking_link}' },
+  rebook: { enabled: true, text: 'Hi {first}, it’s been about {weeks} weeks since your {service}, the right time for the next one. Book here: {booking_link}' },
   referral: { enabled: true, text: '{friend} just had their first visit. {amount} credit is on your account for next time. Thank you!' },
   birthday: { enabled: true, text: 'Happy birthday, {first}! From all of us at The Wax Room.' },
   cancel: { enabled: true, text: 'Your {service} on {date} at {time} is cancelled.{fee_note} Book again anytime: {booking_link}' },
 };
+
+// Texts the first deploy was seeded with; an untouched one is replaced by today's default.
+const PREVIOUS_DEFAULTS: Record<string, string[]> = {
+  booking: ['Hi {first}! You’re booked for {service} with {staff} on {date} at {time}. Manage your booking: {manage_link}'],
+  rebook: ['Hi {first}, it’s been about 6 weeks since your {service}. Ready for the next one? {booking_link}'],
+};
+
+/**
+ * When to nudge a client to rebook, from what each service page tells clients:
+ * waxing every 3–5 weeks, brows every 3–4, lash fills every 2–3, lamination 6–8,
+ * anything else about 6 weeks. The nudge goes at the start of the range, so there's
+ * time to book inside it. The owner can change it per service.
+ */
+export function defaultRebookDays(s: Pick<Service, 'name' | 'category'>): number {
+  if (s.category === 'Lash Art') return /fill|full set/i.test(s.name) ? 14 : 42;
+  if (s.category === 'Brow Art') return /lamination/i.test(s.name) ? 42 : 21;
+  if (s.category === 'Intimate Waxing' || s.category === 'Body and Facial Waxing') return 28;
+  return 42;
+}
+
+/** Bring a store seeded by an earlier version up to date. Safe to run on every start. */
+export async function upgrade(store: Store) {
+  const s = await store.get<Settings>('settings', 'settings');
+  if (!s) return;
+  const before = JSON.stringify(s);
+  s.onlineBooking ??= { open: config.demoData };
+  s.staffAlerts ??= { enabled: true };
+  s.privacy ??= { employeesSeeContact: false };
+  for (const [key, def] of Object.entries(DEFAULT_AUTOMATIONS)) {
+    const cur = s.automations[key];
+    if (!cur) s.automations[key] = def;
+    else if (PREVIOUS_DEFAULTS[key]?.includes(cur.text)) s.automations[key] = { ...cur, text: def.text };
+  }
+  if (JSON.stringify(s) !== before) await store.put('settings', s);
+  for (const svc of await store.list<Service>('services')) if (svc.rebookAfterDays === undefined) await store.put('services', { ...svc, rebookAfterDays: defaultRebookDays(svc) });
+}
 
 export async function seed(store: Store) {
   const staffByGg = new Map<string, Staff>();
@@ -94,6 +131,7 @@ export async function seed(store: Store) {
       bookableOnline: staffIds.some((id) => [...staffByGg.values()].find((x) => x.id === id)?.bookable),
       prepTip: PREP[category],
     };
+    service.rebookAfterDays = defaultRebookDays(service);
     await store.put('services', service);
   }
 
@@ -148,6 +186,10 @@ export async function seed(store: Store) {
     notifications: { confirmHoursBefore: 72, reminderHoursBefore: 24, rebookAfterDays: 42, quietStart: 21, quietEnd: 9 },
     automations: DEFAULT_AUTOMATIONS,
     referrals: { enabled: true, friendGets: 1000, referrerGets: 1000 },
+    // local demos book straight away; on AWS it opens after the GlossGenius import, by the owner
+    onlineBooking: { open: config.demoData },
+    staffAlerts: { enabled: true },
+    privacy: { employeesSeeContact: false },
   };
   await store.put('settings', settings);
 

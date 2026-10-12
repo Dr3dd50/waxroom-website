@@ -24,3 +24,7 @@ export const TZ = 'America/New_York';
 export const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
 export const dateOf = (iso: string) => new Date(iso).toLocaleDateString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric' });
 export const minutes = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} hr${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
+
+/** What the server sends when the client's bank wants them to approve a payment (CardForm shows that step). */
+export type NeedsApproval = { needsAuthentication: true; clientSecret: string; paymentMethodId: string };
+export const needsApproval = (r: unknown): r is NeedsApproval => !!r && typeof r === 'object' && (r as NeedsApproval).needsAuthentication === true;

@@ -1,7 +1,7 @@
 // Shapes the API returns (mirrors platform/api/src/types.ts).
 export type TimeOff = { id: string; from: string; to: string; note: string };
-export type Staff = { id: string; name: string; short: string; email: string; phone?: string; role: 'owner' | 'employee'; color: string; active: boolean; bookable: boolean; schedule?: Record<number, { start: number; end: number } | null>; timeOff: TimeOff[] };
-export type Service = { id: string; name: string; category: string; order: number; price: number; priceVaries: boolean; duration: number; deposit: number | null; depositNewClientsOnly: boolean; description: string | null; staffIds: string[]; active: boolean; bookableOnline: boolean; prepTip?: string };
+export type Staff = { id: string; name: string; short: string; email: string; phone?: string; role: 'owner' | 'employee'; color: string; active: boolean; bookable: boolean; schedule?: Record<number, { start: number; end: number } | null>; timeOff: TimeOff[]; alerts: boolean };
+export type Service = { id: string; name: string; category: string; order: number; price: number; priceVaries: boolean; duration: number; deposit: number | null; depositNewClientsOnly: boolean; description: string | null; staffIds: string[]; active: boolean; bookableOnline: boolean; prepTip?: string; rebookAfterDays?: number | null };
 export type Membership = { id: string; name: string; description: string | null; price: number; includes: { serviceId: string; quantity: number }[]; active: boolean; public: boolean };
 export type Package = { id: string; name: string; price: number; items: { serviceId: string; quantity: number }[]; expiresMonths: number | null; active: boolean };
 export type Status = 'booked' | 'confirmed' | 'checked-in' | 'completed' | 'cancelled' | 'no-show';
@@ -18,6 +18,7 @@ export type Appointment = {
   notes: string;
   newClient: boolean;
   deposit?: { amount: number; status: string };
+  calendarSeq?: number;
   referral?: { referrerId: string; code: string; friendDiscount: number };
   texts: { bookedAt?: string; confirmRequestAt?: string; reminderAt?: string; confirmedAt?: string };
   checkout?: { at: string; lines: { label: string; amount: number }[]; subtotal: number; tip: number; total: number; method: string; membershipUsed: boolean; packageUsed?: string; creditUsed: number; referralDiscount: number };
@@ -29,6 +30,8 @@ export type Client = {
   last: string;
   phone: string;
   email: string;
+  /** The owner hasn't allowed employees to see phone numbers and emails. */
+  contactHidden?: boolean;
   notes: string;
   credit: number;
   card: string | null;
@@ -48,5 +51,14 @@ export type Settings = {
   notifications: { confirmHoursBefore: number; reminderHoursBefore: number; rebookAfterDays: number; quietStart: number; quietEnd: number };
   automations: Record<string, { enabled: boolean; text: string }>;
   referrals: { enabled: boolean; friendGets: number; referrerGets: number };
+  onlineBooking: { open: boolean; changedAt?: string; changedBy?: string };
+  glossGeniusImport?: ImportReport & { by: string };
+  staffAlerts: { enabled: boolean };
+  privacy: { employeesSeeContact: boolean };
+};
+export type ImportReport = {
+  at: string;
+  clients?: { added: number; matched: number; skipped: number };
+  appointments?: { added: number; updated: number; unchanged: number; unmatched: number; problems: string[] };
 };
 export type Boot = { me: Staff; staff: Staff[]; services: Service[]; memberships: Membership[]; packages: Package[]; settings: Settings; live: { payments: boolean; texts: boolean }; today: string };

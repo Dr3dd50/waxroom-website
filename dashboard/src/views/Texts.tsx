@@ -4,11 +4,12 @@ import { CATEGORY_ORDER, phone, useBoot } from '../ctx';
 import { PageHead, Pill, Toggle } from '../ui';
 
 const AUTOMATIONS: { key: string; name: string; when: (n: ReturnType<typeof useBoot>['settings']['notifications']) => string }[] = [
-  { key: 'booking', name: 'Booking confirmation', when: () => 'Right after booking or a time change' },
+  { key: 'booking', name: 'Booking confirmation', when: () => 'Right after booking' },
+  { key: 'moved', name: 'Time changed', when: () => 'When the client or the studio moves an appointment' },
   { key: 'confirm-request', name: 'Confirmation request', when: (n) => `${n.confirmHoursBefore} hours before (if booked further ahead)` },
   { key: 'reminder', name: 'Reminder', when: (n) => `${n.reminderHoursBefore} hours before` },
   { key: 'receipt', name: 'Receipt + referral link', when: () => 'After checkout' },
-  { key: 'rebook', name: 'Rebooking nudge', when: (n) => `${n.rebookAfterDays} days after a visit, if nothing’s booked` },
+  { key: 'rebook', name: 'Rebooking nudge', when: () => 'After each service’s rebooking time (set per service), if nothing’s booked' },
   { key: 'referral', name: 'Referral credit earned', when: () => 'When a referred friend’s first visit is paid' },
   { key: 'cancel', name: 'Cancellation', when: () => 'When an appointment is cancelled' },
   { key: 'birthday', name: 'Birthday', when: () => 'On their birthday, around 10am' },
@@ -28,6 +29,8 @@ const SAMPLE: Record<string, string> = {
   fee: '50',
   fee_note: '',
   prep_tip: 'Let hair grow to about ¼ inch and skip lotion on the area.',
+  weeks: '4',
+  calendar_link: 'waxroomrichmond.com/api/cal/Xy7…',
 };
 const preview = (t: string) => t.replace(/\{(\w+)\}/g, (m, k) => SAMPLE[k] ?? (k.endsWith('_link') ? 'waxroomrichmond.com/b/4k2' : m));
 

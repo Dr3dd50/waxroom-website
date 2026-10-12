@@ -1,23 +1,32 @@
 // Timed texts, run every 15 minutes: the confirmation request (72 h before),
-// the reminder (24 h before), the rebooking nudge (6 weeks after a visit with
-// nothing booked) and birthdays. Nothing goes out during quiet hours.
+// the reminder (24 h before), the rebooking nudge (when the service's follow-up
+// time has passed with nothing booked) and birthdays. Nothing goes out to clients
+// during quiet hours; staff texts that waited them out go at the end.
+//
+// Appointments imported from GlossGenius get no texts from us: GlossGenius still
+// sends its own for them. Rebooking nudges and birthdays start once online
+// booking here is open, so clients aren't texted by both systems before then.
 import type { Store } from '../store/store';
 import type { Appointment, Client, Service } from '../types';
 import { zoned } from '../lib/time';
 import { nice } from '../lib/util';
-import { apptVars, autoText, bookingLink, manageLink } from './appointments';
+import { apptVars, autoText, bookingLink, manageLink, releaseUnpaidHolds } from './appointments';
 import { getSettings } from './availability';
+import { flushOutbox, isQuiet } from './alerts';
 import { sendText } from './sms';
 
 export async function runDueTexts(store: Store, now = new Date()) {
   const settings = await getSettings(store);
   const local = zoned(now, settings.timezone);
   const n = settings.notifications;
-  if (local.hour >= n.quietStart || local.hour < n.quietEnd) return { sent: 0, quiet: true };
-  let sent = 0;
+  const released = await releaseUnpaidHolds(store, now);
+  if (isQuiet(local.hour, n)) return { sent: 0, quiet: true, released };
+  let sent = await flushOutbox(store, now);
 
   const horizon = new Date(now.getTime() + (n.confirmHoursBefore + 1) * 3600000).toISOString();
-  const upcoming = (await store.range<Appointment>('appointments', now.toISOString(), horizon)).filter((a) => a.status === 'booked' || a.status === 'confirmed');
+  const upcoming = (await store.range<Appointment>('appointments', now.toISOString(), horizon)).filter(
+    (a) => (a.status === 'booked' || a.status === 'confirmed') && a.source !== 'import' && a.deposit?.status !== 'pending',
+  );
   for (const a of upcoming) {
     const hours = (Date.parse(a.start) - now.getTime()) / 3600000;
     const client = await store.get<Client>('clients', a.clientId);
@@ -41,16 +50,15 @@ export async function runDueTexts(store: Store, now = new Date()) {
   }
 
   // Rebooking nudge and birthdays: once a day is plenty, around 10am.
-  if (local.hour === 10 && now.getMinutes() < 15) {
+  if (settings.onlineBooking?.open && local.hour === 10 && now.getMinutes() < 15) {
     const clients = await store.list<Client>('clients');
-    const future = new Set((await store.range<Appointment>('appointments', now.toISOString(), '9999')).filter((a) => a.status !== 'cancelled').map((a) => a.clientId));
+    const future = new Set((await store.range<Appointment>('appointments', now.toISOString(), '9999')).filter((a) => a.status !== 'cancelled' && a.status !== 'no-show').map((a) => a.clientId));
     const services = new Map((await store.list<Service>('services')).map((s) => [s.id, s]));
     for (const c of clients) {
       if (c.lastVisitAt && !future.has(c.id) && c.rebookNudgedFor !== c.lastVisitAt) {
-        const days = (now.getTime() - Date.parse(c.lastVisitAt)) / 86400000;
-        if (days >= n.rebookAfterDays) {
-          const last = (await store.range<Appointment>('appointments', c.lastVisitAt.slice(0, 10), `${c.lastVisitAt}~`)).find((a) => a.clientId === c.id);
-          const m = await autoText(store, 'rebook', c, { service: nice(services.get(last?.serviceId ?? '')?.name ?? 'visit'), booking_link: bookingLink() }, 'rebook' as never);
+        const due = await rebookDue(store, c, services, n.rebookAfterDays);
+        if (due && now.getTime() - Date.parse(c.lastVisitAt) >= due.days * 86400000) {
+          const m = await autoText(store, 'rebook', c, { service: nice(due.service.name), weeks: String(Math.round(due.days / 7)), booking_link: bookingLink(due.service) }, 'rebook' as never);
           c.rebookNudgedFor = c.lastVisitAt;
           await store.put('clients', c);
           if (m) sent++;
@@ -64,7 +72,26 @@ export async function runDueTexts(store: Store, now = new Date()) {
       }
     }
   }
-  return { sent, quiet: false };
+  return { sent, quiet: false, released };
+}
+
+/**
+ * Which service sets the follow-up after a client's last visit, and after how many
+ * days: of everything done that day, the one due soonest. null when none of them
+ * asks for a nudge.
+ */
+export async function rebookDue(store: Store, c: Client, services: Map<string, Service>, fallbackDays: number) {
+  // the visit: everything that ended in the 14 hours up to the last checkout
+  const from = new Date(Date.parse(c.lastVisitAt!) - 14 * 3600000).toISOString();
+  const visit = (await store.range<Appointment>('appointments', from, `${c.lastVisitAt}~`)).filter((a) => a.clientId === c.id && a.status === 'completed' && a.end <= c.lastVisitAt!);
+  let best: { service: Service; days: number } | null = null;
+  for (const a of visit) {
+    const service = services.get(a.serviceId);
+    if (!service) continue;
+    const days = service.rebookAfterDays === undefined ? fallbackDays : service.rebookAfterDays;
+    if (days !== null && (!best || days < best.days)) best = { service, days };
+  }
+  return best;
 }
 
 /** A client texted us back. C confirms, R gets the reschedule link, STOP/START opt out and in. */
