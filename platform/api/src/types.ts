@@ -198,8 +198,14 @@ export type Settings = {
   notifications: { confirmHoursBefore: number; reminderHoursBefore: number; rebookAfterDays: number; quietStart: number; quietEnd: number };
   automations: Record<string, { enabled: boolean; text: string }>;
   referrals: { enabled: boolean; friendGets: number; referrerGets: number };
-  /** Online booking on our own site. Closed until a GlossGenius import is done and the owner opens it. */
-  onlineBooking: { open: boolean; changedAt?: string; changedBy?: string };
+  /**
+   * The switch from GlossGenius. Until it's done, GlossGenius is the only booking
+   * system: nothing here books, texts or charges. Done only after a final import,
+   * with GlossGenius online booking turned off.
+   */
+  switchover: { done: boolean; at?: string; by?: string; remindImported?: boolean };
+  /** Before the switchover field existed. Read once by the upgrade, then removed. */
+  onlineBooking?: { open: boolean };
   /** The last GlossGenius import (clients and appointments). */
   glossGeniusImport?: ImportReport & { by: string };
   /** Texts to staff when appointments are booked, moved or cancelled. */
@@ -214,4 +220,4 @@ export type ImportReport = {
   appointments?: { added: number; updated: number; unchanged: number; unmatched: number; problems: string[] };
 };
 
-export type Collection = 'staff' | 'services' | 'memberships' | 'packages' | 'clients' | 'appointments' | 'referrals' | 'messages' | 'payments' | 'settings' | 'tokens' | 'metaOutbox' | 'outbox';
+export type Collection = 'staff' | 'services' | 'memberships' | 'packages' | 'clients' | 'appointments' | 'referrals' | 'messages' | 'payments' | 'settings' | 'tokens' | 'metaOutbox' | 'outbox' | 'locks';

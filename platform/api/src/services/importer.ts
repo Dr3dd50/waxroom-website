@@ -16,6 +16,7 @@
 import type { Store } from '../store/store';
 import type { Appointment, Client, ImportReport, Service, Settings, Staff } from '../types';
 import { uniqueReferralCode } from './clients';
+import { isFree } from './availability';
 import { zonedToUtc } from '../lib/time';
 import { nowIso, rid, toE164 } from '../lib/util';
 
@@ -162,10 +163,17 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
         } else unchanged++;
         continue;
       }
+      const staffId = service.staffIds.includes(person.id) ? person.id : (service.staffIds[0] ?? person.id);
+      // never two bookings in one time: a clash is listed for the owner instead
+      if (status === 'booked' && !(await isFree(store, staffId, start, service.duration))) {
+        unmatched++;
+        problems.push(`Clashes with a booking already on the calendar: ${col(row, 'client', 'name') || phone} · ${col(row, 'service')} · ${dateStr} ${timeStr}`.trim());
+        continue;
+      }
       const appt: Appointment = {
         id: `${start}_${rid(4)}`,
         clientId: client.id,
-        staffId: service.staffIds.includes(person.id) ? person.id : (service.staffIds[0] ?? person.id),
+        staffId,
         serviceId: service.id,
         start,
         end,

@@ -58,9 +58,11 @@ export function CalendarView() {
             Week
           </button>
         </div>
-        <button className="btn btn--dark" onClick={() => setCreating(true)}>
-          <Icon name="plus" /> New appointment
-        </button>
+        {boot.settings.switchover.done ? (
+          <button className="btn btn--dark" onClick={() => setCreating(true)}>
+            <Icon name="plus" /> New appointment
+          </button>
+        ) : null}
       </PageHead>
 
       {owner ? (
@@ -262,8 +264,10 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
   }
   const path = `/appointments/${encodeURIComponent(a.id)}`;
 
-  const footer =
-    step === 'details' && !closed ? (
+  // before the switch, GlossGenius is where appointments are booked and changed
+  const footer = !boot.settings.switchover.done ? (
+    <p className="muted small">Book, change and check out in GlossGenius until the switch.</p>
+  ) : step === 'details' && !closed ? (
       <>
         <button className="btn btn--ghost" onClick={() => setStep('cancel')}>
           Cancel / no-show

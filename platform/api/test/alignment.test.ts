@@ -73,43 +73,56 @@ const apptCsv = (status: string) =>
     `Nobody Known,8045550000,Brazilian,Danielle W,${usDate(futureDay)},1:00 PM,Booked,$65`,
   ].join('\n');
 
-test('online booking stays closed until the GlossGenius import is in and the owner opens it', async () => {
+test('before the switch nothing here books, texts or charges, and GlossGenius imports come in', async () => {
   cat = (await call('GET', '/public/catalog')).json;
   assert.equal((await call('GET', '/public/config')).json.booking, 'closed');
-  const start = await call('POST', '/public/bookings/start', { client: { first: 'Early', last: 'Bird', phone: '804-555-0300' } });
-  assert.equal(start.status, 403);
+  assert.equal((await call('POST', '/public/bookings/start', { client: { first: 'Early', last: 'Bird', phone: '804-555-0300' } })).status, 403);
 
   await asOwner();
-  assert.equal((await call('POST', '/staff/online-booking', { open: true, confirm: true })).status, 400, 'no import yet');
+  boot = (await call('GET', '/staff/bootstrap')).json;
+  nyeesha = boot.staff.find((s: any) => s.short === 'Nyeesha');
+  assert.deepEqual((await call('GET', '/staff/switchover')).json.blockers, ['Import the GlossGenius clients.', 'Import the GlossGenius appointments.']);
   // check the files first: nothing is saved
   const dry = await call('POST', '/staff/import/glossgenius', { clients: clientsCsv, appointments: apptCsv('Booked'), dryRun: true });
   assert.equal(dry.status, 200);
   assert.deepEqual(dry.json.report.clients, { added: 3, matched: 0, skipped: 1 });
   assert.equal((await store.list<any>('clients')).length, 0);
-
   const imp = (await call('POST', '/staff/import/glossgenius', { clients: clientsCsv, appointments: apptCsv('Booked') })).json.report;
   assert.equal(imp.appointments.added, 3);
   assert.equal(imp.appointments.unmatched, 1);
   assert.match(imp.appointments.problems[0], /Nobody Known/);
-  assert.equal((await call('POST', '/staff/online-booking', { open: true })).status, 400, 'needs the confirmation tick');
-  assert.equal((await call('POST', '/staff/online-booking', { open: true, confirm: true })).status, 200);
-  assert.equal((await call('GET', '/public/config')).json.booking, 'open');
-  boot = (await call('GET', '/staff/bootstrap')).json;
-  nyeesha = boot.staff.find((s: any) => s.short === 'Nyeesha');
+  assert.deepEqual((await call('GET', '/staff/switchover')).json.blockers, []);
+
+  // the desk can't book, text, or run the timed texts here yet
+  const rena = (await store.list<any>('clients')).find((c: any) => c.first === 'Rena');
+  const day = nextWeekday(4);
+  assert.equal((await call('POST', '/staff/appointments', { clientId: rena.id, serviceId: svc('Bikini').id, staffId: boot.me.id, start: zonedToUtc(day, 10 * 60).toISOString() })).status, 409);
+  assert.equal((await call('POST', `/staff/clients/${rena.id}/text`, { body: 'hi' })).status, 409);
+  assert.equal((await call('POST', `/staff/clients/${rena.id}/card/start`, {})).status, 409);
+  assert.equal((await call('POST', '/staff/campaigns', { audience: 'all', body: 'Sale' })).status, 409);
+  assert.equal((await call('POST', '/staff/run-texts', {})).status, 409);
+  const imported = (await store.list<any>('appointments')).find((a: any) => a.source === 'import' && a.status === 'booked');
+  await setNotifications(NEVER_QUIET);
+  assert.equal((await runDueTexts(store, new Date(Date.parse(imported.start) - 23 * 3600000))).sent, 0);
+  // and a text that slipped through anyway would not go out
+  const { sendText } = await import('../src/services/sms');
+  const m = await sendText(store, '+18045550301', 'test', 'staff');
+  assert.equal(m.status, 'failed');
+  assert.match(m.error ?? '', /switch from GlossGenius/);
+  // a STOP still counts
+  const { handleInbound } = await import('../src/services/notify');
+  await handleInbound(store, '+18045550301', 'STOP');
+  assert.equal((await store.get<any>('clients', rena.id)).smsReminders, false);
+  assert.ok(!(await store.list<any>('messages')).some((x: any) => x.direction === 'out' && x.status !== 'failed'));
 });
 
-test('a GlossGenius booking blocks that time here, gets no texts from us, and follows a later export', async () => {
+test('a GlossGenius booking blocks that time here and follows a later export; then the switch', async () => {
   const owner = boot.staff.find((s: any) => s.role === 'owner');
   const slots = (await call('GET', `/public/availability?service=${svc('Brazilian').id}&day=${futureDay}&staff=${owner.id}`)).json;
   const eleven = zonedToUtc(futureDay, 11 * 60).toISOString();
   assert.ok(!slots.some((s: any) => s.start === eleven), '11:00 is taken by the imported booking');
-
   const imported = (await store.list<any>('appointments')).find((a: any) => a.source === 'import' && a.start === eleven);
-  await setNotifications(NEVER_QUIET);
-  await runDueTexts(store, new Date(Date.parse(imported.start) - 23 * 3600000));
-  assert.equal((await store.list<any>('messages')).filter((m: any) => m.clientId === imported.clientId).length, 0);
-  // staff can't move it here: it lives on GlossGenius
-  assert.equal((await call('POST', `/staff/appointments/${encodeURIComponent(imported.id)}/move`, { start: zonedToUtc(futureDay, 14 * 60).toISOString() })).status, 400);
+  assert.equal((await call('POST', `/staff/appointments/${encodeURIComponent(imported.id)}/move`, { start: zonedToUtc(futureDay, 14 * 60).toISOString() })).status, 409);
 
   // cancelled on GlossGenius: the next import frees the time, without duplicates
   const again = (await call('POST', '/staff/import/glossgenius', { clients: clientsCsv, appointments: apptCsv('Cancelled') })).json.report;
@@ -117,6 +130,31 @@ test('a GlossGenius booking blocks that time here, gets no texts from us, and fo
   assert.equal((await store.get<any>('appointments', imported.id)).status, 'cancelled');
   const after = (await call('GET', `/public/availability?service=${svc('Brazilian').id}&day=${futureDay}&staff=${owner.id}`)).json;
   assert.ok(after.some((s: any) => s.start === eleven));
+
+  // the switch needs GlossGenius's own online booking turned off first
+  assert.equal((await call('POST', '/staff/switchover', { done: true })).status, 400);
+  assert.equal((await call('POST', '/staff/switchover', { done: true, glossGeniusOff: true })).status, 200);
+  assert.equal((await call('GET', '/public/config')).json.booking, 'open');
+  // and after it, nothing more comes in from GlossGenius
+  assert.equal((await call('POST', '/staff/import/glossgenius', { appointments: apptCsv('Booked') })).status, 409);
+});
+
+test('two people booking the same time at the same moment: only one gets it', async () => {
+  const service = svc('Bikini');
+  const day = nextWeekday(15);
+  const owner = boot.staff.find((s: any) => s.role === 'owner');
+  const slot = (await call('GET', `/public/availability?service=${service.id}&day=${day}&staff=${owner.id}`)).json[0];
+  const starts = await Promise.all(
+    ['804-555-0320', '804-555-0321', '804-555-0322'].map((phone, i) => call('POST', '/public/bookings/start', { client: { first: `Racer${i}`, last: 'Test', phone } })),
+  );
+  const results = await Promise.all(
+    starts.map((st) =>
+      call('POST', '/public/bookings/confirm', { clientId: st.json.clientId, setupId: st.json.setupId, simulatedCard: { number: '4242424242424242' }, serviceId: service.id, staffId: owner.id, start: slot.start }),
+    ),
+  );
+  assert.deepEqual(results.map((r) => r.status).sort(), [200, 409, 409]);
+  const live = (await store.list<any>('appointments')).filter((a: any) => a.start === slot.start && a.staffId === owner.id && a.status !== 'cancelled');
+  assert.equal(live.length, 1);
 });
 
 test('follow-ups go out after each service’s own interval', async () => {

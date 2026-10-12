@@ -13,6 +13,7 @@ import { twilioLive } from '../config';
 import { apptVars, cancelAppointment, completeDeposit, createAppointment, feeFor, finalizeOnlineBooking, manageLink, moveAppointment } from '../services/appointments';
 import { googleCalendarUrl, icsFor } from '../services/calendar';
 import { grantPackage } from '../services/clients';
+import { switched } from '../services/switchover';
 import { readTracking, requestInfo, sendMetaEvent } from '../services/meta';
 import { config } from '../config';
 
@@ -26,10 +27,9 @@ function pageUrl(raw: unknown, fallback: string) {
   }
 }
 
-/** New online bookings, memberships and packages: only once the owner has opened online booking. */
+/** Anything that books, changes a booking or takes payment: only after the switch from GlossGenius. */
 async function requireOpen(store: Store) {
-  const s = await getSettings(store);
-  if (!s.onlineBooking?.open) throw new HttpError(403, 'Online booking here isn’t open yet. Please book on GlossGenius for now.');
+  if (!switched(await getSettings(store))) throw new HttpError(403, 'Online booking here isn’t open yet. Please book on GlossGenius for now.');
 }
 
 /** The Meta event for a finished booking (sent once the deposit, if any, has gone through). */
@@ -88,7 +88,7 @@ export function publicRoutes(store: Store) {
   r.get('/config', async (c) => {
     const s = await getSettings(store);
     return c.json({
-      booking: s.onlineBooking?.open ? 'open' : 'closed',
+      booking: switched(s) ? 'open' : 'closed',
       payments: payments.live() ? 'stripe' : 'simulated',
       texts: twilioLive() ? 'twilio' : 'simulated',
       stripePublishableKey: payments.publishableKey(),
@@ -182,6 +182,7 @@ export function publicRoutes(store: Store) {
 
   // Step 3, only when the deposit needed the client's approval: check it went through.
   r.post('/booking/:token/deposit', async (c) => {
+    await requireOpen(store);
     const b = await c.req.json<{ tracking?: unknown; url?: string }>().catch(() => ({}));
     const appt = await completeDeposit(store, await byToken(c.req.param('token')));
     const client = (await store.get<Client>('clients', appt.clientId))!;
@@ -224,6 +225,7 @@ export function publicRoutes(store: Store) {
   r.get('/booking/:token', async (c) => c.json(await describe(await byToken(c.req.param('token')))));
 
   r.post('/booking/:token/cancel', async (c) => {
+    await requireOpen(store);
     const settings = await getSettings(store);
     if (!settings.policies.allowOnlineCancellations) throw bad('Please call or text us to cancel.');
     const appt = await cancelAppointment(store, await byToken(c.req.param('token')), { by: 'client' });
@@ -231,6 +233,7 @@ export function publicRoutes(store: Store) {
   });
 
   r.post('/booking/:token/reschedule', async (c) => {
+    await requireOpen(store);
     const appt = await byToken(c.req.param('token'));
     const settings = await getSettings(store);
     const b = await c.req.json<{ start: string }>();
@@ -284,6 +287,7 @@ export function publicRoutes(store: Store) {
 
   // The bank wanted the client to approve the first month: is the membership running now?
   r.post('/memberships/:id/approved', async (c) => {
+    await requireOpen(store);
     const m = await store.get<Membership>('memberships', c.req.param('id'));
     const b = await c.req.json<{ clientId: string; tracking?: unknown; url?: string }>();
     const client = await store.get<Client>('clients', b.clientId);
@@ -338,6 +342,7 @@ export function publicRoutes(store: Store) {
 
   // The bank wanted the client to approve the package payment: check it went through.
   r.post('/packages/:id/approved', async (c) => {
+    await requireOpen(store);
     const p = await store.get<Package>('packages', c.req.param('id'));
     const b = await c.req.json<{ clientId: string; paymentId: string; tracking?: unknown; url?: string }>();
     const client = await store.get<Client>('clients', b.clientId);

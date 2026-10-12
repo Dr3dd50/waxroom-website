@@ -9,6 +9,7 @@ import { addDays, fmtDate, fmtTime, zoned, zonedToUtc } from '../lib/time';
 import { money, nice, nowIso, rid } from '../lib/util';
 import { getSettings } from './availability';
 import { sendText } from './sms';
+import { switched } from './switchover';
 
 export type AlertEvent =
   | { kind: 'booked' }
@@ -20,7 +21,7 @@ export type Actor = { staff: Staff } | { client: true };
 
 export async function alertStaff(store: Store, appt: Appointment, event: AlertEvent, actor: Actor) {
   const settings = await getSettings(store);
-  if (!settings.staffAlerts?.enabled || appt.source === 'import') return [];
+  if (!switched(settings) || !settings.staffAlerts?.enabled || appt.source === 'import') return [];
 
   const team = await store.list<Staff>('staff');
   const ids = new Set([appt.staffId, ...(event.kind === 'moved' ? [event.from.staffId] : []), ...team.filter((s) => s.role === 'owner').map((s) => s.id)]);

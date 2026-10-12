@@ -32,6 +32,12 @@ export class FileStore implements Store {
     this.save();
     return item;
   }
+  async claim(col: Collection, id: string, ms: number) {
+    const held = this.bucket(col)[id] as { until: number } | undefined;
+    if (held && held.until >= Date.now()) return false;
+    this.bucket(col)[id] = { id, until: Date.now() + ms };
+    return true;
+  }
   async delete(col: Collection, id: string) {
     delete this.bucket(col)[id];
     this.save();

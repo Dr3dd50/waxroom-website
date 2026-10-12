@@ -3,9 +3,9 @@
 // time has passed with nothing booked) and birthdays. Nothing goes out to clients
 // during quiet hours; staff texts that waited them out go at the end.
 //
-// Appointments imported from GlossGenius get no texts from us: GlossGenius still
-// sends its own for them. Rebooking nudges and birthdays start once online
-// booking here is open, so clients aren't texted by both systems before then.
+// Nothing runs before the switch from GlossGenius. After it, appointments that
+// came from GlossGenius get our reminders only if the owner chose that when
+// switching (with GlossGenius's own reminders turned off), so nobody gets both.
 import type { Store } from '../store/store';
 import type { Appointment, Client, Service } from '../types';
 import { zoned } from '../lib/time';
@@ -13,19 +13,21 @@ import { nice } from '../lib/util';
 import { apptVars, autoText, bookingLink, manageLink, releaseUnpaidHolds } from './appointments';
 import { getSettings } from './availability';
 import { flushOutbox, isQuiet } from './alerts';
+import { switched } from './switchover';
 import { sendText } from './sms';
 
 export async function runDueTexts(store: Store, now = new Date()) {
   const settings = await getSettings(store);
   const local = zoned(now, settings.timezone);
   const n = settings.notifications;
+  if (!switched(settings)) return { sent: 0, quiet: false, released: 0, before: 'switchover' };
   const released = await releaseUnpaidHolds(store, now);
   if (isQuiet(local.hour, n)) return { sent: 0, quiet: true, released };
   let sent = await flushOutbox(store, now);
 
   const horizon = new Date(now.getTime() + (n.confirmHoursBefore + 1) * 3600000).toISOString();
   const upcoming = (await store.range<Appointment>('appointments', now.toISOString(), horizon)).filter(
-    (a) => (a.status === 'booked' || a.status === 'confirmed') && a.source !== 'import' && a.deposit?.status !== 'pending',
+    (a) => (a.status === 'booked' || a.status === 'confirmed') && (a.source !== 'import' || settings.switchover.remindImported) && a.deposit?.status !== 'pending',
   );
   for (const a of upcoming) {
     const hours = (Date.parse(a.start) - now.getTime()) / 3600000;
@@ -50,7 +52,7 @@ export async function runDueTexts(store: Store, now = new Date()) {
   }
 
   // Rebooking nudge and birthdays: once a day is plenty, around 10am.
-  if (settings.onlineBooking?.open && local.hour === 10 && now.getMinutes() < 15) {
+  if (local.hour === 10 && now.getMinutes() < 15) {
     const clients = await store.list<Client>('clients');
     const future = new Set((await store.range<Appointment>('appointments', now.toISOString(), '9999')).filter((a) => a.status !== 'cancelled' && a.status !== 'no-show').map((a) => a.clientId));
     const services = new Map((await store.list<Service>('services')).map((s) => [s.id, s]));
@@ -108,6 +110,8 @@ export async function handleInbound(store: Store, from: string, body: string) {
     await store.put('clients', client);
     return null;
   }
+  // An opt-out counts even before the switch; anything else waits for staff to read it.
+  if (!switched(await getSettings(store))) return null;
   if (['START', 'UNSTOP', 'YES'].includes(word) && !client.smsReminders) {
     client.smsReminders = true;
     await store.put('clients', client);

@@ -10,6 +10,7 @@ import { payments } from '../services/payments';
 import { completeDeposit } from '../services/appointments';
 import { grantPackage } from '../services/clients';
 import { nowIso, rid } from '../lib/util';
+import { getSettings } from '../services/availability';
 
 type StripeObject = {
   id?: string;
@@ -49,6 +50,7 @@ export function webhookRoutes(store: Store) {
     } catch {
       return c.text('bad signature', 400);
     }
+    await getSettings(store); // Stripe calls stay off unless switched over (payments.ts)
     await handleStripeEvent(store, event.type, event.data.object as StripeObject);
     return c.json({ received: true });
   });

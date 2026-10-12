@@ -11,6 +11,7 @@ import { payments } from './payments';
 import { fill, sendText } from './sms';
 import { alertStaff, type Actor } from './alerts';
 import { calendarLink } from './calendar';
+import { switched, withStaffLock } from './switchover';
 
 export const manageLink = (a: Appointment) => `${config.siteUrl}/booking/?t=${a.manageToken}`;
 /** Our booking page, opened on one service when there is one. */
@@ -21,7 +22,8 @@ export const referralLink = (c: Client) => `${config.siteUrl}/r/${c.referralCode
 export async function autoText(store: Store, key: string, client: Client, vars: Record<string, string>, kind = key as never) {
   const settings = await getSettings(store);
   const auto = settings.automations[key];
-  if (!auto?.enabled || !client.smsReminders) return null;
+  // nothing goes to clients from here until the switch from GlossGenius
+  if (!switched(settings) || !auto?.enabled || !client.smsReminders) return null;
   return sendText(store, client.phone, fill(auto.text, { first: client.first, ...vars }), kind, client);
 }
 
@@ -60,45 +62,48 @@ type NewAppointment = {
 export async function createAppointment(store: Store, n: NewAppointment) {
   const settings = await getSettings(store);
   if (!n.service.staffIds.includes(n.staffId)) throw bad('That person doesn’t offer this service.');
-  if (!(await isFree(store, n.staffId, n.start, n.service.duration))) throw new HttpError(409, 'That time was just taken. Please pick another.');
-  if (n.source === 'online' && settings.policies.futureBookingsLimit) {
-    const upcoming = await futureAppointments(store, n.client.id);
-    if (upcoming.length >= settings.policies.futureBookingsLimit)
-      throw bad(`You already have ${upcoming.length} upcoming appointments. Call or text us to book more.`);
-  }
-  const newClient = n.isNewClient || !(await hasVisited(store, n.client.id));
-  const end = new Date(Date.parse(n.start) + n.service.duration * 60000).toISOString();
-  const appt: Appointment = {
-    id: `${n.start}_${rid(4)}`,
-    clientId: n.client.id,
-    staffId: n.staffId,
-    serviceId: n.service.id,
-    start: n.start,
-    end,
-    status: 'booked',
-    price: n.price ?? n.service.price,
-    source: n.source,
-    notes: n.notes ?? '',
-    manageToken: rid(12),
-    createdAt: nowIso(),
-    newClient,
-    texts: {},
-  };
-
-  // A friend booking through a referral link: first visit only, and not their own link.
-  if (n.referralCode && settings.referrals.enabled && newClient) {
-    const referrer = (await store.list<Client>('clients')).find((c) => c.referralCode.toUpperCase() === n.referralCode!.toUpperCase());
-    if (referrer && referrer.id !== n.client.id) {
-      appt.referral = { referrerId: referrer.id, code: referrer.referralCode, friendDiscount: settings.referrals.friendGets };
-      n.client.referredBy ??= referrer.id;
-      await store.put('clients', n.client);
-      const ref: Referral = { id: rid(), referrerId: referrer.id, friendId: n.client.id, code: referrer.referralCode, status: 'booked', createdAt: nowIso(), appointmentId: appt.id };
-      await store.put('referrals', ref);
+  // the check and the write happen under one lock, so two bookings can't both pass the check
+  return withStaffLock(store, n.staffId, n.start, async () => {
+    if (!(await isFree(store, n.staffId, n.start, n.service.duration))) throw new HttpError(409, 'That time was just taken. Please pick another.');
+    if (n.source === 'online' && settings.policies.futureBookingsLimit) {
+      const upcoming = await futureAppointments(store, n.client.id);
+      if (upcoming.length >= settings.policies.futureBookingsLimit)
+        throw bad(`You already have ${upcoming.length} upcoming appointments. Call or text us to book more.`);
     }
-  }
-  await store.put('appointments', appt);
-  await store.put('tokens', { id: appt.manageToken, appointmentId: appt.id });
-  return appt;
+    const newClient = n.isNewClient || !(await hasVisited(store, n.client.id));
+    const end = new Date(Date.parse(n.start) + n.service.duration * 60000).toISOString();
+    const appt: Appointment = {
+      id: `${n.start}_${rid(4)}`,
+      clientId: n.client.id,
+      staffId: n.staffId,
+      serviceId: n.service.id,
+      start: n.start,
+      end,
+      status: 'booked',
+      price: n.price ?? n.service.price,
+      source: n.source,
+      notes: n.notes ?? '',
+      manageToken: rid(12),
+      createdAt: nowIso(),
+      newClient,
+      texts: {},
+    };
+
+    // A friend booking through a referral link: first visit only, and not their own link.
+    if (n.referralCode && settings.referrals.enabled && newClient) {
+      const referrer = (await store.list<Client>('clients')).find((c) => c.referralCode.toUpperCase() === n.referralCode!.toUpperCase());
+      if (referrer && referrer.id !== n.client.id) {
+        appt.referral = { referrerId: referrer.id, code: referrer.referralCode, friendDiscount: settings.referrals.friendGets };
+        n.client.referredBy ??= referrer.id;
+        await store.put('clients', n.client);
+        const ref: Referral = { id: rid(), referrerId: referrer.id, friendId: n.client.id, code: referrer.referralCode, status: 'booked', createdAt: nowIso(), appointmentId: appt.id };
+        await store.put('referrals', ref);
+      }
+    }
+    await store.put('appointments', appt);
+    await store.put('tokens', { id: appt.manageToken, appointmentId: appt.id });
+    return appt;
+  });
 }
 
 /** The deposit a booking needs, if any. */
@@ -212,22 +217,28 @@ export async function moveAppointment(store: Store, appt: Appointment, to: { sta
   const byStaff = 'staff' in actor;
   if (!['booked', 'confirmed', ...(byStaff ? ['checked-in'] : [])].includes(appt.status)) throw bad('This booking can’t be changed.');
   const service = (await store.get<Service>('services', appt.serviceId))!;
-  if (!(await isFree(store, to.staffId, to.start, service.duration, appt.id))) throw new HttpError(409, 'That time isn’t available. Please pick another.');
-  // the id carries the start time, so a new time is a new record
-  await store.delete('appointments', appt.id);
-  const moved: Appointment = {
-    ...appt,
-    id: `${to.start}_${rid(4)}`,
-    staffId: to.staffId,
-    start: to.start,
-    end: new Date(Date.parse(to.start) + service.duration * 60000).toISOString(),
-    // a client's own change asks them to confirm again; the desk's keeps what it was
-    status: byStaff ? appt.status : 'booked',
-    texts: {},
-    calendarSeq: (appt.calendarSeq ?? 0) + 1,
-  };
-  await store.put('appointments', moved);
-  await store.put('tokens', { id: moved.manageToken, appointmentId: moved.id });
+  const moved = await withStaffLock(store, to.staffId, to.start, async () => {
+    if (!(await isFree(store, to.staffId, to.start, service.duration, appt.id))) throw new HttpError(409, 'That time isn’t available. Please pick another.');
+    // the id carries the start time, so a new time is a new record
+    await store.delete('appointments', appt.id);
+    const next: Appointment = {
+      ...appt,
+      id: `${to.start}_${rid(4)}`,
+      staffId: to.staffId,
+      start: to.start,
+      end: new Date(Date.parse(to.start) + service.duration * 60000).toISOString(),
+      // a client's own change asks them to confirm again; the desk's keeps what it was
+      status: byStaff ? appt.status : 'booked',
+      texts: {},
+      calendarSeq: (appt.calendarSeq ?? 0) + 1,
+    };
+    await store.put('appointments', next);
+    await store.put('tokens', { id: next.manageToken, appointmentId: next.id });
+    // a referral follows its appointment, so the referrer is still credited at checkout
+    const ref = (await store.list<Referral>('referrals')).find((r) => r.appointmentId === appt.id);
+    if (ref) await store.put('referrals', { ...ref, appointmentId: next.id });
+    return next;
+  });
   const client = (await store.get<Client>('clients', moved.clientId))!;
   if (moved.start !== appt.start || moved.staffId !== appt.staffId) {
     const m = await autoText(store, 'moved', client, await apptVars(store, moved), 'moved' as never);

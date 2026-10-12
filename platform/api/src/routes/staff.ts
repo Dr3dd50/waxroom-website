@@ -9,13 +9,14 @@ import { HttpError, bad, nowIso, rid, toE164 } from '../lib/util';
 import { appointmentsBetween, getSettings, isFree, slotsFor } from '../services/availability';
 import { cancelAppointment, checkoutAppointment, createAppointment, finalizeStaffBooking, membershipVisitsLeft, moveAppointment, quote } from '../services/appointments';
 import { importGlossGenius } from '../services/importer';
+import { requireSwitched, switched } from '../services/switchover';
 import { defaultRebookDays } from '../seed';
 import { upsertClient, uniqueReferralCode } from '../services/clients';
 import { payments } from '../services/payments';
 import { sendText } from '../services/sms';
 import { runDueTexts } from '../services/notify';
 import { hashPassword } from '../seed';
-import { twilioLive } from '../config';
+import { config, stripeLive, twilioLive } from '../config';
 
 const publicStaff = (s: Staff) => ({ id: s.id, name: s.name, short: s.short, email: s.email, phone: s.phone, role: s.role, color: s.color, active: s.active, bookable: s.bookable, schedule: s.schedule, timeOff: s.timeOff ?? [], alerts: s.alerts !== false });
 
@@ -92,6 +93,7 @@ export function staffRoutes(store: Store) {
   r.post('/appointments', async (c) => {
     const b = await c.req.json<{ clientId?: string; client?: { first: string; last: string; phone: string; email?: string; smsMarketing?: boolean }; serviceId: string; staffId: string; start: string; notes?: string; price?: number }>();
     if (!isOwner(c) && b.staffId !== c.get('staff').id) throw new HttpError(403, 'You can only book on your own calendar.');
+    await requireSwitched(store, 'Booking here');
     const service = await store.get<Service>('services', b.serviceId);
     if (!service) throw bad('Pick a service.');
     let client: Client | undefined;
@@ -109,6 +111,7 @@ export function staffRoutes(store: Store) {
     const a = await apptOr404(c, c.req.param('id')!);
     const b = await c.req.json<{ status?: 'confirmed' | 'checked-in' | 'booked'; notes?: string }>();
     if (b.status) {
+      await requireSwitched(store, 'Checking in and confirming here');
       if (['completed', 'cancelled', 'no-show'].includes(a.status)) throw bad('This appointment is closed.');
       a.status = b.status;
     }
@@ -122,7 +125,7 @@ export function staffRoutes(store: Store) {
     const b = await c.req.json<{ start: string; staffId?: string }>();
     const staffId = b.staffId ?? a.staffId;
     if (!isOwner(c) && staffId !== c.get('staff').id) throw new HttpError(403, 'You can only book on your own calendar.');
-    if (a.source === 'import') throw bad('This one came from GlossGenius. Move it there; the next import brings the change across.');
+    await requireSwitched(store, 'Moving appointments here');
     const service = (await store.get<Service>('services', a.serviceId))!;
     if (!(await isFree(store, staffId, b.start, service.duration, a.id))) throw new HttpError(409, 'That time overlaps another appointment.');
     return c.json(await moveAppointment(store, a, { start: b.start, staffId }, { staff: c.get('staff') }));
@@ -131,7 +134,7 @@ export function staffRoutes(store: Store) {
   r.post('/appointments/:id/cancel', async (c) => {
     const a = await apptOr404(c, c.req.param('id')!);
     const b = await c.req.json<{ noShow?: boolean; waive?: boolean }>();
-    if (a.source === 'import' && !b.noShow) throw bad('This one came from GlossGenius. Cancel it there; the next import brings the change across.');
+    await requireSwitched(store, 'Cancelling appointments here');
     return c.json(await cancelAppointment(store, a, { by: 'staff', noShow: b.noShow, waive: b.waive, staff: c.get('staff') }));
   });
 
@@ -157,6 +160,7 @@ export function staffRoutes(store: Store) {
   r.post('/appointments/:id/checkout', async (c) => {
     const a = await apptOr404(c, c.req.param('id')!);
     const b = await c.req.json<{ tip: number; method: 'card' | 'cash' | 'other'; useCredit: boolean; useMembership: boolean; price?: number }>();
+    await requireSwitched(store, 'Checkout here');
     return c.json(await checkoutAppointment(store, a, { ...b, staffId: c.get('staff').id }));
   });
 
@@ -244,12 +248,14 @@ export function staffRoutes(store: Store) {
 
   // Add a card at the desk (card reader or typed in): same SetupIntent flow as online.
   r.post('/clients/:id/card/start', async (c) => {
+    await requireSwitched(store, 'Saving cards here');
     const x = await clientOr404(c, c.req.param('id')!);
     x.customerId = await payments.ensureCustomer(x);
     await store.put('clients', x);
     return c.json(await payments.startCardSetup(x.customerId));
   });
   r.post('/clients/:id/card/confirm', async (c) => {
+    await requireSwitched(store, 'Saving cards here');
     const x = await clientOr404(c, c.req.param('id')!);
     const b = await c.req.json<{ setupId: string; simulatedCard?: { number: string } }>();
     x.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
@@ -261,6 +267,7 @@ export function staffRoutes(store: Store) {
     const x = await store.get<Client>('clients', c.req.param('id')!);
     const { membershipId } = await c.req.json<{ membershipId: string | null }>();
     if (!x) throw new HttpError(404, 'Client not found.');
+    await requireSwitched(store, 'Memberships here');
     if (!membershipId) {
       if (x.membership?.subscriptionId) await payments.cancelSubscription(x.membership.subscriptionId);
       if (x.membership) x.membership.status = 'cancelled';
@@ -282,6 +289,7 @@ export function staffRoutes(store: Store) {
   });
 
   r.post('/clients/:id/text', async (c) => {
+    await requireSwitched(store, 'Texting clients from here');
     const x = await clientOr404(c, c.req.param('id')!);
     const { body } = await c.req.json<{ body: string }>();
     if (!body?.trim()) throw bad('Write a message.');
@@ -313,6 +321,7 @@ export function staffRoutes(store: Store) {
 
   r.post('/campaigns', requireOwner, async (c) => {
     const b = await c.req.json<{ audience: string; body: string }>();
+    await requireSwitched(store, 'Text campaigns');
     if (!b.body?.trim()) throw bad('Write a message.');
     const list = await audience(b.audience);
     // marketing texts always carry the opt-out line
@@ -325,7 +334,10 @@ export function staffRoutes(store: Store) {
     return c.json({ sent, of: list.length, simulated: !twilioLive() });
   });
 
-  r.post('/run-texts', requireOwner, async (c) => c.json(await runDueTexts(store)));
+  r.post('/run-texts', requireOwner, async (c) => {
+    await requireSwitched(store, 'Timed texts');
+    return c.json(await runDueTexts(store));
+  });
 
   // ── money ──
   r.get('/payments', requireOwner, async (c) => {
@@ -393,10 +405,12 @@ export function staffRoutes(store: Store) {
     return c.json(await store.put('settings', next));
   });
 
-  // ── moving over from GlossGenius ──
-  // Upload the export (check it first with dryRun), as often as needed while both are live.
+  // ── switching over from GlossGenius ──
+  // Upload the export (check it first with dryRun). Only before the switch: after it,
+  // GlossGenius takes no bookings, and an import could put two bookings in one time.
   r.post('/import/glossgenius', requireOwner, async (c) => {
     const b = await c.req.json<{ clients?: string; appointments?: string; dryRun?: boolean }>();
+    if (switched(await getSettings(store))) throw new HttpError(409, 'You’ve already switched over from GlossGenius, so there’s nothing more to import.');
     if (!b.clients && !b.appointments) throw bad('Choose the clients file, the appointments file, or both.');
     const report = await importGlossGenius(store, { clients: b.clients, appointments: b.appointments }, { dryRun: b.dryRun });
     if (!b.dryRun) {
@@ -406,17 +420,34 @@ export function staffRoutes(store: Store) {
     return c.json({ report, dryRun: !!b.dryRun });
   });
 
-  // Clients book on our own site only after the GlossGenius clients and appointments
-  // are in, and only when the owner says so.
-  r.post('/online-booking', requireOwner, async (c) => {
-    const b = await c.req.json<{ open: boolean; confirm?: boolean }>();
+  /**
+   * What the switch still needs. Our system takes over everything at once, so
+   * GlossGenius must have stopped taking bookings and its last bookings must be in.
+   */
+  const IMPORT_FRESH_HOURS = 24;
+  async function switchBlockers() {
     const s = await getSettings(store);
-    if (b.open) {
-      if (!s.glossGeniusImport?.clients || !s.glossGeniusImport.appointments)
-        throw bad('Import the GlossGenius clients and appointments first, so the calendar shows every booking before clients can book here.');
-      if (b.confirm !== true) throw bad('Tick the box to confirm you want clients to book here.');
-    }
-    const next = { ...s, onlineBooking: { open: !!b.open, changedAt: nowIso(), changedBy: c.get('staff').short } };
+    const last = s.glossGeniusImport;
+    const out: string[] = [];
+    if (!last?.clients) out.push('Import the GlossGenius clients.');
+    if (!last?.appointments) out.push('Import the GlossGenius appointments.');
+    else if (Date.now() - Date.parse(last.at) > IMPORT_FRESH_HOURS * 3600000) out.push(`Import the appointments again: the last import is more than ${IMPORT_FRESH_HOURS} hours old.`);
+    // on AWS, real payments and texts; local demos run without them
+    if (config.tableName && !stripeLive()) out.push('Add the Stripe keys.');
+    if (config.tableName && !twilioLive()) out.push('Add the Twilio keys (texting).');
+    return out;
+  }
+  r.get('/switchover', requireOwner, async (c) => c.json({ blockers: await switchBlockers(), freshHours: IMPORT_FRESH_HOURS }));
+
+  r.post('/switchover', requireOwner, async (c) => {
+    const b = await c.req.json<{ done: boolean; glossGeniusOff?: boolean; remindImported?: boolean; confirm?: boolean }>();
+    const s = await getSettings(store);
+    if (b.done) {
+      const blockers = await switchBlockers();
+      if (blockers.length) throw bad(blockers.join(' '));
+      if (b.glossGeniusOff !== true) throw bad('Turn off online booking in GlossGenius first, import once more, then tick the box.');
+    } else if (b.confirm !== true) throw bad('Tick the box to confirm going back to GlossGenius.');
+    const next: Settings = { ...s, switchover: { done: !!b.done, at: nowIso(), by: c.get('staff').short, remindImported: !!b.done && !!b.remindImported } };
     return c.json(await store.put('settings', next));
   });
 

@@ -66,14 +66,15 @@ Stripe and Twilio stay simulated until their keys are set.
   appointments; their own working hours and time off. No totals, prices,
   offers, referrals, services or settings.
 
-## Running alongside GlossGenius
+## Switching from GlossGenius
 
-Online booking here stays closed until the GlossGenius clients and appointments
-are imported (dashboard → Settings → Online booking) and the owner opens it.
-While it's closed, the website sends people to GlossGenius. Imported GlossGenius
-appointments block their times on our calendar but get no texts from us, since
-GlossGenius sends its own. Import again whenever needed: it adds what's new and
-brings GlossGenius cancellations across.
+GlossGenius stays the only booking system until the owner switches over
+(dashboard → Settings → Switch from GlossGenius). Before that, nothing here books,
+texts or charges, and the website sends people to GlossGenius; the dashboard shows
+the imported GlossGenius calendar and clients. The switch needs GlossGenius online
+booking turned off and a fresh import, so one system is taking bookings at any
+moment and no time can be sold twice. Inside our system, each booking's
+availability check and write run under a per-person lock.
 
 The owner decides whether employees see client phone numbers and emails
 (Settings → Team texts and privacy). Hidden is the default. Team texts never

@@ -59,7 +59,7 @@ globalThis.fetch = (async (input: any, init?: any) => {
 const { makeApp, makeStore } = await import('../src/app');
 const { addDays, zoned } = await import('../src/lib/time');
 const store = await makeStore();
-await store.put('settings', { ...(await store.get<any>('settings', 'settings')), onlineBooking: { open: true } });
+await store.put('settings', { ...(await store.get<any>('settings', 'settings')), switchover: { done: true } });
 const app = makeApp(store);
 
 async function call(method: string, path: string, body?: unknown, headers: Record<string, string> = {}) {

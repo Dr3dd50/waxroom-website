@@ -1,6 +1,8 @@
-// Settings → Online booking (owner): bring the GlossGenius export in, and switch our
-// own online booking on once the calendar has every GlossGenius booking on it.
-import { useState } from 'react';
+// Settings → Switch from GlossGenius (owner). Until the switch, GlossGenius is the
+// only booking system: nothing here books, texts or charges. The owner brings the
+// GlossGenius export in (as often as needed), then switches once GlossGenius has
+// stopped taking bookings and its last ones are imported.
+import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useBoot } from '../ctx';
 import type { ImportReport } from '../types';
@@ -19,7 +21,7 @@ function ReportLines({ r }: { r: ImportReport }) {
       {r.appointments ? (
         <p className="small">
           Appointments: {r.appointments.added} new, {r.appointments.updated} changed since last time, {r.appointments.unchanged} unchanged
-          {r.appointments.unmatched ? `, ${r.appointments.unmatched} couldn’t be matched` : ''}.
+          {r.appointments.unmatched ? `, ${r.appointments.unmatched} not brought in` : ''}.
         </p>
       ) : null}
       {r.appointments?.problems.length ? (
@@ -39,14 +41,21 @@ function ReportLines({ r }: { r: ImportReport }) {
 export function OnlineBooking() {
   const boot = useBoot();
   const s = boot.settings;
+  const done = s.switchover.done;
   const last = s.glossGeniusImport;
-  const ready = !!(last?.clients && last.appointments);
   const [files, setFiles] = useState<{ clients?: string; appointments?: string }>({});
   const [check, setCheck] = useState<ImportReport | null>(null);
-  const [sure, setSure] = useState(false);
+  const [blockers, setBlockers] = useState<string[] | null>(null);
+  const [ggOff, setGgOff] = useState(false);
+  const [remind, setRemind] = useState(false);
+  const [back, setBack] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [picker, setPicker] = useState(0); // a new key empties the file inputs after an import
+
+  useEffect(() => {
+    if (!done) api<{ blockers: string[] }>('/switchover').then((r) => setBlockers(r.blockers), () => setBlockers(null));
+  }, [done, last?.at]);
 
   const read = (key: 'clients' | 'appointments') => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -75,12 +84,14 @@ export function OnlineBooking() {
       setBusy('');
     }
   }
-  async function setOpen(open: boolean) {
+  async function setSwitched(on: boolean) {
     setError('');
     setBusy('switch');
     try {
-      await api('/online-booking', { open, confirm: open ? sure : undefined });
-      setSure(false);
+      await api('/switchover', on ? { done: true, glossGeniusOff: ggOff, remindImported: remind } : { done: false, confirm: back });
+      setGgOff(false);
+      setRemind(false);
+      setBack(false);
       await boot.reload();
     } catch (err) {
       setError((err as Error).message);
@@ -92,76 +103,98 @@ export function OnlineBooking() {
   return (
     <section className="card-panel">
       <h2>
-        Online booking here {s.onlineBooking.open ? <Pill tone="green">Open</Pill> : <Pill tone="neutral">Closed: clients book on GlossGenius</Pill>}
+        Switch from GlossGenius {done ? <Pill tone="green">Switched</Pill> : <Pill tone="neutral">GlossGenius is still your booking system</Pill>}
       </h2>
-      {s.onlineBooking.changedAt ? (
-        <p className="muted small">
-          {s.onlineBooking.open ? 'Opened' : 'Closed'} by {s.onlineBooking.changedBy} on {when(s.onlineBooking.changedAt)}.
-        </p>
-      ) : null}
-
-      <h3 className="mt">1. Bring over GlossGenius</h3>
-      <p className="small muted">
-        Export your clients (GlossGenius → Clients → Export) and your appointments (Insights, or ask GlossGenius support). Upload both here. Check them first:
-        nothing is saved until you press Import. Import again whenever you like while both are running. GlossGenius bookings then block those times here,
-        and changes made there (a cancellation, say) come across. Our system doesn’t text clients about GlossGenius bookings, because GlossGenius already does.
-      </p>
-      <div className="two mt">
-        <label className="field">
-          Clients file (.csv)
-          <input key={`c${picker}`} type="file" accept=".csv,text/csv" onChange={read('clients')} />
-        </label>
-        <label className="field">
-          Appointments file (.csv)
-          <input key={`a${picker}`} type="file" accept=".csv,text/csv" onChange={read('appointments')} />
-        </label>
-      </div>
-      <div className="row-actions mt">
-        <button className="btn btn--ghost" disabled={!!busy || (!files.clients && !files.appointments)} onClick={() => run(true)}>
-          {busy === 'check' ? 'Checking…' : 'Check the files'}
-        </button>
-        <button className="btn btn--dark" disabled={!!busy || !check} onClick={() => run(false)}>
-          {busy === 'import' ? 'Importing…' : 'Import'}
-        </button>
-      </div>
-      {check ? (
-        <div className="note mt">
-          <strong>What the import will do</strong>
-          <ReportLines r={check} />
-        </div>
-      ) : null}
-      {last ? (
-        <div className="mt">
-          <p className="small">
-            Last import: {when(last.at)} by {last.by}.
-          </p>
-          <ReportLines r={last} />
-        </div>
-      ) : null}
-
-      <h3 className="mt">2. Open online booking here</h3>
-      {s.onlineBooking.open ? (
+      {done ? (
         <>
-          <p className="small muted">
-            Clients book, join memberships and buy packages on our site. Close it to send them back to GlossGenius. Bookings already made here stay on the calendar.
+          <p className="small">
+            Switched by {s.switchover.by} on {when(s.switchover.at)}. Bookings, payments and texts all run here now.
+            {s.switchover.remindImported ? ' Appointments brought over from GlossGenius get our reminders too.' : ' Appointments brought over from GlossGenius don’t get our reminders.'}
           </p>
-          <button className="btn btn--ghost mt" disabled={!!busy} onClick={() => setOpen(false)}>
-            Close online booking
-          </button>
+          <details className="small mt">
+            <summary>Go back to GlossGenius</summary>
+            <p className="muted">
+              Everything here stops: online booking, texts and payments. Bookings made here stay on this calendar but aren’t in GlossGenius, so you’d need to add them there by
+              hand.
+            </p>
+            <label className="check mt">
+              <input type="checkbox" checked={back} onChange={(e) => setBack(e.target.checked)} /> I want to go back to GlossGenius.
+            </label>
+            <button className="btn btn--ghost mt" disabled={!back || !!busy} onClick={() => setSwitched(false)}>
+              Go back to GlossGenius
+            </button>
+          </details>
         </>
-      ) : !ready ? (
-        <p className="small muted">Import both the clients and the appointments first. Then the calendar has every GlossGenius booking on it before anyone can book here.</p>
       ) : (
         <>
           <p className="small muted">
-            Before you open it, look through the calendar and compare it with GlossGenius. Once it’s open, clients book here from the website. GlossGenius keeps working for
-            bookings made there, so import again regularly until you close GlossGenius booking.
+            Until you switch, nothing here books, texts or charges anyone. Clients book on GlossGenius, and the website’s Book buttons go there. That way only one
+            system takes bookings, so no time can be booked twice.
           </p>
+
+          <h3 className="mt">1. Bring over GlossGenius</h3>
+          <p className="small muted">
+            Export your clients (GlossGenius → Clients → Export) and your appointments (Insights, or ask GlossGenius support), and upload both. Check them first: nothing is
+            saved until you press Import. Import as often as you like; it adds what’s new and brings cancellations across.
+          </p>
+          <div className="two mt">
+            <label className="field">
+              Clients file (.csv)
+              <input key={`c${picker}`} type="file" accept=".csv,text/csv" onChange={read('clients')} />
+            </label>
+            <label className="field">
+              Appointments file (.csv)
+              <input key={`a${picker}`} type="file" accept=".csv,text/csv" onChange={read('appointments')} />
+            </label>
+          </div>
+          <div className="row-actions mt">
+            <button className="btn btn--ghost" disabled={!!busy || (!files.clients && !files.appointments)} onClick={() => run(true)}>
+              {busy === 'check' ? 'Checking…' : 'Check the files'}
+            </button>
+            <button className="btn btn--dark" disabled={!!busy || !check} onClick={() => run(false)}>
+              {busy === 'import' ? 'Importing…' : 'Import'}
+            </button>
+          </div>
+          {check ? (
+            <div className="note mt">
+              <strong>What the import will do</strong>
+              <ReportLines r={check} />
+            </div>
+          ) : null}
+          {last ? (
+            <div className="mt">
+              <p className="small">
+                Last import: {when(last.at)} by {last.by}.
+              </p>
+              <ReportLines r={last} />
+            </div>
+          ) : null}
+
+          <h3 className="mt">2. Switch</h3>
+          <ol className="small">
+            <li>In GlossGenius, turn off online booking, so no new bookings come in there.</li>
+            <li>Export the appointments once more and import them here, so the last GlossGenius bookings are on this calendar.</li>
+            <li>Look over the calendar, then switch. Online booking, payments and texts all start here at that moment.</li>
+          </ol>
+          {blockers?.length ? (
+            <div className="note mt">
+              <strong>Still needed</strong>
+              <ul className="small">
+                {blockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <label className="check mt">
-            <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} /> I’ve checked the calendar and want clients to book here.
+            <input type="checkbox" checked={ggOff} onChange={(e) => setGgOff(e.target.checked)} /> Online booking is off in GlossGenius, and I imported after turning it off.
           </label>
-          <button className="btn btn--honey mt" disabled={!sure || !!busy} onClick={() => setOpen(true)}>
-            Open online booking
+          <label className="check">
+            <input type="checkbox" checked={remind} onChange={(e) => setRemind(e.target.checked)} /> Send our reminders for the appointments brought over from GlossGenius (turn
+            GlossGenius’s reminders off first, or clients get both).
+          </label>
+          <button className="btn btn--honey mt" disabled={!ggOff || !!blockers?.length || !!busy} onClick={() => setSwitched(true)}>
+            Switch to our booking
           </button>
         </>
       )}

@@ -51,7 +51,7 @@ export type Settings = {
   notifications: { confirmHoursBefore: number; reminderHoursBefore: number; rebookAfterDays: number; quietStart: number; quietEnd: number };
   automations: Record<string, { enabled: boolean; text: string }>;
   referrals: { enabled: boolean; friendGets: number; referrerGets: number };
-  onlineBooking: { open: boolean; changedAt?: string; changedBy?: string };
+  switchover: { done: boolean; at?: string; by?: string; remindImported?: boolean };
   glossGeniusImport?: ImportReport & { by: string };
   staffAlerts: { enabled: boolean };
   privacy: { employeesSeeContact: boolean };

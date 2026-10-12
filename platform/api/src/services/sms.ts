@@ -4,13 +4,19 @@
 import { createHmac } from 'node:crypto';
 import { config, twilioLive } from '../config';
 import type { Store } from '../store/store';
-import type { Client, Message } from '../types';
+import type { Client, Message, Settings } from '../types';
 import { nowIso, rid } from '../lib/util';
 
 export async function sendText(store: Store, to: string, body: string, kind: Message['kind'], client?: Client): Promise<Message> {
   const at = nowIso();
   const msg: Message = { id: `${at}_${rid(4)}`, at, direction: 'out', to, clientId: client?.id, kind, body, status: 'simulated' };
-  if (twilioLive()) {
+  // Nothing is texted from here before the switch from GlossGenius. Every path that
+  // texts checks first; this is the last stop in case one is ever missed.
+  const settings = await store.get<Settings>('settings', 'settings');
+  if (!settings?.switchover?.done) {
+    msg.status = 'failed';
+    msg.error = 'Not sent: texts start at the switch from GlossGenius.';
+  } else if (twilioLive()) {
     const t = config.twilio;
     const form = new URLSearchParams({ To: to, Body: body });
     if (t.messagingServiceSid) form.set('MessagingServiceSid', t.messagingServiceSid);

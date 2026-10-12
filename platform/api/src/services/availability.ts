@@ -2,11 +2,15 @@
 // hours, not overlapping anything already booked, past the lead time and
 // within how far ahead clients may book.
 import type { Store } from '../store/store';
+import { payments } from './payments';
 import type { Appointment, Service, Settings, Staff } from '../types';
 import { DAY_KEYS, addDays, zoned, zonedToUtc } from '../lib/time';
 
 export async function getSettings(store: Store) {
-  return (await store.get<Settings>('settings', 'settings'))!;
+  const s = (await store.get<Settings>('settings', 'settings'))!;
+  // Stripe refuses every call until the switch from GlossGenius (see payments.ts)
+  payments.allow(!!s.switchover?.done);
+  return s;
 }
 
 export async function appointmentsBetween(store: Store, fromIso: string, toIso: string) {

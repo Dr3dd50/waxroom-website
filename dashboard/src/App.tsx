@@ -94,7 +94,9 @@ export default function App() {
               <Icon name="out" />
             </button>
           </div>
-          {!boot.live.payments || !boot.live.texts ? (
+          {!boot.settings.switchover.done ? (
+            <p className="side__mode">GlossGenius is still the booking system. Booking, payments and texts here start when the owner switches over in Settings.</p>
+          ) : !boot.live.payments || !boot.live.texts ? (
             <p className="side__mode">
               {!boot.live.payments ? 'Payments are simulated until Stripe is connected. ' : ''}
               {!boot.live.texts ? 'Texts are saved, not sent, until Twilio is connected.' : ''}

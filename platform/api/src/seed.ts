@@ -76,7 +76,9 @@ export async function upgrade(store: Store) {
   const s = await store.get<Settings>('settings', 'settings');
   if (!s) return;
   const before = JSON.stringify(s);
-  s.onlineBooking ??= { open: config.demoData };
+  // local demos run switched over; on AWS the owner switches after the GlossGenius import
+  if (!s.switchover) s.switchover = { done: s.onlineBooking?.open ?? config.demoData };
+  delete s.onlineBooking;
   s.staffAlerts ??= { enabled: true };
   s.privacy ??= { employeesSeeContact: false };
   for (const [key, def] of Object.entries(DEFAULT_AUTOMATIONS)) {
@@ -186,8 +188,8 @@ export async function seed(store: Store) {
     notifications: { confirmHoursBefore: 72, reminderHoursBefore: 24, rebookAfterDays: 42, quietStart: 21, quietEnd: 9 },
     automations: DEFAULT_AUTOMATIONS,
     referrals: { enabled: true, friendGets: 1000, referrerGets: 1000 },
-    // local demos book straight away; on AWS it opens after the GlossGenius import, by the owner
-    onlineBooking: { open: config.demoData },
+    // local demos run switched over; on AWS the owner switches after the GlossGenius import
+    switchover: { done: config.demoData },
     staffAlerts: { enabled: true },
     privacy: { employeesSeeContact: false },
   };

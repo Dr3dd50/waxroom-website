@@ -9,11 +9,21 @@
 import Stripe from 'stripe';
 import { config, stripeLive } from '../config';
 import type { Card, Client, Membership } from '../types';
-import { rid } from '../lib/util';
+import { HttpError, rid } from '../lib/util';
 
 let stripe: Stripe | null = null;
+// Nothing reaches Stripe until the switch from GlossGenius, even with keys in place.
+// Kept up to date by getSettings, which every booking, payment and checkout reads first.
+let allowed = false;
 // fetch rather than node's http module: the same client runs on Lambda and in tests
-const api = () => (stripe ??= new Stripe(config.stripe.secretKey!, { httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries: 2 }));
+const api = () => {
+  if (!allowed) throw new HttpError(409, 'Payments start when you switch over from GlossGenius.');
+  return (stripe ??= new Stripe(config.stripe.secretKey!, { httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries: 2 }));
+};
+/** On AWS, practice payments are never accepted: without Stripe keys, nothing can be paid for. */
+const practiceOk = () => {
+  if (config.tableName) throw new HttpError(503, 'Payments aren’t set up yet. Please call or text us to book.');
+};
 
 export type NeedsAuth = { clientSecret: string; paymentMethodId: string };
 export type ChargeResult = { ok: boolean; id: string; simulated: boolean; error?: string; needsAuth?: NeedsAuth };
@@ -23,10 +33,13 @@ const simAsksApproval = (card?: Card) => card?.paymentMethodId.startsWith('pm_si
 
 export const payments = {
   live: stripeLive,
+  allow(on: boolean) {
+    allowed = on;
+  },
   publishableKey: () => config.stripe.publishableKey ?? null,
 
   async ensureCustomer(c: Client) {
-    if (!stripeLive()) return c.customerId ?? `cus_sim_${rid()}`;
+    if (!stripeLive()) return (practiceOk(), c.customerId ?? `cus_sim_${rid()}`);
     if (c.customerId && !c.customerId.startsWith('cus_sim_')) return c.customerId;
     const cus = await api().customers.create({ name: `${c.first} ${c.last}`, email: c.email || undefined, phone: c.phone, metadata: { clientId: c.id } });
     return cus.id;
@@ -34,7 +47,7 @@ export const payments = {
 
   /** Start saving a card. Returns what the booking page needs to show the card form. */
   async startCardSetup(customerId: string) {
-    if (!stripeLive()) return { simulated: true as const, setupId: `seti_sim_${rid()}`, clientSecret: null };
+    if (!stripeLive()) return (practiceOk(), { simulated: true as const, setupId: `seti_sim_${rid()}`, clientSecret: null });
     // cards only: they're what can be charged later for fees and checkout
     const si = await api().setupIntents.create({ customer: customerId, usage: 'off_session', payment_method_types: ['card'] });
     return { simulated: false as const, setupId: si.id, clientSecret: si.client_secret };
@@ -43,6 +56,7 @@ export const payments = {
   /** After the card form completes: read back the saved card. */
   async finishCardSetup(setupId: string, simulatedCard?: { number: string }): Promise<Card> {
     if (!stripeLive()) {
+      practiceOk();
       const digits = (simulatedCard?.number ?? '4242424242424242').replace(/\D/g, '');
       const brand = digits.startsWith('3') ? 'Amex' : digits.startsWith('5') ? 'Mastercard' : 'Visa';
       return { brand, last4: digits.slice(-4) || '4242', paymentMethodId: `pm_sim_${rid()}` };
@@ -62,6 +76,7 @@ export const payments = {
     if (amount <= 0) return { ok: true, id: 'none', simulated: !stripeLive() };
     if (!card) return { ok: false, id: '', simulated: !stripeLive(), error: 'No card on file' };
     if (!stripeLive()) {
+      practiceOk();
       const id = `pi_sim_${rid()}`;
       if (simAsksApproval(card)) {
         if (!clientPresent) return { ok: false, id, simulated: true, error: 'The bank asked the cardholder to approve this payment' };
@@ -112,6 +127,7 @@ export const payments = {
    */
   async subscribe(customerId: string, card: Card, m: Membership, clientPresent = false): Promise<{ id: string; priceId?: string; invoiceId?: string; active: boolean; needsAuth?: NeedsAuth; error?: string }> {
     if (!stripeLive()) {
+      practiceOk();
       const id = `sub_sim_${rid()}`;
       if (simAsksApproval(card)) {
         if (!clientPresent) return { id, active: false, error: 'The bank asked the cardholder to approve this payment' };
