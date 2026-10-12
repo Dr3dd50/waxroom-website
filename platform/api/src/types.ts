@@ -217,6 +217,8 @@ export type Settings = {
   staffAlerts: { enabled: boolean };
   /** Employees see clients' phone numbers and emails only when the owner allows it. */
   privacy: { employeesSeeContact: boolean };
+  /** One-time changes to data already in the store (see seed.ts upgrade), by name, once each. */
+  applied?: string[];
 };
 
 export type ImportReport = {

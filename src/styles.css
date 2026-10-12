@@ -886,6 +886,10 @@ h3 {
   .skin__grid {
     grid-template-columns: 1fr;
   }
+  /* the video's own shape, so nothing in the drawing is cropped off */
+  .skin__photo {
+    aspect-ratio: 16 / 9;
+  }
   .stats {
     grid-template-columns: repeat(2, 1fr);
     row-gap: 2rem;

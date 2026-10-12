@@ -17,7 +17,19 @@ export type Category = { name: string; slug: string; services: Service[] };
 export type Hours = { day: string; open: number | null; close: number | null };
 export type Review = { id: string; name: string; text: string; date: string };
 
-export const business = businessJson as typeof businessJson & { categories: Category[]; hours: Hours[] };
+type Business = typeof businessJson & { categories: Category[]; hours: Hours[] };
+const synced = businessJson as Business;
+
+// The owner's word over GlossGenius's settings (business.json is re-synced from
+// GlossGenius, so the corrections are applied here rather than in the file):
+// lengths GlossGenius has wrong, and memberships that aren't on sale.
+const LENGTH_FIX: Record<string, number> = { 'Jet Plasma Facial': 60, 'Jet Plasma Body Treatment': 60 };
+const NOT_ON_SALE = new Set(['Bio Scan']);
+export const business: Business = {
+  ...synced,
+  categories: synced.categories.map((c) => ({ ...c, services: c.services.map((s) => (LENGTH_FIX[s.name] ? { ...s, duration: LENGTH_FIX[s.name] } : s)) })),
+  memberships: synced.memberships.filter((m) => !NOT_ON_SALE.has(m.name)),
+};
 export const reviews = reviewsJson as typeof reviewsJson & { reviews: Review[] };
 
 export const allServices = business.categories.flatMap((c) => c.services);

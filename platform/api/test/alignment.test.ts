@@ -390,7 +390,9 @@ test('each ritual is bookable as the service plus a 1-hour steam, at its own pri
   // the Brazilian one is GlossGenius's NEW CLIENT RITUAL, not a second copy
   const brazilian = rituals.find((s: any) => s.name === 'NEW CLIENT RITUAL');
   assert.equal(services.find((s: any) => s.id === brazilian.ritualOf).name, 'Brazilian');
-  assert.equal(brazilian.duration, 20 + 60);
+  assert.equal(brazilian.duration, 60, 'the New Client Ritual is booked as 1 hour (owner)');
+  // and Bio Scan is off sale
+  assert.ok(!(await call('GET', '/public/catalog')).json.memberships.some((m: any) => m.name === 'Bio Scan'));
   // running the upgrade again changes nothing
   const { upgrade } = await import('../src/seed');
   await upgrade(store);

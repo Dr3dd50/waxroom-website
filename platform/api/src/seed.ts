@@ -72,6 +72,11 @@ export function defaultRebookDays(s: Pick<Service, 'name' | 'category'>): number
   return 42;
 }
 
+// Memberships the owner has taken off sale.
+const NOT_ON_SALE = new Set(['Bio Scan']);
+// Rituals booked at a set length rather than the service's own plus the steam.
+const RITUAL_LENGTH: Record<string, number> = { new_client_ritual: 60 };
+
 // Lengths the owner confirmed where GlossGenius's setting is wrong.
 const LENGTH_FIX: Record<string, number> = { 'Luxury Wig Installation': 60, 'Jet Plasma Facial': 60, 'Jet Plasma Body Treatment': 60 };
 
@@ -98,7 +103,7 @@ async function addRituals(store: Store) {
       order: existing?.order ?? base.order,
       price: r.price,
       priceVaries: false,
-      duration: base.duration + ritualBank.steamMinutes,
+      duration: RITUAL_LENGTH[r.key] ?? base.duration + ritualBank.steamMinutes,
       deposit: r.deposit,
       depositNewClientsOnly: false,
       description: r.includes,
@@ -139,6 +144,25 @@ export async function upgrade(store: Store) {
     if (next !== svc) await store.put('services', next);
   }
   await addRituals(store);
+
+  // One-time changes, each applied once so a later edit in the dashboard stays.
+  const done = new Set((await store.get<Settings>('settings', 'settings'))!.applied ?? []);
+  const once = async (name: string, fn: () => Promise<void>) => {
+    if (done.has(name)) return;
+    await fn();
+    done.add(name);
+    const now = (await store.get<Settings>('settings', 'settings'))!;
+    await store.put('settings', { ...now, applied: [...done] });
+  };
+  await once('memberships-off-sale', async () => {
+    for (const m of await store.list<Membership>('memberships')) if (NOT_ON_SALE.has(m.name) && m.public) await store.put('memberships', { ...m, public: false });
+  });
+  await once('new-client-ritual-1-hour', async () => {
+    const services = await store.list<Service>('services');
+    const brazilian = services.find((s) => s.name === 'Brazilian');
+    const ritual = brazilian && services.find((s) => s.ritualOf === brazilian.id);
+    if (ritual && ritual.duration !== RITUAL_LENGTH.new_client_ritual) await store.put('services', { ...ritual, duration: RITUAL_LENGTH.new_client_ritual });
+  });
 }
 
 export async function seed(store: Store) {
@@ -201,7 +225,7 @@ export async function seed(store: Store) {
           ? [{ serviceId: oneWeekFill, quantity: 4 }]
           : m.includes.filter((i: { serviceId?: string }) => i.serviceId).map((i: { serviceId: string; quantity: number }) => ({ serviceId: i.serviceId, quantity: i.quantity })),
       active: true,
-      public: m.public,
+      public: m.public && !NOT_ON_SALE.has(m.name),
     };
     await store.put('memberships', membership);
   }

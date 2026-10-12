@@ -17,7 +17,11 @@ export function Skin() {
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
-      mm.add('(prefers-reduced-motion: no-preference)', () => {
+      // The two scroll-scrubbed effects are for wide screens only. On a phone they
+      // leave the statement dim and the video clipped until scrolled past, and an
+      // animated clip-path around a canvas is unreliable in mobile Safari, so there
+      // the text and the video simply show.
+      mm.add('(prefers-reduced-motion: no-preference) and (min-width: 861px)', () => {
         // Words light up one by one as the statement scrolls through.
         gsap.fromTo(
           '.statement .w',
@@ -39,6 +43,8 @@ export function Skin() {
             scrollTrigger: { trigger: '.skin__grid', start: 'top 80%', end: 'top 25%', scrub: true },
           },
         );
+      });
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
         gsap.from('.treat', {
           y: 40,
           opacity: 0,

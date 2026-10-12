@@ -454,7 +454,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         title: 'Private & unhurried',
-        body: 'You relax in your own space, fully covered and in control, for about 30 minutes of steam.',
+        body: 'You relax in your own space, fully covered and in control, for an hour of steam.',
       },
       {
         title: 'Better together',
@@ -669,7 +669,7 @@ const WELLNESS: GroupLanding = {
   highlights: [
     {
       title: 'A real pause',
-      body: 'About 30 minutes of warm herbal steam in your own private space, fully covered and in control.',
+      body: 'An hour of warm herbal steam in your own private space, fully covered and in control.',
     },
     {
       title: 'Five-minute bio scan',
@@ -695,7 +695,7 @@ const WELLNESS: GroupLanding = {
     },
   ],
   reviewMatch: /steam|yoni|scan|relax/i,
-  memberships: ['Bio Scan'],
+  memberships: [],
 };
 
 export const SERVICE_GROUPS: ServiceGroup[] = [
