@@ -88,7 +88,9 @@ export async function rebookDue(store: Store, c: Client, services: Map<string, S
   const visit = (await store.range<Appointment>('appointments', from, `${c.lastVisitAt}~`)).filter((a) => a.clientId === c.id && a.status === 'completed' && a.end <= c.lastVisitAt!);
   let best: { service: Service; days: number } | null = null;
   for (const a of visit) {
-    const service = services.get(a.serviceId);
+    // after a ritual, the next visit is the service itself (the ritual was a first-time offer)
+    const done = services.get(a.serviceId);
+    const service = done?.ritualOf ? (services.get(done.ritualOf) ?? done) : done;
     if (!service) continue;
     const days = service.rebookAfterDays === undefined ? fallbackDays : service.rebookAfterDays;
     if (days !== null && (!best || days < best.days)) best = { service, days };

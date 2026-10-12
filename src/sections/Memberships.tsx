@@ -2,9 +2,12 @@ import { useRef } from 'react';
 import { business, money } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
 import { membershipLink, packageLink } from '../lib/booking';
+import { RitualCard } from '../components/RitualCards';
+import { useRituals } from '../lib/rituals';
 
 export function Memberships() {
   const root = useRef<HTMLElement>(null);
+  const rituals = useRituals();
 
   useGSAP(
     () => {
@@ -47,12 +50,15 @@ export function Memberships() {
     <section className="members" id="memberships" ref={root}>
       <div className="container">
         <div className="section-head">
-          <p className="eyebrow">Memberships & packages</p>
+          <p className="eyebrow">Rituals, memberships & packages</p>
           <h2 className="display">
             Stay smooth. <em>Save every month.</em>
           </h2>
         </div>
         <div className="cards">
+          {rituals.map((r) => (
+            <RitualCard key={r.key} r={r} onPointerMove={tilt} onPointerLeave={reset} />
+          ))}
           {business.memberships.map((m) => (
             <a className="card" key={m.name} {...membershipLink(m.name, m.url)} onPointerMove={tilt} onPointerLeave={reset}>
               <span className="card__tag">Membership</span>

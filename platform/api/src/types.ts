@@ -43,6 +43,11 @@ export type Service = {
   prepTip?: string;
   /** Days after a visit to text a rebooking nudge, if nothing is booked. null = no nudge. */
   rebookAfterDays?: number | null;
+  /**
+   * A New Client Ritual: this service (its id) plus a complimentary steam, at an
+   * introductory price, for a client who hasn't had that service before.
+   */
+  ritualOf?: string;
 };
 
 export type Membership = {

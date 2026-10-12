@@ -376,3 +376,44 @@ test('a time written with an offset is stored like any other, so the overlap che
   const b = await call('POST', '/staff/appointments', { clientId: rena.id, serviceId: service.id, staffId: boot.me.id, start: slot.start });
   assert.equal(b.status, 409);
 });
+
+// ── New Client Rituals ──
+test('each ritual is bookable as the service plus a 1-hour steam, at its own price and deposit', async () => {
+  const services = await store.list<any>('services');
+  const rituals = services.filter((s: any) => s.ritualOf);
+  assert.equal(rituals.length, 10);
+  const facial = rituals.find((s: any) => s.name === 'Jet Plasma Facial Ritual');
+  const base = services.find((s: any) => s.id === facial.ritualOf);
+  assert.equal(base.name, 'Jet Plasma Facial');
+  assert.equal(base.duration, 60, 'Jet Plasma Facial is 1 hour');
+  assert.deepEqual([facial.price, facial.deposit, facial.duration, facial.depositNewClientsOnly], [22000, 5000, 120, false]);
+  // the Brazilian one is GlossGenius's NEW CLIENT RITUAL, not a second copy
+  const brazilian = rituals.find((s: any) => s.name === 'NEW CLIENT RITUAL');
+  assert.equal(services.find((s: any) => s.id === brazilian.ritualOf).name, 'Brazilian');
+  assert.equal(brazilian.duration, 20 + 60);
+  // running the upgrade again changes nothing
+  const { upgrade } = await import('../src/seed');
+  await upgrade(store);
+  assert.equal((await store.list<any>('services')).filter((s: any) => s.ritualOf).length, 10);
+});
+
+test('a ritual is only for a client new to that service, and their follow-up is for the service itself', async () => {
+  const cat = (await call('GET', '/public/catalog')).json;
+  const ritual = cat.services.find((s: any) => s.name === 'Vajacial Ritual');
+  assert.ok(ritual?.ritualOf);
+  const first = await bookOnline(ritual, '804-555-0330', 'Vee', nextWeekday(18));
+  assert.equal(first.status, 200, JSON.stringify(first.json));
+  // the same client again: refused, pointed at the regular service
+  const again = await bookOnline(ritual, '804-555-0330', 'Vee', nextWeekday(19));
+  assert.equal(again.status, 409);
+  assert.match(again.json.error, /first Vajacial.*book the Vajacial itself/i);
+  // after the ritual visit, the rebooking text is for the Vajacial
+  const appt = (await store.list<any>('appointments')).find((a: any) => a.clientId === first.clientId && a.status !== 'cancelled');
+  await store.put('appointments', { ...appt, status: 'completed' });
+  const client = await store.get<any>('clients', first.clientId);
+  await store.put('clients', { ...client, lastVisitAt: appt.end });
+  const { rebookDue } = await import('../src/services/notify');
+  const services = new Map((await store.list<any>('services')).map((s: any) => [s.id, s]));
+  const due = await rebookDue(store, { ...client, lastVisitAt: appt.end }, services as any, 42);
+  assert.equal(due?.service.name, 'Vajacial');
+});

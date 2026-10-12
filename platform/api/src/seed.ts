@@ -10,6 +10,7 @@ import { rid } from './lib/util';
 
 // bundled into the Lambda by esbuild
 import catalog from '../../seed/catalog.json';
+import ritualBank from '../../../src/data/rituals.json';
 
 export function hashPassword(pw: string) {
   const salt = randomBytes(16).toString('hex');
@@ -71,6 +72,47 @@ export function defaultRebookDays(s: Pick<Service, 'name' | 'category'>): number
   return 42;
 }
 
+// Lengths the owner confirmed where GlossGenius's setting is wrong.
+const LENGTH_FIX: Record<string, number> = { 'Luxury Wig Installation': 60, 'Jet Plasma Facial': 60, 'Jet Plasma Body Treatment': 60 };
+
+/**
+ * The New Client Rituals (src/data/rituals.json, from the content repo's offer bank)
+ * as bookable services: the service plus the complimentary steam, so the steam's
+ * length is added. The Brazilian one already exists, ported from GlossGenius as
+ * NEW CLIENT RITUAL; it takes the ritual's settings rather than becoming a second
+ * service. Only adds what's missing: a ritual the owner has since edited stays as is.
+ */
+async function addRituals(store: Store) {
+  const services = await store.list<Service>('services');
+  const byName = (n: string) => services.find((s) => s.name.toLowerCase() === n.toLowerCase());
+  for (const r of ritualBank.rituals) {
+    const base = byName(r.service);
+    if (!base) continue;
+    const existing = services.find((s) => s.ritualOf === base.id) ?? (r.key === 'new_client_ritual' ? byName('NEW CLIENT RITUAL') : undefined);
+    if (existing?.ritualOf) continue;
+    const ritual: Service = {
+      ...(existing ?? {}),
+      id: existing?.id ?? `ritual-${r.key.replace(/_/g, '-')}`,
+      name: existing?.name ?? r.name,
+      category: base.category,
+      order: existing?.order ?? base.order,
+      price: r.price,
+      priceVaries: false,
+      duration: base.duration + ritualBank.steamMinutes,
+      deposit: r.deposit,
+      depositNewClientsOnly: false,
+      description: r.includes,
+      staffIds: existing?.staffIds.length ? existing.staffIds : base.staffIds,
+      active: true,
+      bookableOnline: existing?.bookableOnline ?? base.bookableOnline,
+      prepTip: base.prepTip,
+      rebookAfterDays: base.rebookAfterDays,
+      ritualOf: base.id,
+    };
+    await store.put('services', ritual);
+  }
+}
+
 /** Bring a store seeded by an earlier version up to date. Safe to run on every start. */
 export async function upgrade(store: Store) {
   const s = await store.get<Settings>('settings', 'settings');
@@ -87,7 +129,16 @@ export async function upgrade(store: Store) {
     else if (PREVIOUS_DEFAULTS[key]?.includes(cur.text)) s.automations[key] = { ...cur, text: def.text };
   }
   if (JSON.stringify(s) !== before) await store.put('settings', s);
-  for (const svc of await store.list<Service>('services')) if (svc.rebookAfterDays === undefined) await store.put('services', { ...svc, rebookAfterDays: defaultRebookDays(svc) });
+  for (const svc of await store.list<Service>('services')) {
+    let next = svc;
+    if (svc.rebookAfterDays === undefined) next = { ...next, rebookAfterDays: defaultRebookDays(svc) };
+    // a length still at GlossGenius's wrong setting takes the confirmed one
+    const fixed = LENGTH_FIX[svc.name];
+    const ported = catalog.services.find((c: { id: string }) => c.id === svc.id) as { duration: number } | undefined;
+    if (fixed && ported && svc.duration === ported.duration && svc.duration !== fixed) next = { ...next, duration: fixed };
+    if (next !== svc) await store.put('services', next);
+  }
+  await addRituals(store);
 }
 
 export async function seed(store: Store) {
@@ -111,8 +162,6 @@ export async function seed(store: Store) {
     await store.put('staff', staff);
   }
 
-  // lengths the owner confirmed where GlossGenius's setting is wrong
-  const DURATION_FIX: Record<string, number> = { 'Luxury Wig Installation': 60 };
   for (const s of catalog.services) {
     if (SKIP_CATEGORIES.has(s.category ?? '')) continue;
     const category = CATEGORY_MERGE[s.category ?? ''] ?? s.category;
@@ -124,7 +173,7 @@ export async function seed(store: Store) {
       order: s.order,
       price: s.price,
       priceVaries: s.priceVaries,
-      duration: DURATION_FIX[s.name] ?? s.duration,
+      duration: LENGTH_FIX[s.name] ?? s.duration,
       deposit: s.deposit,
       depositNewClientsOnly: s.depositNewClientsOnly,
       description: s.description,

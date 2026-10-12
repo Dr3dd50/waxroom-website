@@ -89,7 +89,7 @@ export function ServicePage({ page }: { page: Page }) {
 
       <ReviewsSection match={page.reviewMatch} label={page.navLabel} />
 
-      <OffersSection memberships={page.memberships} packages={page.packages} />
+      <OffersSection memberships={page.memberships} packages={page.packages} categories={page.categories} />
 
       <FaqSection faqs={page.faqs} />
 

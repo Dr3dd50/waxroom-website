@@ -63,6 +63,16 @@ export function calendarRoutes(store: Store) {
   return r;
 }
 
+/** A ritual is for a client new to its service: anyone who has had it (or the ritual) books the service itself. */
+async function ritualAllowed(store: Store, client: Client, service: Service) {
+  if (!service.ritualOf) return;
+  const base = await store.get<Service>('services', service.ritualOf);
+  const had = (await store.list<Appointment>('appointments')).some(
+    (a) => a.clientId === client.id && (a.serviceId === service.ritualOf || a.serviceId === service.id) && a.status !== 'cancelled' && a.status !== 'no-show' && a.deposit?.status !== 'pending',
+  );
+  if (had) throw new HttpError(409, `The ${nice(service.name)} is for your first ${nice(base?.name ?? 'visit')}. You can book the ${nice(base?.name ?? 'service')} itself instead.`);
+}
+
 export function publicRoutes(store: Store) {
   const r = new Hono();
 
@@ -120,6 +130,7 @@ export function publicRoutes(store: Store) {
           depositNewClientsOnly: s.depositNewClientsOnly,
           description: s.description,
           staffIds: s.staffIds.filter((id) => staff.some((x) => x.id === id)),
+          ritualOf: s.ritualOf,
         })),
       memberships: (await store.list<Membership>('memberships')).filter((m) => m.active && m.public),
       packages: (await store.list<Package>('packages')).filter((p) => p.active),
@@ -163,6 +174,7 @@ export function publicRoutes(store: Store) {
     const client = await store.get<Client>('clients', b.clientId);
     const service = await store.get<Service>('services', b.serviceId);
     if (!client || !service || !service.bookableOnline) throw bad('Something went wrong. Please start again.');
+    await ritualAllowed(store, client, service);
     client.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
     await store.put('clients', client);
     // only times the booking page could have offered: hours, availability, lead time, time off

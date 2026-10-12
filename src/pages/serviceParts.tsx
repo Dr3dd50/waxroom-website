@@ -2,6 +2,8 @@
 import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 import { CodeVideo } from '../components/CodeVideo';
 import { FlipWord } from '../components/FlipWord';
+import { RitualCard } from '../components/RitualCards';
+import { useRituals } from '../lib/rituals';
 import { GoogleRating, ReviewCard } from '../components/ReviewCard';
 import { Sparkles } from '../components/Sparkles';
 import { serviceAnchor, type Faq } from '../content/services';
@@ -205,15 +207,20 @@ export function ReviewsSection({ match, label }: { match: RegExp; label: string 
   );
 }
 
-export function OffersSection({ memberships: mNames, packages: pNames }: { memberships: string[]; packages: string[] }) {
+/** This page's New Client Rituals, memberships and packages. */
+export function OffersSection({ memberships: mNames, packages: pNames, categories }: { memberships: string[]; packages: string[]; categories: string[] }) {
+  const rituals = useRituals(categories);
   const memberships = business.memberships.filter((m) => mNames.includes(m.name));
   const packages = business.packages.filter((p) => pNames.includes(p.name));
-  if (!memberships.length && !packages.length) return null;
+  if (!rituals.length && !memberships.length && !packages.length) return null;
   return (
     <section className="svc-section">
       <div className="container">
-        <p className="eyebrow">Save with a membership or package</p>
+        <p className="eyebrow">{rituals.length ? 'New here, or here often' : 'Save with a membership or package'}</p>
         <div className="cards cards--light reveal-group">
+          {rituals.map((r) => (
+            <RitualCard key={r.key} r={r} className="reveal" />
+          ))}
           {memberships.map((m) => (
             <a className="card reveal" key={m.name} {...membershipLink(m.name, m.url)}>
               <span className="card__tag">Membership</span>

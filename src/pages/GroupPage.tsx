@@ -107,6 +107,7 @@ export function GroupPage({ group }: { group: ServiceGroup }) {
       <OffersSection
         memberships={unique([...pages.flatMap((p) => p.memberships), ...(landing.memberships ?? [])])}
         packages={unique(pages.flatMap((p) => p.packages))}
+        categories={unique([...pages.flatMap((p) => p.categories), ...(group.extraCategories ?? [])])}
       />
 
       <FaqSection faqs={landing.faqs} />

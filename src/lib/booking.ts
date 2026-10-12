@@ -19,6 +19,9 @@ export type BookTarget = { group?: string; page?: string; service?: string };
 
 const TOKENS = new Map(business.categories.flatMap((c) => c.services.map((s) => [s.name.toLowerCase(), s.token] as const)));
 
+/** Whether a service (by name) can be booked on GlossGenius, the live booking system until the switch. */
+export const onGlossGenius = (name: string) => TOKENS.has(name.toLowerCase());
+
 /** GlossGenius, opened on one service's calendar. */
 export const glossGeniusService = (token: string) => `${new URL(business.bookingUrl).origin}/book?service_token=${encodeURIComponent(token)}`;
 

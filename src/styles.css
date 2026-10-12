@@ -943,6 +943,20 @@ h3 {
     radial-gradient(400px circle at var(--mx) var(--my), rgba(255, 255, 255, 0.5), transparent 45%),
     linear-gradient(150deg, var(--honey-pale), var(--honey-light));
 }
+.card--ritual {
+  background:
+    radial-gradient(400px circle at var(--mx) var(--my), rgba(255, 255, 255, 0.55), transparent 45%),
+    var(--cream);
+  box-shadow: inset 0 0 0 2px var(--honey);
+}
+.card--ritual .card__tag {
+  background: var(--honey);
+  color: var(--ink);
+}
+.card p.card__fine {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
 .card--gift {
   background:
     radial-gradient(400px circle at var(--mx) var(--my), rgba(255, 255, 255, 0.35), transparent 45%),
