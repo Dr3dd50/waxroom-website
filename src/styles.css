@@ -1268,23 +1268,6 @@ h3 {
   font-size: 0.85rem;
   color: rgba(248, 241, 231, 0.5);
 }
-.mobile-book {
-  display: none;
-}
-@media (max-width: 860px) {
-  .mobile-book {
-    display: flex;
-    position: fixed;
-    left: 16px;
-    right: 16px;
-    bottom: calc(14px + env(safe-area-inset-bottom));
-    z-index: 40;
-    padding-block: 1.05em;
-  }
-  .footer--bar {
-    padding-bottom: 6.5rem;
-  }
-}
 
 /* ───────────────── Shared: anchors, Google rating ───────────────── */
 [id] {

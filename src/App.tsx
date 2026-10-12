@@ -77,7 +77,7 @@ export default function App({ path }: { path: string }) {
           </section>
         ) : null}
       </main>
-      <Footer bookBar={!['book', 'manage', 'join'].includes(route.kind)} />
+      <Footer />
     </BookContext.Provider>
   );
 }

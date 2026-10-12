@@ -3,12 +3,11 @@ import { business } from '../data';
 import { useBookLink } from '../lib/booking';
 import { privacyState, setOptOut } from '../lib/tracking';
 
-/** bookBar: the floating Book button on phones; off on pages that are already booking. */
-export function Footer({ bookBar = true }: { bookBar?: boolean }) {
+export function Footer() {
   const book = useBookLink();
   const [title, ...policy] = business.cancellationPolicy.split(/\n+/);
   return (
-    <footer className={`footer ${bookBar ? 'footer--bar' : ''}`}>
+    <footer className="footer">
       <div className="container footer__inner">
         <img src="/logo.png" alt="The Wax Room" width={212} height={180} className="footer__logo" />
         <div className="footer__cta">
@@ -37,11 +36,6 @@ export function Footer({ bookBar = true }: { bookBar?: boolean }) {
           © {new Date().getFullYear()} {business.name} · {business.address}
         </p>
       </div>
-      {bookBar ? (
-        <a className="mobile-book btn btn--honey" {...book()}>
-          Book now
-        </a>
-      ) : null}
     </footer>
   );
 }
