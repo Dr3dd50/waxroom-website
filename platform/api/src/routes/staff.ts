@@ -65,7 +65,8 @@ export function staffRoutes(store: Store) {
       services: await store.list<Service>('services'),
       memberships: await store.list<Membership>('memberships'),
       packages: await store.list<Package>('packages'),
-      settings: isOwner(c) ? settings : { ...settings, automations: {} },
+      // employees: no text templates, and no import notes (they can carry phone numbers)
+      settings: isOwner(c) ? settings : { ...settings, automations: {}, glossGeniusImport: undefined },
       live: { payments: payments.live(), texts: twilioLive() },
       today: zoned(new Date(), settings.timezone).day,
     });
@@ -99,7 +100,8 @@ export function staffRoutes(store: Store) {
     let client: Client | undefined;
     let isNew = false;
     if (b.clientId) client = await store.get<Client>('clients', b.clientId);
-    else if (b.client) ({ client, isNew } = await upsertClient(store, { ...b.client, smsReminders: true }));
+    // a new client starts on appointment texts; an existing one keeps their choice (a STOP stays a STOP)
+    else if (b.client) ({ client, isNew } = await upsertClient(store, b.client));
     if (!client) throw bad('Pick or add a client.');
     if (b.clientId && !isOwner(c)) await clientOr404(c, client.id);
     const appt = await createAppointment(store, { client, isNewClient: isNew, service, staffId: b.staffId, start: b.start, source: 'staff', notes: b.notes, price: b.price });
@@ -217,7 +219,7 @@ export function staffRoutes(store: Store) {
 
   r.post('/clients', async (c) => {
     const b = await c.req.json<{ first: string; last: string; phone: string; email?: string; smsMarketing?: boolean; birthday?: string }>();
-    const { client, isNew } = await upsertClient(store, { ...b, smsReminders: true });
+    const { client, isNew } = await upsertClient(store, b);
     if (!isNew) throw bad(`${client.first} ${client.last} already has that phone number.`);
     return c.json(clientSummary(client, await seesContact(c)));
   });
@@ -294,7 +296,9 @@ export function staffRoutes(store: Store) {
     const { body } = await c.req.json<{ body: string }>();
     if (!body?.trim()) throw bad('Write a message.');
     if (!x.smsReminders) throw bad(`${x.first} has opted out of texts.`);
-    return c.json(await sendText(store, x.phone, body.trim(), 'staff', x));
+    const m = await sendText(store, x.phone, body.trim(), 'staff', x);
+    // the reply leaves out the number it went to: employees may not be allowed to see it
+    return c.json({ id: m.id, at: m.at, status: m.status, error: m.error });
   });
 
   // ── texts ──

@@ -23,8 +23,12 @@ export async function requireSwitched(store: Store, what = 'Bookings, texts and 
  * Run `fn` holding the booking lock for one person's day. Locks expire on their
  * own after a few seconds, so a crash mid-booking can't leave a day stuck.
  */
-export async function withStaffLock<T>(store: Store, staffId: string, startIso: string, fn: () => Promise<T>): Promise<T> {
-  const id = `${staffId}|${zoned(startIso).day}`;
+export function withStaffLock<T>(store: Store, staffId: string, startIso: string, fn: () => Promise<T>): Promise<T> {
+  return withLock(store, `${staffId}|${zoned(startIso).day}`, fn);
+}
+
+/** Run `fn` while holding a named lock: one at a time, across every server. */
+export async function withLock<T>(store: Store, id: string, fn: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     if (await store.claim('locks', id, 10_000)) break;
     if (attempt >= 20) throw new HttpError(409, 'Someone is booking that time right now. Please try again in a moment.');

@@ -21,6 +21,7 @@ function ReportLines({ r }: { r: ImportReport }) {
       {r.appointments ? (
         <p className="small">
           Appointments: {r.appointments.added} new, {r.appointments.updated} changed since last time, {r.appointments.unchanged} unchanged
+          {r.appointments.removed ? `, ${r.appointments.removed} no longer in GlossGenius (moved or deleted there, so freed here)` : ''}
           {r.appointments.unmatched ? `, ${r.appointments.unmatched} not brought in` : ''}.
         </p>
       ) : null}

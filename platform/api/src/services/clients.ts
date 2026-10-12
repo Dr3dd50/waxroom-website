@@ -1,6 +1,7 @@
 import type { Store } from '../store/store';
 import type { Appointment, Client, Package, Payment } from '../types';
 import { bad, nowIso, rid, toE164 } from '../lib/util';
+import { withLock } from './switchover';
 
 export async function findClientByPhone(store: Store, phone: string) {
   return (await store.list<Client>('clients')).find((c) => c.phone === phone);
@@ -63,7 +64,10 @@ export async function futureAppointments(store: Store, clientId: string) {
  * A paid package goes on the client's account, once per payment: the booking page
  * and Stripe's webhook can both report the same payment.
  */
-export async function grantPackage(store: Store, client: Client, p: Package, paymentId: string, simulated: boolean) {
+export function grantPackage(store: Store, client: Client, p: Package, paymentId: string, simulated: boolean) {
+  return withLock(store, `pay|${paymentId}`, () => grantOnce(store, client, p, paymentId, simulated));
+}
+async function grantOnce(store: Store, client: Client, p: Package, paymentId: string, simulated: boolean) {
   const existing = (await store.list<Payment>('payments')).find((x) => x.providerId === paymentId && x.kind === 'package');
   const fresh = (await store.get<Client>('clients', client.id)) ?? client;
   if (existing) return { expiresAt: fresh.packages?.find((k) => k.packageId === p.id)?.expiresAt ?? null, already: true };

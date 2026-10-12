@@ -9,7 +9,7 @@ import { addDays, fmtDate, fmtTime, zoned, zonedToUtc } from '../lib/time';
 import { money, nice, nowIso, rid } from '../lib/util';
 import { getSettings } from './availability';
 import { sendText } from './sms';
-import { switched } from './switchover';
+import { switched, withLock } from './switchover';
 
 export type AlertEvent =
   | { kind: 'booked' }
@@ -68,7 +68,11 @@ export function quietUntil(settings: Settings, now = new Date()) {
 }
 
 /** Send what waited out the quiet hours (run by the 15-minute tick). */
-export async function flushOutbox(store: Store, now = new Date()) {
+export function flushOutbox(store: Store, now = new Date()) {
+  // one run at a time (the 15-minute tick and the owner's "run texts" could overlap)
+  return withLock(store, 'outbox', () => flushNow(store, now));
+}
+async function flushNow(store: Store, now: Date) {
   let sent = 0;
   for (const m of await store.list<Message>('outbox')) {
     if (m.sendAfter && m.sendAfter > now.toISOString()) continue;

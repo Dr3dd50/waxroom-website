@@ -303,3 +303,76 @@ test('a declined deposit gives the time straight back', async () => {
     payments.charge = charge;
   }
 });
+
+// ── from the audit ──
+test('the import reads the right columns, names the team member, follows moves, and keeps GlossGenius lengths', async () => {
+  // a fresh store that hasn't switched (imports stop at the switch)
+  const { FileStore } = await import('../src/store/file');
+  const { seed, upgrade } = await import('../src/seed');
+  const { importGlossGenius } = await import('../src/services/importer');
+  const s2 = new FileStore(join(mkdtempSync(join(tmpdir(), 'wr-imp-')), 'store.json'));
+  await seed(s2);
+  await upgrade(s2);
+  const day = nextWeekday(5);
+  const other = nextWeekday(6);
+  await importGlossGenius(s2, { clients: 'First Name,Last Name,Phone\nAmy,Ames,8045550501\nBo,Bell,8045550502\n' });
+  const head = 'Created Date,Client,Phone,Service,Team Member,Date,Time,Duration,Status';
+  const first = await importGlossGenius(s2, {
+    appointments: [
+      head,
+      `01/02/2020,Amy Ames,8045550501,Brazilian,Danielle W,${usDate(day)},10:00 AM,1h 30m,Booked`,
+      `01/02/2020,Bo Bell,8045550502,Brazilian,Somebody Else,${usDate(day)},2:00 PM,45,Booked`,
+      `01/02/2020,Bo Bell,8045550502,Bikini,Danielle W,${usDate(other)},11:00 AM,,Booked`,
+    ].join('\n'),
+  });
+  assert.equal(first.appointments!.added, 2, JSON.stringify(first));
+  assert.match(first.appointments!.problems[0], /Team member “somebody else” not found/);
+  const amy = (await s2.list<any>('appointments')).find((a: any) => a.start === zonedToUtc(day, 10 * 60).toISOString());
+  assert.ok(amy, 'the appointment date, not the Created Date');
+  assert.equal(Date.parse(amy.end) - Date.parse(amy.start), 90 * 60000, 'GlossGenius’s 1h 30m, not our 1-hour length');
+  // in GlossGenius, Bo's bikini moved to 1pm: the next export no longer has 11am
+  const second = await importGlossGenius(s2, {
+    appointments: [head, `01/02/2020,Amy Ames,8045550501,Brazilian,Danielle W,${usDate(day)},10:00 AM,1h 30m,Booked`, `01/02/2020,Bo Bell,8045550502,Bikini,Danielle W,${usDate(other)},1:00 PM,,Booked`].join('\n'),
+  });
+  assert.equal(second.appointments!.removed, 1);
+  assert.equal(second.appointments!.added, 1);
+  const bo = (await s2.list<any>('appointments')).filter((a: any) => a.start.startsWith(other) || zoned(a.start).day === other);
+  assert.deepEqual(bo.map((a: any) => [zoned(a.start).minutes / 60, a.status]).sort(), [
+    [11, 'cancelled'],
+    [13, 'booked'],
+  ]);
+});
+
+test('employees: a text’s reply has no phone number, and booking by phone doesn’t undo a STOP', async () => {
+  await login('nyeesha@example.com', 'employee-pass');
+  const alexa = (await call('GET', '/staff/clients')).json.find((c: any) => c.first === 'Alexa');
+  const sent = await call('POST', `/staff/clients/${alexa.id}/text`, { body: 'See you soon' });
+  assert.equal(sent.status, 200);
+  assert.ok(!JSON.stringify(sent.json).includes('555'), JSON.stringify(sent.json));
+  // a client who texted STOP, booked again at the desk by phone number
+  const { handleInbound } = await import('../src/services/notify');
+  await handleInbound(store, '+18045550310', 'STOP');
+  const service = cat.services.find((s: any) => s.staffIds.includes(nyeesha.id) && !s.deposit && s.category === 'Intimate Waxing');
+  const day = nextWeekday(16);
+  const slot = (await call('GET', `/staff/availability?service=${service.id}&day=${day}&staff=${nyeesha.id}`)).json[0];
+  const r = await call('POST', '/staff/appointments', { client: { first: 'Alexa', last: 'Test', phone: '804-555-0310' }, serviceId: service.id, staffId: nyeesha.id, start: slot.start });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal((await store.get<any>('clients', alexa.id)).smsReminders, false);
+  assert.ok(!(await store.list<any>('messages')).some((m: any) => m.kind === 'booking' && m.clientId === alexa.id && m.at >= r.json.createdAt));
+  // and the import notes (which can hold phone numbers) aren't sent to employees
+  assert.equal((await call('GET', '/staff/bootstrap')).json.settings.glossGeniusImport, undefined);
+});
+
+test('a time written with an offset is stored like any other, so the overlap check sees it', async () => {
+  await asOwner();
+  const service = svc('Bikini');
+  const day = nextWeekday(17);
+  const slot = (await call('GET', `/staff/availability?service=${service.id}&day=${day}&staff=${boot.me.id}`)).json[0];
+  const rena = (await store.list<any>('clients')).find((c: any) => c.first === 'Tia');
+  const offset = new Date(slot.start).toISOString().replace('.000Z', '+00:00');
+  const a = await call('POST', '/staff/appointments', { clientId: rena.id, serviceId: service.id, staffId: boot.me.id, start: offset });
+  assert.equal(a.status, 200, JSON.stringify(a.json));
+  assert.equal(a.json.start, slot.start);
+  const b = await call('POST', '/staff/appointments', { clientId: rena.id, serviceId: service.id, staffId: boot.me.id, start: slot.start });
+  assert.equal(b.status, 409);
+});

@@ -161,3 +161,50 @@ test('a webhook with a bad signature is refused', async () => {
   const r = await call('POST', '/webhooks/stripe', JSON.stringify({ type: 'invoice.paid', data: { object: {} } }), { 'stripe-signature': 't=1,v1=nope' });
   assert.equal(r.status, 400);
 });
+
+// ── from the audit ──
+test('a package can’t be claimed with a made-up or someone else’s payment', async () => {
+  const cat = (await call('GET', '/public/catalog')).json;
+  const p = cat.packages[0];
+  const s = await call('POST', `/public/packages/${p.id}/start`, { client: { first: 'Pat', last: 'Package', phone: '804-555-0410' } });
+  const before = (await store.list<any>('payments')).length;
+  assert.equal((await call('POST', `/public/packages/${p.id}/approved`, { clientId: s.json.clientId, paymentId: 'pi_sim_free' })).status, 402);
+  // a real, paid intent, but for another customer
+  intents.set('pi_other', { id: 'pi_other', status: 'succeeded', amount: p.price, metadata: { packageId: p.id, clientId: s.json.clientId, kind: 'package' }, customer: 'cus_someone_else', client_secret: 'x' });
+  assert.equal((await call('POST', `/public/packages/${p.id}/approved`, { clientId: s.json.clientId, paymentId: 'pi_other' })).status, 402);
+  assert.equal((await store.list<any>('payments')).length, before);
+  assert.ok(!(await store.get<any>('clients', s.json.clientId)).packages?.length);
+});
+
+test('the page and the webhook reporting one approved deposit at once: one payment, one text', async () => {
+  const { done, clientId } = await startBooking('New Client Ritual', '804-555-0411', nextWeekday(6), '3184');
+  const appt = (await store.list<any>('appointments')).find((a) => a.clientId === clientId);
+  const pi = intents.get(appt.deposit.paymentId)!;
+  pi.status = 'succeeded';
+  await Promise.all([call('POST', `/public/booking/${done.json.token}/deposit`, {}), webhook('payment_intent.succeeded', { ...pi, object: 'payment_intent' })]);
+  assert.equal((await store.list<any>('payments')).filter((p) => p.providerId === pi.id && p.status === 'paid').length, 1);
+  assert.equal((await store.list<any>('messages')).filter((m) => m.kind === 'booking' && m.clientId === clientId).length, 1);
+});
+
+test('a hold cancelled before the bank approval comes through is refunded, not kept', async () => {
+  const { done, clientId } = await startBooking('New Client Ritual', '804-555-0412', nextWeekday(7), '3184');
+  const appt = (await store.list<any>('appointments')).find((a) => a.clientId === clientId);
+  assert.equal((await call('POST', `/public/booking/${done.json.token}/cancel`, {})).status, 200);
+  assert.ok(reqs.some((r) => r.path === `/v1/payment_intents/${appt.deposit.paymentId}/cancel`), 'the pending payment is called off');
+  // it went through anyway (approved at that same moment): money goes back
+  const pi = intents.get(appt.deposit.paymentId)!;
+  pi.status = 'succeeded';
+  assert.equal((await webhook('payment_intent.succeeded', { ...pi, object: 'payment_intent' })).status, 200);
+  assert.ok(reqs.some((r) => r.path === '/v1/refunds' && r.form.get('payment_intent') === pi.id));
+});
+
+test('Stripe isn’t called before the switch from GlossGenius, keys or not', async () => {
+  const s = await store.get<any>('settings', 'settings');
+  await store.put('settings', { ...s, switchover: { done: false } });
+  const n = reqs.length;
+  assert.equal((await call('POST', '/public/bookings/start', { client: { first: 'Too', last: 'Early', phone: '804-555-0413' } })).status, 403);
+  const { payments } = await import('../src/services/payments');
+  await assert.rejects(() => payments.ensureCustomer({ id: 'x', first: 'A', last: 'B', phone: '+18045550413', email: '' } as any), /switch over from GlossGenius/);
+  assert.equal(reqs.length, n);
+  await store.put('settings', { ...s, switchover: { done: true } });
+});

@@ -59,6 +59,6 @@ export type Settings = {
 export type ImportReport = {
   at: string;
   clients?: { added: number; matched: number; skipped: number };
-  appointments?: { added: number; updated: number; unchanged: number; unmatched: number; problems: string[] };
+  appointments?: { added: number; updated: number; unchanged: number; unmatched: number; removed?: number; problems: string[] };
 };
 export type Boot = { me: Staff; staff: Staff[]; services: Service[]; memberships: Membership[]; packages: Package[]; settings: Settings; live: { payments: boolean; texts: boolean }; today: string };

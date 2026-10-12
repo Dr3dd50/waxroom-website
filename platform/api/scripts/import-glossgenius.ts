@@ -24,7 +24,7 @@ const report = await importGlossGenius(store, { clients: clients && readFileSync
 if (report.clients) console.log(`Clients: ${report.clients.added} added, ${report.clients.matched} matched, ${report.clients.skipped} skipped (banned or no phone/name).`);
 if (report.appointments) {
   const a = report.appointments;
-  console.log(`Appointments: ${a.added} added, ${a.updated} updated, ${a.unchanged} unchanged, ${a.unmatched} couldn't be matched.`);
+  console.log(`Appointments: ${a.added} added, ${a.updated} updated, ${a.unchanged} unchanged, ${a.removed ?? 0} no longer in GlossGenius, ${a.unmatched} not brought in.`);
   if (a.problems.length) console.log('Check these by hand:\n  ' + a.problems.join('\n  '));
 }
 if (dryRun) console.log('(dry run: nothing saved)');

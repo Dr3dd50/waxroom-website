@@ -15,9 +15,7 @@
 // us, since GlossGenius sends its own.
 import type { Store } from '../store/store';
 import type { Appointment, Client, ImportReport, Service, Settings, Staff } from '../types';
-import { uniqueReferralCode } from './clients';
-import { isFree } from './availability';
-import { zonedToUtc } from '../lib/time';
+import { zoned, zonedToUtc } from '../lib/time';
 import { nowIso, rid, toE164 } from '../lib/util';
 
 /** Minimal CSV parser: quoted fields, commas and newlines inside quotes. */
@@ -53,10 +51,32 @@ export function parseCsv(text: string) {
   const keys = head.map((h) => h.replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim());
   return body.map((r) => Object.fromEntries(keys.map((k, i) => [k, (r[i] ?? '').trim()])));
 }
+// Columns that hold a date or time but not the appointment's own ("Created Date").
+const NOT_WHEN = /created|updated|modified|booked on|birth|paid|cancell?ed (at|on|date)/;
+/**
+ * A column's value by header: an exact header first (in the order given), then a
+ * header containing the name. Date and time lookups skip bookkeeping columns.
+ */
 const col = (row: Record<string, string>, ...names: string[]) => {
-  for (const n of names) for (const k of Object.keys(row)) if (k === n || k.includes(n)) if (row[k]) return row[k];
+  const keys = Object.keys(row);
+  for (const n of names) if (row[n]) return row[n];
+  for (const n of names)
+    for (const k of keys) if (k.includes(n) && row[k] && !(/date|time|start|end/.test(n) && NOT_WHEN.test(k))) return row[k];
   return '';
 };
+/** "60", "60 min", "1h 30m", "1:30" → minutes */
+function minutesOf(s: string) {
+  if (!s) return 0;
+  const hm = /^(\d+):(\d{2})$/.exec(s.trim());
+  if (hm) return +hm[1] * 60 + +hm[2];
+  const h = /(\d+(?:\.\d+)?)\s*h/i.exec(s), m = /(\d+)\s*m/i.exec(s);
+  if (h || m) return Math.round((h ? +h[1] * 60 : 0) + (m ? +m[1] : 0));
+  return /^\d+$/.test(s.trim()) ? +s.trim() : 0;
+}
+/** Write many records, a batch at a time (a real export has thousands of rows). */
+async function putAll(store: Store, col: 'clients' | 'appointments' | 'tokens', items: { id: string }[]) {
+  for (let i = 0; i < items.length; i += 25) await Promise.all(items.slice(i, i + 25).map((x) => store.put(col, x)));
+}
 
 /** "3/4/1990", "1990-03-04", "March 4" → "03-04" */
 function monthDay(s: string) {
@@ -71,6 +91,12 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
   const report: ImportReport = { at: nowIso() };
   const clients = await store.list<Client>('clients');
   const byPhone = new Map(clients.map((c) => [c.phone, c]));
+  const codes = new Set(clients.map((c) => c.referralCode));
+  const referralCode = (first: string) => {
+    const base = first.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) || 'FRIEND';
+    for (let n = 10; ; n++) if (!codes.has(`${base}${n}`)) return (codes.add(`${base}${n}`), `${base}${n}`);
+  };
+  const changed = new Map<string, Client>();
 
   if (files.clients) {
     let added = 0, matched = 0, skipped = 0;
@@ -91,7 +117,7 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
       if (existing) {
         existing.email ||= col(row, 'email');
         existing.birthday ||= monthDay(col(row, 'birthday', 'date of birth', 'dob'));
-        if (!dry) await store.put('clients', existing);
+        changed.set(existing.id, existing);
         matched++;
         continue;
       }
@@ -108,14 +134,16 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
         smsReminders: true,
         smsMarketing: false,
         credit: 0,
-        referralCode: dry ? '' : await uniqueReferralCode(store, first),
+        referralCode: referralCode(first),
         importedFrom: 'glossgenius',
       };
       byPhone.set(phone, c);
       clients.push(c);
-      if (!dry) await store.put('clients', c);
+      changed.set(c.id, c);
       added++;
     }
+    if (!dry) await putAll(store, 'clients', [...changed.values()]);
+    changed.clear();
     report.clients = { added, matched, skipped };
   }
 
@@ -123,62 +151,97 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
     const services = await store.list<Service>('services');
     const staff = await store.list<Staff>('staff');
     const settings = (await store.get<Settings>('settings', 'settings'))!;
-    const existing = new Map((await store.list<Appointment>('appointments')).map((a) => [`${a.clientId}|${a.start}`, a]));
-    let added = 0, updated = 0, unchanged = 0, unmatched = 0;
+    const all = await store.list<Appointment>('appointments');
+    const existing = new Map(all.map((a) => [`${a.clientId}|${a.start}`, a]));
+    // who is busy when, kept up to date as rows come in, so nothing lands on a taken time
+    const busy = (a: Appointment) => a.status !== 'cancelled' && a.status !== 'no-show';
+    const taken = all.filter(busy);
+    const clash = (staffId: string, start: string, end: string, ignore?: string) =>
+      taken.some((a) => a.id !== ignore && a.staffId === staffId && a.start < end && a.end > start);
+    let added = 0, updated = 0, unchanged = 0, unmatched = 0, removed = 0;
     const problems: string[] = [];
-    const touched = new Map<string, Client>();
+    const writes: Appointment[] = [];
+    const tokens: { id: string; appointmentId: string }[] = [];
+    const seen = new Set<string>();
+    let firstDay = '9999', lastDay = '0000';
     for (const row of parseCsv(files.appointments)) {
-      const phone = toE164(col(row, 'phone', 'client phone'));
-      const client = phone ? byPhone.get(phone) : clients.find((c) => `${c.first} ${c.last}`.toLowerCase() === col(row, 'client', 'name').toLowerCase());
-      const sName = col(row, 'service').toLowerCase();
+      const phone = toE164(col(row, 'phone', 'client phone', 'mobile'));
+      const name = col(row, 'client', 'client name', 'name');
+      const client = phone ? byPhone.get(phone) : clients.find((c) => `${c.first} ${c.last}`.toLowerCase() === name.toLowerCase());
+      const sName = col(row, 'service', 'service name').toLowerCase();
       const service = services.find((s) => s.name.toLowerCase() === sName) ?? services.find((s) => sName.includes(s.name.toLowerCase()));
-      const who = col(row, 'staff', 'team member', 'provider').toLowerCase();
-      const person = staff.find((s) => s.name.toLowerCase() === who || s.short.toLowerCase() === who.split(' ')[0]) ?? staff.find((s) => s.role === 'owner')!;
-      const dateStr = col(row, 'date', 'start');
-      const timeStr = col(row, 'time', 'start time');
+      const dateStr = col(row, 'date', 'appointment date', 'start date', 'start');
+      const timeStr = col(row, 'time', 'start time', 'appointment time');
       const dt = new Date(`${dateStr} ${/\d:\d/.test(dateStr) ? '' : timeStr}`.trim());
+      const label = `${name || phone || '?'} · ${col(row, 'service') || '?'} · ${dateStr} ${timeStr}`.trim();
       if (!client || !service || isNaN(+dt)) {
         unmatched++;
-        problems.push(`${col(row, 'client', 'name') || phone || '?'} · ${col(row, 'service') || '?'} · ${dateStr} ${timeStr}`.trim());
+        problems.push(`${!client ? 'Client not found' : !service ? 'Service not found' : 'Date or time not readable'}: ${label}`);
+        continue;
+      }
+      // the person: as named in the export; with no name, the only one who offers it
+      const who = col(row, 'staff', 'team member', 'provider', 'employee').toLowerCase();
+      const person = who
+        ? staff.find((s) => s.name.toLowerCase() === who || s.short.toLowerCase() === who || s.short.toLowerCase() === who.split(' ')[0])
+        : service.staffIds.length === 1
+          ? staff.find((s) => s.id === service.staffIds[0])
+          : undefined;
+      if (!person) {
+        unmatched++;
+        problems.push(`${who ? `Team member “${who}” not found` : 'No team member given'}: ${label}`);
         continue;
       }
       // the export's date and time are studio wall-clock times
       const day = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      if (day < firstDay) firstDay = day;
+      if (day > lastDay) lastDay = day;
       const start = zonedToUtc(day, dt.getHours() * 60 + dt.getMinutes(), settings.timezone).toISOString();
-      const end = new Date(Date.parse(start) + service.duration * 60000).toISOString();
+      // GlossGenius's own length when the export has it (add-ons make some longer)
+      const endStr = col(row, 'end time', 'end');
+      const endDt = endStr ? new Date(/\d{4}|\//.test(endStr) ? endStr : `${dateStr} ${endStr}`) : null;
+      const length = minutesOf(col(row, 'duration', 'length')) || (endDt && !isNaN(+endDt) ? Math.round((+endDt - +dt) / 60000) : 0) || service.duration;
+      const end = new Date(Date.parse(start) + length * 60000).toISOString();
       const raw = col(row, 'status');
       const status: Appointment['status'] = /cancel/i.test(raw) ? 'cancelled' : /no.?show/i.test(raw) ? 'no-show' : Date.parse(start) < now.getTime() ? 'completed' : 'booked';
       if (status === 'completed' && (!client.lastVisitAt || client.lastVisitAt < end)) {
         client.lastVisitAt = end;
-        touched.set(client.id, client);
+        changed.set(client.id, client);
       }
-      const had = existing.get(`${client.id}|${start}`);
+      const key = `${client.id}|${start}`;
+      seen.add(key);
+      const had = existing.get(key);
       if (had) {
         // only our copies of GlossGenius bookings follow the export; ours stay ours
-        if (had.source === 'import' && had.status !== status) {
-          had.status = status;
-          had.calendarSeq = (had.calendarSeq ?? 0) + 1;
-          if (!dry) await store.put('appointments', had);
+        if (had.source === 'import' && (had.status !== status || had.staffId !== person.id || had.end !== end)) {
+          if (busy({ ...had, status }) && clash(person.id, start, end, had.id)) {
+            unmatched++;
+            problems.push(`Clashes with a booking already on the calendar: ${label}`);
+            continue;
+          }
+          const next = { ...had, status, staffId: person.id, end, calendarSeq: (had.calendarSeq ?? 0) + 1 };
+          const i = taken.findIndex((a) => a.id === had.id);
+          if (i !== -1) taken.splice(i, 1);
+          if (busy(next)) taken.push(next);
+          existing.set(key, next);
+          writes.push(next);
           updated++;
         } else unchanged++;
         continue;
       }
-      const staffId = service.staffIds.includes(person.id) ? person.id : (service.staffIds[0] ?? person.id);
-      // never two bookings in one time: a clash is listed for the owner instead
-      if (status === 'booked' && !(await isFree(store, staffId, start, service.duration))) {
+      if (status === 'booked' && clash(person.id, start, end)) {
         unmatched++;
-        problems.push(`Clashes with a booking already on the calendar: ${col(row, 'client', 'name') || phone} · ${col(row, 'service')} · ${dateStr} ${timeStr}`.trim());
+        problems.push(`Clashes with a booking already on the calendar: ${label}`);
         continue;
       }
       const appt: Appointment = {
         id: `${start}_${rid(4)}`,
         clientId: client.id,
-        staffId,
+        staffId: person.id,
         serviceId: service.id,
         start,
         end,
         status,
-        price: Math.round(Number(col(row, 'price', 'amount').replace(/[^0-9.]/g, '') || service.price / 100) * 100),
+        price: Math.round(Number(col(row, 'price', 'amount', 'total').replace(/[^0-9.]/g, '') || service.price / 100) * 100),
         source: 'import',
         notes: col(row, 'notes', 'note'),
         manageToken: rid(12),
@@ -186,15 +249,29 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
         newClient: false,
         texts: {},
       };
-      existing.set(`${client.id}|${start}`, appt);
-      if (!dry) {
-        await store.put('appointments', appt);
-        await store.put('tokens', { id: appt.manageToken, appointmentId: appt.id });
-      }
+      existing.set(key, appt);
+      if (busy(appt)) taken.push(appt);
+      writes.push(appt);
+      tokens.push({ id: appt.manageToken, appointmentId: appt.id });
       added++;
     }
-    if (!dry) for (const c of touched.values()) await store.put('clients', c);
-    report.appointments = { added, updated, unchanged, unmatched, problems: problems.slice(0, 100) };
+    // A GlossGenius booking that was moved or deleted there is missing from this
+    // export: our copy is cancelled, so its old time doesn't stay blocked. Only
+    // upcoming ones, and only inside the dates this export covers.
+    const today = now.toISOString();
+    for (const a of existing.values()) {
+      if (a.source !== 'import' || a.status !== 'booked' || a.start < today || seen.has(`${a.clientId}|${a.start}`)) continue;
+      const day = zoned(a.start, settings.timezone).day;
+      if (day < firstDay || day > lastDay) continue;
+      writes.push({ ...a, status: 'cancelled', calendarSeq: (a.calendarSeq ?? 0) + 1, notes: `${a.notes ? `${a.notes} · ` : ''}No longer in GlossGenius (import ${today.slice(0, 10)})` });
+      removed++;
+    }
+    if (!dry) {
+      await putAll(store, 'appointments', writes);
+      await putAll(store, 'tokens', tokens);
+      await putAll(store, 'clients', [...changed.values()]);
+    }
+    report.appointments = { added, updated, unchanged, unmatched, removed, problems: problems.slice(0, 200) };
   }
   return report;
 }

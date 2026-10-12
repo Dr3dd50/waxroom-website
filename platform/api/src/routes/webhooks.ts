@@ -11,6 +11,7 @@ import { completeDeposit } from '../services/appointments';
 import { grantPackage } from '../services/clients';
 import { nowIso, rid } from '../lib/util';
 import { getSettings } from '../services/availability';
+import { withLock } from '../services/switchover';
 
 type StripeObject = {
   id?: string;
@@ -74,8 +75,11 @@ export async function handleStripeEvent(store: Store, type: string, obj: StripeO
       client.membership.periodStart = new Date((obj.period_start ?? Date.now() / 1000) * 1000).toISOString();
       const m = await store.get<Membership>('memberships', client.membership.membershipId);
       // the first month was recorded under its invoice id when they joined; renewals are new invoices
-      if (obj.id && !(await store.list<Payment>('payments')).some((p) => p.providerId === obj.id))
-        await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'membership', amount: obj.amount_paid ?? m?.price ?? 0, tip: 0, method: 'card', status: 'paid', providerId: obj.id, simulated: false });
+      if (obj.id)
+        await withLock(store, `pay|${obj.id}`, async () => {
+          if (!(await store.list<Payment>('payments')).some((p) => p.providerId === obj.id))
+            await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'membership', amount: obj.amount_paid ?? m?.price ?? 0, tip: 0, method: 'card', status: 'paid', providerId: obj.id!, simulated: false });
+        });
     } else if (type === 'invoice.payment_failed') client.membership.status = 'past_due';
     else client.membership.status = 'cancelled';
     await store.put('clients', client);
@@ -91,8 +95,12 @@ export async function handleStripeEvent(store: Store, type: string, obj: StripeO
       const appt =
         (await store.get<Appointment>('appointments', meta.appointmentId)) ??
         (await store.range<Appointment>('appointments', new Date(Date.now() - 86400000).toISOString(), '9999')).find((a) => a.deposit?.paymentId === obj.id);
-      if (appt?.deposit?.status === 'pending' && appt.deposit.paymentId === obj.id) await completeDeposit(store, appt);
-      else if (!appt) await payments.refund(obj.id);
+      if (appt && appt.deposit?.paymentId === obj.id) {
+        const gone = appt.status === 'cancelled' || appt.status === 'no-show';
+        // approved after the hold was cancelled (its deposit was never taken): give it back
+        if (gone && appt.deposit.status !== 'paid' && appt.deposit.status !== 'applied') await payments.refund(obj.id);
+        else if (!gone && appt.deposit.status === 'pending') await completeDeposit(store, appt);
+      } else if (!appt) await payments.refund(obj.id);
       return;
     }
     if (meta.kind === 'package' && meta.packageId && meta.clientId) {

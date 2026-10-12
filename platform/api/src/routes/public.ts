@@ -13,7 +13,7 @@ import { twilioLive } from '../config';
 import { apptVars, cancelAppointment, completeDeposit, createAppointment, feeFor, finalizeOnlineBooking, manageLink, moveAppointment } from '../services/appointments';
 import { googleCalendarUrl, icsFor } from '../services/calendar';
 import { grantPackage } from '../services/clients';
-import { switched } from '../services/switchover';
+import { switched, withLock } from '../services/switchover';
 import { readTracking, requestInfo, sendMetaEvent } from '../services/meta';
 import { config } from '../config';
 
@@ -260,7 +260,7 @@ export function publicRoutes(store: Store) {
     const m = await store.get<Membership>('memberships', c.req.param('id'));
     if (!m?.active) throw new HttpError(404, 'That membership isn’t available.');
     const { client } = await upsertClient(store, (await c.req.json<{ client: ClientInput }>()).client);
-    if (client.membership?.status === 'active') throw bad('You already have a membership. Text us to switch.');
+    if (client.membership?.status === 'active' || client.membership?.status === 'past_due') throw bad('You already have a membership. Text us to switch.');
     client.customerId = await payments.ensureCustomer(client);
     await store.put('clients', client);
     return c.json({ clientId: client.id, ...(await payments.startCardSetup(client.customerId)) });
@@ -272,7 +272,10 @@ export function publicRoutes(store: Store) {
     const b = await c.req.json<{ clientId: string; setupId: string; simulatedCard?: { number: string }; tracking?: unknown; url?: string }>();
     const client = await store.get<Client>('clients', b.clientId);
     if (!m || !client) throw bad('Something went wrong. Please start again.');
+    if (client.membership?.status === 'active' || client.membership?.status === 'past_due') throw bad('You already have a membership. Text us to switch.');
     client.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
+    // a join left waiting on the bank's approval is dropped, so it can never bill alongside this one
+    if (client.membership?.status === 'pending' && client.membership.subscriptionId) await payments.cancelSubscription(client.membership.subscriptionId).catch(() => {});
     const sub = await payments.subscribe(client.customerId!, client.card, m, true);
     if (sub.priceId && !m.stripePriceId) await store.put('memberships', { ...m, stripePriceId: sub.priceId });
     if (sub.error) {
@@ -302,8 +305,12 @@ export function publicRoutes(store: Store) {
 
   /** A membership that's running: record the first month (once) and tell Meta. */
   async function joined(client: Client, m: Membership, paymentRef: string | null, b: { tracking?: unknown; url?: string }, header: (h: string) => string | undefined) {
-    if (paymentRef && !(await store.list<{ providerId?: string }>('payments')).some((p) => p.providerId === paymentRef))
-      await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'membership', amount: m.price, tip: 0, method: 'card', status: 'paid', providerId: paymentRef, simulated: !payments.live() });
+    // once, though the page and Stripe's webhook can both report the first month
+    if (paymentRef)
+      await withLock(store, `pay|${paymentRef}`, async () => {
+        if (!(await store.list<{ providerId?: string }>('payments')).some((p) => p.providerId === paymentRef))
+          await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'membership', amount: m.price, tip: 0, method: 'card', status: 'paid', providerId: paymentRef, simulated: !payments.live() });
+      });
     await sendMetaEvent(store, {
       name: 'Subscribe',
       tracking: readTracking(b.tracking),
@@ -348,7 +355,8 @@ export function publicRoutes(store: Store) {
     const client = await store.get<Client>('clients', b.clientId);
     if (!p || !client || !b.paymentId) throw bad('Something went wrong. Please start again.');
     const s = await payments.paymentStatus(b.paymentId);
-    const matches = s.amount === -1 || (s.amount === p.price && s.metadata.packageId === p.id && s.metadata.clientId === client.id);
+    // the payment must be Stripe's, for this package, by this client's own Stripe customer
+    const matches = s.amount === -1 || (s.amount === p.price && s.metadata.packageId === p.id && s.metadata.clientId === client.id && s.customer === client.customerId);
     if (!s.succeeded || !matches) throw new HttpError(402, 'The payment wasn’t approved. Please try again or use another card.');
     return c.json(await bought(client, p, b.paymentId, !payments.live(), b, (h) => c.req.header(h)));
   });

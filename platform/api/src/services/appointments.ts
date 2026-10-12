@@ -11,7 +11,7 @@ import { payments } from './payments';
 import { fill, sendText } from './sms';
 import { alertStaff, type Actor } from './alerts';
 import { calendarLink } from './calendar';
-import { switched, withStaffLock } from './switchover';
+import { switched, withLock, withStaffLock } from './switchover';
 
 export const manageLink = (a: Appointment) => `${config.siteUrl}/booking/?t=${a.manageToken}`;
 /** Our booking page, opened on one service when there is one. */
@@ -59,7 +59,18 @@ type NewAppointment = {
 };
 
 /** Create the appointment (the time is checked once more right here). */
+/**
+ * One form for every time: ids start with it and are searched by it, so a time
+ * written another way (an offset, no milliseconds) could be missed by the overlap check.
+ */
+export function utcIso(t: string) {
+  const d = new Date(t);
+  if (!t || isNaN(+d)) throw bad('Pick a time.');
+  return d.toISOString();
+}
+
 export async function createAppointment(store: Store, n: NewAppointment) {
+  n = { ...n, start: utcIso(n.start) };
   const settings = await getSettings(store);
   if (!n.service.staffIds.includes(n.staffId)) throw bad('That person doesn’t offer this service.');
   // the check and the write happen under one lock, so two bookings can't both pass the check
@@ -173,10 +184,17 @@ export async function finalizeOnlineBooking(store: Store, appt: Appointment, cli
 }
 
 /** The client approved the deposit with their bank: check it with Stripe, then the booking is final. */
-export async function completeDeposit(store: Store, appt: Appointment) {
-  if (appt.deposit?.status === 'paid') return appt; // the webhook got here first
+export function completeDeposit(store: Store, found: Appointment) {
+  // the page and Stripe's webhook can both report the approval: one at a time, and re-read
+  return withLock(store, `pay|${found.deposit?.paymentId ?? found.id}`, async () => {
+    const appt = (await store.get<Appointment>('appointments', found.id)) ?? found;
+    return finishDeposit(store, appt);
+  });
+}
+async function finishDeposit(store: Store, appt: Appointment) {
+  if (appt.deposit?.status === 'paid') return appt; // the other report got here first
   if (appt.deposit?.status !== 'pending' || !appt.deposit.paymentId) throw bad('There’s no deposit waiting on this booking.');
-  if (appt.status === 'cancelled') throw new HttpError(409, 'This time was released. Please book again.');
+  if (appt.status === 'cancelled' || appt.status === 'no-show') throw new HttpError(409, 'This time was released. Please book again.');
   const client = (await store.get<Client>('clients', appt.clientId))!;
   const p = await payments.paymentStatus(appt.deposit.paymentId);
   const matches = p.amount === -1 || (p.amount === appt.deposit.amount && p.metadata.appointmentId === appt.id);
@@ -192,8 +210,10 @@ export async function releaseUnpaidHolds(store: Store, now = new Date()) {
   for (const a of await store.range<Appointment>('appointments', now.toISOString(), '9999')) {
     if (a.deposit?.status !== 'pending' || a.createdAt > cutoff) continue;
     await payments.cancelPayment(a.deposit.paymentId ?? '');
-    await releaseBooking(store, a);
-    released++;
+    if (a.status === 'booked' || a.status === 'confirmed') {
+      await releaseBooking(store, a);
+      released++;
+    } else await store.put('appointments', { ...a, deposit: { ...a.deposit, status: 'failed' } });
   }
   return released;
 }
@@ -213,9 +233,11 @@ export async function finalizeStaffBooking(store: Store, appt: Appointment, clie
 }
 
 /** A new time (and maybe a new person): reminders start over, the client and team are told. */
-export async function moveAppointment(store: Store, appt: Appointment, to: { start: string; staffId: string }, actor: Actor) {
+export async function moveAppointment(store: Store, appt: Appointment, dest: { start: string; staffId: string }, actor: Actor) {
+  const to = { ...dest, start: utcIso(dest.start) };
   const byStaff = 'staff' in actor;
   if (!['booked', 'confirmed', ...(byStaff ? ['checked-in'] : [])].includes(appt.status)) throw bad('This booking can’t be changed.');
+  if (appt.deposit?.status === 'pending') throw bad('The client is still approving the deposit with their bank. Try again in a few minutes.');
   const service = (await store.get<Service>('services', appt.serviceId))!;
   const moved = await withStaffLock(store, to.staffId, to.start, async () => {
     if (!(await isFree(store, to.staffId, to.start, service.duration, appt.id))) throw new HttpError(409, 'That time isn’t available. Please pick another.');
@@ -259,6 +281,11 @@ export function feeFor(appt: Appointment, settings: Settings, noShow: boolean) {
 export async function cancelAppointment(store: Store, appt: Appointment, opts: { by: 'client' | 'staff'; noShow?: boolean; waive?: boolean; staff?: Staff }) {
   if (['cancelled', 'no-show', 'completed'].includes(appt.status)) throw bad('This appointment can’t be cancelled now.');
   const settings = await getSettings(store);
+  // a deposit still waiting on the bank's approval is called off, so it can't go through later
+  if (appt.deposit?.status === 'pending') {
+    await payments.cancelPayment(appt.deposit.paymentId ?? '');
+    appt.deposit = { ...appt.deposit, status: 'failed' };
+  }
   const client = (await store.get<Client>('clients', appt.clientId))!;
   let fee = feeFor(appt, settings, !!opts.noShow);
   // a paid deposit counts toward the fee
@@ -360,6 +387,7 @@ export async function quote(store: Store, appt: Appointment, input: Omit<Checkou
 export async function checkoutAppointment(store: Store, appt: Appointment, input: CheckoutInput) {
   if (appt.status === 'completed') throw bad('Already checked out.');
   if (['cancelled', 'no-show'].includes(appt.status)) throw bad('This appointment was cancelled.');
+  if (appt.deposit?.status === 'pending') throw bad('The client is still approving the deposit with their bank. Try again in a few minutes.');
   const settings = await getSettings(store);
   const q = await quote(store, appt, input);
   const tip = Math.max(0, Math.round(input.tip));

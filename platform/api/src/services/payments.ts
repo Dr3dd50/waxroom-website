@@ -100,8 +100,11 @@ export const payments = {
 
   /** After the client approved a payment on the page: did it go through, and for what? */
   async paymentStatus(id: string): Promise<{ succeeded: boolean; amount: number; customer: string | null; metadata: Record<string, string> }> {
-    if (!stripeLive() || id.startsWith('pi_sim_')) return { succeeded: id.startsWith('pi_sim_'), amount: -1, customer: null, metadata: {} };
-    const pi = await api().paymentIntents.retrieve(id);
+    if (!stripeLive()) return (practiceOk(), { succeeded: id.startsWith('pi_sim_'), amount: -1, customer: null, metadata: {} });
+    // live: only Stripe's own answer counts; an id it doesn't know is simply not paid
+    if (!/^pi_[A-Za-z0-9]+$/.test(id)) return { succeeded: false, amount: 0, customer: null, metadata: {} };
+    const pi = await api().paymentIntents.retrieve(id).catch(() => null);
+    if (!pi) return { succeeded: false, amount: 0, customer: null, metadata: {} };
     return { succeeded: pi.status === 'succeeded', amount: pi.amount, customer: typeof pi.customer === 'string' ? pi.customer : (pi.customer?.id ?? null), metadata: pi.metadata };
   },
 
@@ -117,7 +120,12 @@ export const payments = {
 
   async refund(id: string) {
     if (!stripeLive() || !id || id.startsWith('pi_sim_')) return;
-    await api().refunds.create({ payment_intent: id });
+    try {
+      await api().refunds.create({ payment_intent: id });
+    } catch (e) {
+      // Stripe can send the same event again: a second refund is already done
+      if ((e as Stripe.errors.StripeError).code !== 'charge_already_refunded') throw e;
+    }
   },
 
   /**
@@ -160,8 +168,9 @@ export const payments = {
 
   /** A membership whose first payment needed the client's approval: is it running now? */
   async subscriptionActive(id: string) {
-    if (!stripeLive() || id.startsWith('sub_sim_')) return { active: id.startsWith('sub_sim_'), invoiceId: undefined as string | undefined };
-    const sub = await api().subscriptions.retrieve(id);
+    if (!stripeLive()) return (practiceOk(), { active: id.startsWith('sub_sim_'), invoiceId: undefined as string | undefined });
+    const sub = await api().subscriptions.retrieve(id).catch(() => null);
+    if (!sub) return { active: false, invoiceId: undefined };
     return { active: sub.status === 'active' || sub.status === 'trialing', invoiceId: typeof sub.latest_invoice === 'string' ? sub.latest_invoice : sub.latest_invoice?.id };
   },
 
