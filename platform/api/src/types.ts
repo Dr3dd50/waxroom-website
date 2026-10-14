@@ -96,9 +96,16 @@ export type Client = {
   packages?: { packageId: string; boughtAt: string; expiresAt: string | null; remaining: Record<string, number> }[];
   lastVisitAt?: string;
   rebookNudgedFor?: string;
+  /** The last time they were asked to rate a visit, and the visit waiting on their reply. */
+  ratingAskedAt?: string;
+  ratingPending?: { appointmentId: string; askedAt: string };
+  /** Free services given as a thank-you (for rating a visit), used at checkout. */
+  perks?: Perk[];
   birthdayTextYear?: number;
   importedFrom?: string;
 };
+
+export type Perk = { id: string; serviceId: string; label: string; reason: 'rating'; grantedAt: string; expiresAt: string | null; usedAt?: string; appointmentId?: string };
 
 export type ApptStatus = 'booked' | 'confirmed' | 'checked-in' | 'completed' | 'cancelled' | 'no-show';
 
@@ -119,7 +126,9 @@ export type Appointment = {
   /** pending: the client's bank asked them to approve it; the time is held until they do. */
   deposit?: { amount: number; status: 'pending' | 'paid' | 'failed' | 'applied' | 'refunded'; paymentId?: string };
   referral?: { referrerId: string; code: string; friendDiscount: number };
-  texts: { bookedAt?: string; confirmRequestAt?: string; reminderAt?: string; confirmedAt?: string };
+  texts: { bookedAt?: string; confirmRequestAt?: string; reminderAt?: string; confirmedAt?: string; ratingAskedAt?: string };
+  /** The client's 1–5 answer to the text after their visit. */
+  rating?: { score: number; at: string };
   /** When it last moved to a new time: the reminder timing counts from here, as from a new booking. */
   movedAt?: string;
   /** Bumped on every change, so a calendar that already has the event replaces it. */
@@ -171,7 +180,7 @@ export type Message = {
   to: string;
   from?: string;
   clientId?: string;
-  kind: 'booking' | 'moved' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff' | 'alert' | 'card-link';
+  kind: 'booking' | 'moved' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff' | 'alert' | 'card-link' | 'rating-request' | 'rating-thanks';
   body: string;
   status: 'sent' | 'simulated' | 'failed' | 'received' | 'queued';
   /** Queued: held until this time (a staff text that came in during quiet hours). */
@@ -228,6 +237,25 @@ export type Settings = {
   onlineBooking?: { open: boolean };
   /** The last GlossGenius import (clients and appointments). */
   glossGeniusImport?: ImportReport & { by: string };
+  /**
+   * After a visit: a text asking the client to rate it 1–5. Anyone who answers can be
+   * thanked with a free service (once per client, whatever the score), and every
+   * answer gets the Google review link: the thank-you is for answering, never for a review.
+   */
+  reviews?: {
+    enabled: boolean;
+    /** Hours after checkout. */
+    delayHours: number;
+    /** At most one rating text per client in this many days. */
+    everyDays: number;
+    /** Where a review is written (the Google Business Profile's review link). */
+    reviewUrl: string;
+    /** The thank-you: a free visit of this service, once per client. null = none. */
+    rewardServiceId: string | null;
+    /** What clients are told they get ("V-steam"); blank = the service's name. */
+    rewardLabel?: string;
+    rewardDays: number | null;
+  };
   /** Texts to staff when appointments are booked, moved or cancelled. */
   staffAlerts: { enabled: boolean };
   /** Employees see clients' phone numbers and emails only when the owner allows it. */

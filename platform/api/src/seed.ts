@@ -7,6 +7,7 @@ import type { Store } from './store/store';
 import type { Appointment, Client, Membership, Package, Service, Settings, Staff } from './types';
 import { addDays, zoned, zonedToUtc } from './lib/time';
 import { rid } from './lib/util';
+import { REVIEW_URL } from './services/reviews';
 
 // bundled into the Lambda by esbuild
 import catalog from '../../seed/catalog.json';
@@ -51,7 +52,16 @@ export const DEFAULT_AUTOMATIONS: Settings['automations'] = {
   referral: { enabled: true, text: '{friend} just had their first visit. {amount} credit is on your account for next time. Thank you!' },
   birthday: { enabled: true, text: 'Happy birthday, {first}! From all of us at The Wax Room.' },
   cancel: { enabled: true, text: 'Your {service} on {date} at {time} is cancelled.{fee_note} Book again anytime: {booking_link}' },
+  'rating-request': { enabled: true, text: 'Hi {first}, thank you for coming in today! How was your {service} with {staff}? Reply with a number from 1 to 5 (5 = loved it).{reward_note}' },
+  'rating-thanks': { enabled: true, text: 'Thank you, {first}! {reward_line}If you have a minute, a Google review helps other clients find us: {review_link}' },
+  'rating-thanks-low': { enabled: true, text: 'Thank you for telling us, {first}. {reward_line}We’d love to hear more, so reply here anytime. You can also leave a Google review: {review_link}' },
 };
+
+/** Rating texts on, 2 hours after checkout, a free V-steam (the Yoni Steam service) as the once-per-client thank-you. */
+function defaultReviews(services: Service[]): NonNullable<Settings['reviews']> {
+  const steam = services.find((s) => s.name.toLowerCase() === 'yoni steam' && !s.ritualOf);
+  return { enabled: true, delayHours: 2, everyDays: 90, reviewUrl: REVIEW_URL, rewardServiceId: steam?.id ?? null, rewardLabel: 'V-steam', rewardDays: 90 };
+}
 
 // Texts the first deploy was seeded with; an untouched one is replaced by today's default.
 const PREVIOUS_DEFAULTS: Record<string, string[]> = {
@@ -127,6 +137,7 @@ export async function upgrade(store: Store) {
   if (!s.switchover) s.switchover = { done: s.onlineBooking?.open ?? config.demoData };
   delete s.onlineBooking;
   s.staffAlerts ??= { enabled: true };
+  s.reviews ??= defaultReviews(await store.list<Service>('services'));
   s.privacy ??= { employeesSeeContact: false };
   for (const [key, def] of Object.entries(DEFAULT_AUTOMATIONS)) {
     const cur = s.automations[key];
@@ -271,6 +282,7 @@ export async function seed(store: Store) {
     switchover: { done: config.demoData },
     staffAlerts: { enabled: true },
     privacy: { employeesSeeContact: false },
+    reviews: defaultReviews(await store.list<Service>('services')),
   };
   await store.put('settings', settings);
 

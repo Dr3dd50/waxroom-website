@@ -343,6 +343,14 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
             </label>
           </section>
 
+          {a.rating ? (
+            <section className="box">
+              <h3>Client’s rating</h3>
+              <p>
+                <strong>{a.rating.score} / 5</strong> <span className="muted small">· answered the text after the visit</span>
+              </p>
+            </section>
+          ) : null}
           <section className="box">
             <h3>Payment</h3>
             <dl className="kv">

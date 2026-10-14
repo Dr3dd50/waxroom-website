@@ -16,6 +16,7 @@ import { getSettings } from './availability';
 import { flushOutbox, isQuiet } from './alerts';
 import { switched } from './switchover';
 import { sendText } from './sms';
+import { askForRatings, handleRating } from './reviews';
 
 export async function runDueTexts(store: Store, now = new Date()) {
   const settings = await getSettings(store);
@@ -25,6 +26,8 @@ export async function runDueTexts(store: Store, now = new Date()) {
   const released = await releaseUnpaidHolds(store, now);
   if (isQuiet(local.hour, n)) return { sent: 0, quiet: true, released };
   let sent = await flushOutbox(store, now);
+  // a while after checkout: how was your visit?
+  sent += await askForRatings(store, settings, now);
 
   const horizon = new Date(now.getTime() + (n.confirmHoursBefore + 1) * 3600000).toISOString();
   const upcoming = (await store.range<Appointment>('appointments', now.toISOString(), horizon)).filter(
@@ -122,7 +125,11 @@ export async function handleInbound(store: Store, from: string, body: string) {
     return null;
   }
   // An opt-out counts even before the switch; anything else waits for staff to read it.
-  if (!switched(await getSettings(store))) return null;
+  const settings = await getSettings(store);
+  if (!switched(settings)) return null;
+  // a 1–5 answer to "how was your visit?" (it also stays in the inbox, like every reply)
+  const rated = await handleRating(store, client, body, settings);
+  if (rated) return rated;
   if (['START', 'UNSTOP', 'YES'].includes(word) && !client.smsReminders) {
     client.smsReminders = true;
     await store.put('clients', client);

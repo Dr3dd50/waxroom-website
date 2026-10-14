@@ -13,6 +13,9 @@ const AUTOMATIONS: { key: string; name: string; when: (n: ReturnType<typeof useB
   { key: 'referral', name: 'Referral credit earned', when: () => 'When a referred friend’s first visit is paid' },
   { key: 'cancel', name: 'Cancellation', when: () => 'When an appointment is cancelled' },
   { key: 'birthday', name: 'Birthday', when: () => 'On their birthday, around 10am' },
+  { key: 'rating-request', name: 'How was your visit?', when: () => 'After checkout, asking for a 1–5 rating · timing in Settings' },
+  { key: 'rating-thanks', name: 'Thanks for a 4 or 5', when: () => 'When they answer 4 or 5: the thank-you and the review link' },
+  { key: 'rating-thanks-low', name: 'Thanks for a 1 to 3', when: () => 'When they answer 1, 2 or 3: the thank-you and the review link' },
 ];
 const SAMPLE: Record<string, string> = {
   first: 'Keisha',
@@ -31,6 +34,9 @@ const SAMPLE: Record<string, string> = {
   prep_tip: 'Let hair grow to about ¼ inch and skip lotion on the area.',
   weeks: '4',
   calendar_link: 'waxroomrichmond.com/api/cal/Xy7…',
+  reward_note: ' To say thanks for answering, your next V-steam is on us.',
+  reward_line: 'Your free V-steam is on your account, good until Jan 12. ',
+  review_link: 'search.google.com/local/writereview?placeid=…',
 };
 const preview = (t: string) => t.replace(/\{(\w+)\}/g, (m, k) => SAMPLE[k] ?? (k.endsWith('_link') ? 'waxroomrichmond.com/b/4k2' : m));
 

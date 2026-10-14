@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
 import { dateShort, money, nice, phone, useBoot } from '../ctx';
 import type { Appointment, Client } from '../types';
@@ -213,6 +213,15 @@ function ClientCard({ id, onChanged }: { id: string; onChanged: () => Promise<vo
               : null}
             <dt>Account credit</dt>
             <dd>{money(c.credit)}</dd>
+            {(c.perks ?? []).map((p) => (
+              <Fragment key={p.id}>
+                <dt>Thank-you</dt>
+                <dd>
+                  {p.label}
+                  {p.expiresAt ? ` until ${new Date(p.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''} (taken off at checkout)
+                </dd>
+              </Fragment>
+            ))}
           </dl>
           <div className="row-actions">
             <button className="chip" onClick={() => setCardMode(!cardMode)}>

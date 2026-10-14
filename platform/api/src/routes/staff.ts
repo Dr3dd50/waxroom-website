@@ -204,6 +204,8 @@ export function staffRoutes(store: Store) {
     createdAt: x.createdAt,
     lastVisitAt: x.lastVisitAt,
     birthday: x.birthday,
+    // thank-you visits still to use
+    perks: (x.perks ?? []).filter((p) => !p.usedAt && (!p.expiresAt || p.expiresAt > nowIso())).map((p) => ({ id: p.id, serviceId: p.serviceId, label: p.label, expiresAt: p.expiresAt })),
   });
 
   r.get('/clients', async (c) => {
@@ -442,6 +444,14 @@ export function staffRoutes(store: Store) {
       // the same start and end means no quiet hours
       if (!whole(n.quietStart, 0, 23) || !whole(n.quietEnd, 0, 23)) throw bad('Pick when quiet hours start and end.');
     }
+    const rv = b.reviews ? { ...s.reviews!, ...b.reviews } : undefined;
+    if (rv) {
+      if (!whole(rv.delayHours, 1, 48)) throw bad('Send the rating text 1 to 48 hours after checkout.');
+      if (!whole(rv.everyDays, 7, 365)) throw bad('Ask the same client at most once every 7 to 365 days.');
+      if (!/^https:\/\/\S+$/.test(rv.reviewUrl ?? '')) throw bad('Paste the review link from your Google Business Profile (it starts with https://).');
+      if (rv.rewardServiceId && !(await store.get<Service>('services', rv.rewardServiceId))) throw bad('Pick the thank-you service again.');
+      if (rv.rewardDays !== null && !whole(rv.rewardDays, 7, 730)) throw bad('Set how long the thank-you lasts (7 to 730 days), or no limit.');
+    }
     const refund = b.policies?.depositRefundHours;
     if (refund !== undefined && !whole(refund, 0, 720)) throw bad('Set the deposit refund window in hours (0 to 720).');
     const next: Settings = {
@@ -453,6 +463,7 @@ export function staffRoutes(store: Store) {
       referrals: { ...s.referrals, ...b.referrals },
       staffAlerts: { ...s.staffAlerts, ...b.staffAlerts },
       privacy: { ...s.privacy, ...b.privacy },
+      reviews: rv ?? s.reviews,
     };
     return c.json(await store.put('settings', next));
   });

@@ -11,6 +11,7 @@ import { payments } from './payments';
 import { fill, sendText } from './sms';
 import { alertStaff, sendOrQueue, type Actor } from './alerts';
 import { calendarLink } from './calendar';
+import { perkFor } from './reviews';
 import { switched, withLock, withStaffLock } from './switchover';
 
 export const manageLink = (a: Appointment) => `${config.siteUrl}/booking/?t=${a.manageToken}`;
@@ -437,8 +438,14 @@ export async function quote(store: Store, appt: Appointment, input: Omit<Checkou
     lines.push({ label: m?.name ?? 'Membership', amount: -due });
     due = 0;
   }
-  // a prepaid package visit, when the membership doesn't cover it
-  const pkgIndex = membershipUsed || !input.useMembership ? -1 : packageWithVisit(client, service.id);
+  // a thank-you visit (for rating an earlier one), when the membership doesn't cover it
+  const perk = membershipUsed ? undefined : perkFor(client, service.id);
+  if (perk) {
+    lines.push({ label: `Thank-you: ${perk.label.replace(/^Free /, 'free ')}`, amount: -due });
+    due = 0;
+  }
+  // a prepaid package visit, when neither covers it
+  const pkgIndex = membershipUsed || perk || !input.useMembership ? -1 : packageWithVisit(client, service.id);
   if (pkgIndex !== -1) {
     lines.push({ label: 'Package visit', amount: -due });
     due = 0;
@@ -458,7 +465,7 @@ export async function quote(store: Store, appt: Appointment, input: Omit<Checkou
     lines.push({ label: 'Account credit', amount: -creditUsed });
     due -= creditUsed;
   }
-  return { lines, due, membershipUsed, membershipLeft, pkgIndex, referralDiscount, creditUsed, deposit, client, service };
+  return { lines, due, membershipUsed, membershipLeft, pkgIndex, perk, referralDiscount, creditUsed, deposit, client, service };
 }
 
 export function checkoutAppointment(store: Store, found: Appointment, input: CheckoutInput) {
@@ -502,6 +509,10 @@ async function checkoutNow(store: Store, appt: Appointment, input: CheckoutInput
   if (appt.deposit?.status === 'paid') appt.deposit.status = 'applied';
   await store.put('appointments', appt);
   q.client.credit -= q.creditUsed;
+  if (q.perk) {
+    const used = q.perk;
+    q.client.perks = (q.client.perks ?? []).map((p) => (p.id === used.id ? { ...p, usedAt: nowIso(), appointmentId: appt.id } : p));
+  }
   if (q.pkgIndex !== -1) {
     const pk = q.client.packages![q.pkgIndex];
     pk.remaining[q.service.id] -= 1;

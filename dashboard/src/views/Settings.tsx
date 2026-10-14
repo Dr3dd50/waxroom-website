@@ -174,6 +174,7 @@ export function SettingsView() {
       </div>
       <ClientTexts />
       <RebookTexts />
+      <Ratings />
       <section className="card-panel">
         <h2>Cancellation & no-show policy</h2>
         <p className="policy">{s.policies.cancellationPolicy}</p>
@@ -357,6 +358,93 @@ function RebookTexts() {
           }}
         >
           Save {changed.length ? `${changed.length} change${changed.length === 1 ? '' : 's'}` : ''}
+        </button>
+        {msg ? <span className="muted small">{msg}</span> : null}
+      </div>
+    </section>
+  );
+}
+
+type Reviews = NonNullable<ReturnType<typeof useBoot>['settings']['reviews']>;
+
+/**
+ * The text after a visit asking for a 1–5 rating, the thank-you for answering, and the
+ * review link. The thank-you never depends on the score, and every answer gets the link:
+ * Google removes reviews from businesses that reward reviews or only ask happy clients.
+ */
+function Ratings() {
+  const boot = useBoot();
+  const saved = boot.settings.reviews;
+  const [r, setR] = useState<Reviews | undefined>(saved);
+  const [msg, setMsg] = useState('');
+  if (!r || !saved) return null;
+  const set = (patch: Partial<Reviews>) => (setR({ ...r, ...patch }), setMsg(''));
+  const services = boot.services.filter((x) => x.active && !x.ritualOf).sort((a, b) => a.name.localeCompare(b.name));
+  const save = async (next: Reviews) => {
+    try {
+      await api('/settings', { reviews: next }, 'PUT');
+      await boot.reload();
+      setMsg('Saved.');
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+  };
+  return (
+    <section className="card-panel" id="ratings">
+      <div className="row-actions row-actions--spread">
+        <h2>Ratings and reviews</h2>
+        <Toggle on={saved.enabled} onChange={(v) => save({ ...saved, enabled: v })} label="Rating texts on" />
+      </div>
+      <p className="muted small">
+        After checkout, clients get a text asking them to rate the visit from 1 to 5. Everyone who answers gets the same thank-you, once per client, whatever the score, and
+        every answer gets your Google review link. A 1, 2 or 3 also sends you a private text so you can follow up. Change the wording under Texts.
+      </p>
+      <dl className="kv kv--settings">
+        <dt>Send the rating text</dt>
+        <dd className="hours">
+          <select value={r.delayHours} onChange={(e) => set({ delayHours: +e.target.value })} aria-label="Hours after checkout">
+            {[1, 2, 3, 4, 6, 12, 24].map((h) => (
+              <option key={h} value={h}>
+                {h} hour{h === 1 ? '' : 's'} after checkout
+              </option>
+            ))}
+          </select>
+        </dd>
+        <dt>Ask the same client at most once every (days)</dt>
+        <dd>
+          <input className="qty" type="number" min={7} max={365} value={r.everyDays} onChange={(e) => set({ everyDays: +e.target.value })} />
+        </dd>
+        <dt>Thank-you for answering</dt>
+        <dd className="hours">
+          <select value={r.rewardServiceId ?? ''} onChange={(e) => set({ rewardServiceId: e.target.value || null })} aria-label="Thank-you service">
+            <option value="">No thank-you</option>
+            {services.map((x) => (
+              <option key={x.id} value={x.id}>
+                Free {nice(x.name)}
+              </option>
+            ))}
+          </select>
+        </dd>
+        {r.rewardServiceId ? (
+          <>
+            <dt>Called in texts</dt>
+            <dd>
+              <input value={r.rewardLabel ?? ''} placeholder="the service’s name" onChange={(e) => set({ rewardLabel: e.target.value })} aria-label="Thank-you name" />
+            </dd>
+            <dt>Good for (days; blank for no limit)</dt>
+            <dd>
+              <input className="qty" type="number" min={7} max={730} value={r.rewardDays ?? ''} onChange={(e) => set({ rewardDays: e.target.value ? +e.target.value : null })} />
+            </dd>
+          </>
+        ) : null}
+        <dt>Google review link</dt>
+        <dd>
+          <input value={r.reviewUrl} onChange={(e) => set({ reviewUrl: e.target.value.trim() })} aria-label="Google review link" />
+        </dd>
+      </dl>
+      <div className="row-actions mt">
+        <button className="btn btn--dark" disabled={JSON.stringify(r) === JSON.stringify(saved)} onClick={() => save(r)}>
+          Save
         </button>
         {msg ? <span className="muted small">{msg}</span> : null}
       </div>

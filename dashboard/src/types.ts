@@ -22,6 +22,7 @@ export type Appointment = {
   referral?: { referrerId: string; code: string; friendDiscount: number };
   texts: { bookedAt?: string; confirmRequestAt?: string; reminderAt?: string; confirmedAt?: string };
   movedAt?: string;
+  rating?: { score: number; at: string };
   checkout?: { at: string; lines: { label: string; amount: number }[]; subtotal: number; tip: number; total: number; method: string; membershipUsed: boolean; packageUsed?: string; creditUsed: number; referralDiscount: number };
   cancel?: { at: string; by: string; fee: number; feeStatus: string; noShow: boolean; depositRefund?: number; depositKept?: number };
 };
@@ -44,6 +45,8 @@ export type Client = {
   createdAt: string;
   lastVisitAt?: string;
   birthday?: string;
+  /** Thank-you visits still to use (for rating a visit). */
+  perks?: { id: string; serviceId: string; label: string; expiresAt: string | null }[];
 };
 export type Settings = {
   timezone: string;
@@ -56,6 +59,7 @@ export type Settings = {
   glossGeniusImport?: ImportReport & { by: string };
   staffAlerts: { enabled: boolean };
   privacy: { employeesSeeContact: boolean };
+  reviews?: { enabled: boolean; delayHours: number; everyDays: number; reviewUrl: string; rewardServiceId: string | null; rewardLabel?: string; rewardDays: number | null };
 };
 export type ImportReport = {
   at: string;
