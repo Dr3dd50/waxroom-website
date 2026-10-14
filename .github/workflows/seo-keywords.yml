@@ -1,0 +1,56 @@
+name: SEO keyword study
+
+# Monthly Google search volume for every service x area keyword in
+# seo/config.json, via DataForSEO (scripts/seo/keywords.mjs). Commits
+# seo/KEYWORDS.md and seo/data/keyword-volumes.json to the branch it ran on.
+# About $0.09 a run. Runs when the keyword list or the script changes, or by
+# hand: Actions -> SEO keyword study -> Run workflow.
+#
+# Needs the same DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD secrets as seo-rankings.yml.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - seo/config.json
+      - scripts/seo/keywords.mjs
+      - scripts/seo/lib/keywords.mjs
+      - .github/workflows/seo-keywords.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data # shared with the other data workflows, so pushes never race
+  cancel-in-progress: false
+
+jobs:
+  keywords:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch keyword volumes
+        id: fetch
+        env:
+          DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+          DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
+        run: |
+          if [ -z "$DATAFORSEO_LOGIN" ] || [ -z "$DATAFORSEO_PASSWORD" ]; then
+            echo "::notice::DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD secrets are not set; skipping."
+            exit 0
+          fi
+          node scripts/seo/keywords.mjs
+          echo "ran=true" >> "$GITHUB_OUTPUT"
+      - name: Commit results
+        if: steps.fetch.outputs.ran == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add seo
+          git commit -m "SEO keyword volumes for $(date -u +%F)"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"

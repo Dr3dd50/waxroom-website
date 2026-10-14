@@ -46,9 +46,12 @@ roughly what it would cost, without spending anything.
 | `npm run seo:rankings` | Our Google Maps position from every point of two 5×5 grids (Midlothian at 1.5 mi spacing, greater Richmond at 4 mi), plus our Google search rank and map-pack spot from the studio | `seo/RANKINGS.md`, `seo/data/rankings/<date>.json` | ~$1.50 a run |
 | `npm run test:seo` | Unit tests for both | | free |
 
-The `SEO rankings` GitHub Action runs `seo:rankings` every Monday and commits the
-report. Add `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD` repository secrets to enable
-it; until they exist, it skips.
+Both run on GitHub, so nothing needs installing locally. The `SEO rankings` Action
+runs `seo:rankings` every Monday. The `SEO keyword study` Action runs `seo:keywords`
+whenever the keyword list or script changes, or by hand (Actions → SEO keyword
+study → Run workflow). Each commits its report to the branch it ran on. Add
+`DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD` repository secrets to enable them;
+until those exist, they skip.
 
 ## Doodle videos
 
