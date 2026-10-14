@@ -1,6 +1,7 @@
 {
   "app": "npx tsx platform/infra/app.ts",
   "context": {
-    "@aws-cdk/aws-lambda-nodejs:useLatestRuntimeVersion": true
+    "@aws-cdk/aws-lambda-nodejs:useLatestRuntimeVersion": true,
+    "attachStaff": true
   }
 }

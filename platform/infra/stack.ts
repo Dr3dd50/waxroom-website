@@ -32,6 +32,8 @@ export type WaxRoomProps = StackProps & {
    * time: the website and its names stay exactly as they are.
    */
   attachStaff?: boolean;
+  /** The domain's DNS isn't in Route 53: the records are added by hand at the DNS host instead of looked up. */
+  dnsElsewhere?: boolean;
 };
 
 export class WaxRoomStack extends Stack {
@@ -112,7 +114,13 @@ export class WaxRoomStack extends Stack {
     };
 
     // ── certificate and DNS ──
-    const zone = props.hostedZoneId ? route53.HostedZone.fromHostedZoneAttributes(this, 'Zone', { hostedZoneId: props.hostedZoneId, zoneName: domain }) : undefined;
+    // the domain's Route 53 zone: given, or found in the account when a real name goes on
+    const naming = props.attachDomains || props.attachStaff;
+    const zone = props.hostedZoneId
+      ? route53.HostedZone.fromHostedZoneAttributes(this, 'Zone', { hostedZoneId: props.hostedZoneId, zoneName: domain })
+      : naming && !props.dnsElsewhere
+        ? route53.HostedZone.fromLookup(this, 'Zone', { domainName: domain })
+        : undefined;
     let cert: acm.ICertificate | undefined;
     if (props.attachDomains) {
       cert = props.certificateArn

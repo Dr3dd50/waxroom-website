@@ -18,4 +18,5 @@ new WaxRoomStack(app, 'WaxRoom', {
   certificateArn: app.node.tryGetContext('certificateArn'),
   attachDomains: on('attachDomains'),
   attachStaff: on('attachStaff'),
+  dnsElsewhere: on('dnsElsewhere'),
 });
