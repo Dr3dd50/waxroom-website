@@ -1,0 +1,72 @@
+{
+  "domain": "waxroomrichmond.com",
+
+  "rankings": {
+    "comment": "Weekly rank tracking (npm run seo:rankings). The studio's location and Google place ID come from src/data/business.json and src/data/reviews.json. Waxing and Jet Plasma come first: they matter most to the business. Cost per run is about (keywords x grid points + organic keywords x 2) x $0.002.",
+    "mapsDepth": 20,
+    "zoom": "13z",
+    "grids": [
+      { "name": "core", "label": "Midlothian (5x5, 1.5 mi apart)", "size": 5, "spacingKm": 2.4 },
+      { "name": "metro", "label": "Greater Richmond (5x5, 4 mi apart)", "size": 5, "spacingKm": 6.4 }
+    ],
+    "mapsKeywords": [
+      "brazilian wax",
+      "waxing",
+      "wax salon",
+      "bikini wax",
+      "body waxing",
+      "eyebrow wax",
+      "jet plasma",
+      "jet plasma facial",
+      "plasma skin tightening",
+      "jet plasma hair restoration",
+      "biorepeel",
+      "lash extensions",
+      "yoni steam",
+      "wig install"
+    ],
+    "organicDepth": 20,
+    "organicKeywords": [
+      "brazilian wax midlothian va",
+      "brazilian wax richmond va",
+      "waxing midlothian va",
+      "waxing near me",
+      "bikini wax near me",
+      "body waxing chesterfield va",
+      "jet plasma richmond va",
+      "jet plasma near me",
+      "jet plasma facial",
+      "plasma skin tightening richmond va",
+      "jet plasma hair restoration",
+      "biorepeel richmond va",
+      "lash extensions midlothian va",
+      "eyebrow wax midlothian va",
+      "yoni steam richmond va",
+      "wig install chesterfield va"
+    ]
+  },
+
+  "keywords": {
+    "comment": "One-off keyword volume study (npm run seo:keywords). Every term is searched bare and with each modifier. `page` is the existing page that should rank for it (a service slug, a group slug, or 'home'); `proposed` marks terms that might deserve a page of their own, so the volumes can settle it. location_code 200556 is the Richmond-Petersburg DMA; the script checks it against DataForSEO's location list before spending anything.",
+    "locationCode": 200556,
+    "languageCode": "en",
+    "modifiers": ["", "near me", "midlothian", "midlothian va", "chesterfield", "chesterfield va", "richmond", "richmond va", "powhatan", "henrico"],
+    "groups": [
+      { "page": "waxing", "terms": ["waxing", "wax salon", "waxing salon", "wax studio", "wax center", "full body wax"] },
+      { "page": "brazilian-waxing", "terms": ["brazilian wax", "bikini wax", "french bikini wax", "bikini line wax"] },
+      { "page": "brazilian-waxing", "proposed": "mens-waxing", "terms": ["manzilian", "male brazilian wax", "mens brazilian wax", "mens waxing"] },
+      { "page": "body-waxing", "terms": ["body waxing", "leg wax", "underarm wax", "back wax", "chest wax", "arm wax", "lip wax", "face wax"] },
+      { "page": "skin-treatments", "proposed": "jet-plasma", "terms": ["jet plasma", "jet plasma facial", "plasma facial", "plasma skin tightening", "plasma pen", "jet plasma eye treatment", "jet plasma body treatment", "skin tightening"] },
+      { "page": "skin-treatments", "proposed": "biorepeel", "terms": ["biorepeel", "bio repeel", "chemical peel", "no peel chemical peel"] },
+      { "page": "skin-treatments", "proposed": "vajacial", "terms": ["vajacial", "bikini facial"] },
+      { "page": "skin-treatments", "terms": ["acne scar treatment", "hyperpigmentation treatment"] },
+      { "page": "hair-restoration", "proposed": "jet-plasma-hair-restoration", "terms": ["jet plasma hair restoration", "hair restoration", "hair loss treatment", "scalp treatment"] },
+      { "page": "hair-restoration", "proposed": "wig-install", "terms": ["wig install", "wig installation", "frontal wig install"] },
+      { "page": "brows", "terms": ["eyebrow wax", "brow wax", "eyebrow shaping"] },
+      { "page": "brows", "proposed": "brow-lamination", "terms": ["brow lamination", "henna brows", "brow tint"] },
+      { "page": "lash-extensions", "terms": ["lash extensions", "eyelash extensions", "lash fill", "lash studio"] },
+      { "page": "yoni-steam", "terms": ["yoni steam", "vaginal steam", "v steam"] },
+      { "page": "wellness", "terms": ["bio scan", "bioscan"] }
+    ]
+  }
+}

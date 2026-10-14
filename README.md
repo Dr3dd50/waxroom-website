@@ -32,6 +32,24 @@ changes. Add an `APIFY_TOKEN` repository secret to enable it.
 - `/services/<slug>/` — one in-depth page per category (see `src/content/services.ts`)
 - `/gallery/` — real results from Instagram (`npm run sync:instagram`)
 
+## SEO tracking (DataForSEO)
+
+What to track lives in `seo/config.json`. Waxing and Jet Plasma come first, and the
+area is greater Richmond, weighted to Midlothian and the counties around it. Both
+scripts need `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD`, the API credentials from
+app.dataforseo.com → API Access. Pass `--dry-run` to see what a run would do and
+roughly what it would cost, without spending anything.
+
+| Command | What it does | Output | Cost |
+|---|---|---|---|
+| `npm run seo:keywords` | Monthly Google searches for every service × area keyword (Richmond-Petersburg DMA), totalled per page and per *proposed* page | `seo/KEYWORDS.md`, `seo/data/keyword-volumes.json` | ~$0.09 a run; run it when the keyword list changes |
+| `npm run seo:rankings` | Our Google Maps position from every point of two 5×5 grids (Midlothian at 1.5 mi spacing, greater Richmond at 4 mi), plus our Google search rank and map-pack spot from the studio | `seo/RANKINGS.md`, `seo/data/rankings/<date>.json` | ~$1.50 a run |
+| `npm run test:seo` | Unit tests for both | | free |
+
+The `SEO rankings` GitHub Action runs `seo:rankings` every Monday and commits the
+report. Add `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD` repository secrets to enable
+it; until they exist, it skips.
+
 ## Doodle videos
 
 Each page's looping video is drawn in code (`motion/scenes.js`), a pure function of
