@@ -1,0 +1,52 @@
+name: SEO rankings
+
+# Weekly Google Maps grid and Google search rankings via DataForSEO
+# (scripts/seo/rankings.mjs). Commits seo/RANKINGS.md and the raw run under
+# seo/data/rankings/. About $1.50 a run at DataForSEO Live prices.
+#
+# Setup: Repo Settings -> Secrets and variables -> Actions -> New secret
+#   DATAFORSEO_LOGIN    = API login from app.dataforseo.com -> API Access
+#   DATAFORSEO_PASSWORD = API password from the same page
+
+on:
+  schedule:
+    - cron: '43 12 * * 1' # Mondays, ~8am Eastern
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data # same group as refresh-reviews.yml, so the two never race to push
+  cancel-in-progress: false
+
+jobs:
+  rankings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Track rankings
+        id: track
+        env:
+          DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+          DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
+        run: |
+          if [ -z "$DATAFORSEO_LOGIN" ] || [ -z "$DATAFORSEO_PASSWORD" ]; then
+            echo "::notice::DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD secrets are not set; skipping."
+            exit 0
+          fi
+          node scripts/seo/rankings.mjs
+          echo "ran=true" >> "$GITHUB_OUTPUT"
+      - name: Commit results
+        if: steps.track.outputs.ran == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add seo
+          git commit -m "SEO rankings for $(date -u +%F)"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
