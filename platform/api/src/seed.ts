@@ -50,7 +50,7 @@ export const DEFAULT_AUTOMATIONS: Settings['automations'] = {
   receipt: { enabled: true, text: 'Thanks {first}! You paid {total}. Share your link and you both get {referral_amount}: {referral_link}' },
   rebook: { enabled: true, text: 'Hi {first}, it’s been about {weeks} weeks since your {service}, the right time for the next one. Book here: {booking_link}' },
   referral: { enabled: true, text: '{friend} just had their first visit. {amount} credit is on your account for next time. Thank you!' },
-  birthday: { enabled: true, text: 'Happy birthday, {first}! From all of us at The Wax Room.' },
+  birthday: { enabled: false, text: 'Happy birthday, {first}! From all of us at The Wax Room.' },
   cancel: { enabled: true, text: 'Your {service} on {date} at {time} is cancelled.{fee_note} Book again anytime: {booking_link}' },
   'rating-request': { enabled: true, text: 'Hi {first}, thank you for coming in today! How was your {service} with {staff}? Reply with a number from 1 to 5 (5 = loved it).{reward_note}' },
   'rating-thanks': { enabled: true, text: 'Thank you, {first}! {reward_line}If you have a minute, a Google review helps other clients find us: {review_link}' },
@@ -176,6 +176,11 @@ export async function upgrade(store: Store) {
   });
   // The book-again text is off for every service until the owner turns it on in
   // Settings; each keeps a timing ready to use (one that had "none" gets its default).
+  // The owner turned the birthday text off; it can be switched back on under Texts.
+  await once('birthday-text-off', async () => {
+    const now = (await store.get<Settings>('settings', 'settings'))!;
+    await store.put('settings', { ...now, automations: { ...now.automations, birthday: { ...now.automations.birthday, enabled: false } } });
+  });
   await once('rebook-texts-off-until-chosen', async () => {
     for (const svc of await store.list<Service>('services'))
       await store.put('services', { ...svc, rebookText: false, rebookAfterDays: svc.rebookAfterDays ?? defaultRebookDays(svc) });
