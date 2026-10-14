@@ -43,7 +43,19 @@ time, so:
    `waxroomrichmond.com`, `www.` and `staff.` with `-c certificateArn=…`, then
    point the three names at the new distributions at your DNS host.
 
-`staff.waxroomrichmond.com` is new, so it can go live at any time.
+`staff.waxroomrichmond.com` is new, so it can go live on its own at any time,
+leaving the website and its names as they are:
+
+```sh
+npx cdk deploy -c attachStaff=true -c hostedZoneId=Z0123456789ABC
+```
+
+Without Route 53, leave out `hostedZoneId`: the deploy waits while the
+certificate is checked, so add the validation record shown in Certificate
+Manager (us-east-1) at your DNS host, then a CNAME from `staff` to the staff
+distribution's `*.cloudfront.net` address. To keep the name on every later
+deploy, put `"attachStaff": true` and the `"hostedZoneId"` in `cdk.json`'s
+`context`. The full cutover above includes `staff.` too.
 
 ## 3. Switching booking from GlossGenius to ours
 

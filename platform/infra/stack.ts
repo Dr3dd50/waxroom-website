@@ -27,6 +27,11 @@ export type WaxRoomProps = StackProps & {
   certificateArn?: string;
   /** Put the real domain names on the distributions (the cutover step). Off: test on *.cloudfront.net first. */
   attachDomains: boolean;
+  /**
+   * Put only staff.<domain> on the dashboard. The name is new, so this can happen any
+   * time: the website and its names stay exactly as they are.
+   */
+  attachStaff?: boolean;
 };
 
 export class WaxRoomStack extends Stack {
@@ -118,6 +123,13 @@ export class WaxRoomStack extends Stack {
             validation: zone ? acm.CertificateValidation.fromDns(zone) : acm.CertificateValidation.fromDns(),
           });
     }
+    // the dashboard alone on its real name, ahead of the cutover
+    const staffOnly = !!props.attachStaff && !props.attachDomains;
+    const staffCert: acm.ICertificate | undefined = staffOnly
+      ? props.certificateArn
+        ? acm.Certificate.fromCertificateArn(this, 'StaffCertImported', props.certificateArn)
+        : new acm.Certificate(this, 'StaffCert', { domainName: staffHost, validation: zone ? acm.CertificateValidation.fromDns(zone) : acm.CertificateValidation.fromDns() })
+      : cert;
 
     // ── website ──
     const siteBucket = new s3.Bucket(this, 'Site', { blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, enforceSSL: true, removalPolicy: RemovalPolicy.RETAIN });
@@ -178,8 +190,8 @@ function handler(event) {
         { httpStatus: 403, responsePagePath: '/index.html', responseHttpStatus: 200 },
         { httpStatus: 404, responsePagePath: '/index.html', responseHttpStatus: 200 },
       ],
-      domainNames: cert ? [staffHost] : undefined,
-      certificate: cert,
+      domainNames: staffCert ? [staffHost] : undefined,
+      certificate: staffCert,
       priceClass: cf.PriceClass.PRICE_CLASS_100,
     });
 
@@ -227,10 +239,14 @@ function handler(event) {
         new route53.ARecord(this, `${id}A`, { zone, recordName: name, target: route53.RecordTarget.fromAlias(new r53targets.CloudFrontTarget(dist)), deleteExisting: true });
         new route53.AaaaRecord(this, `${id}Aaaa`, { zone, recordName: name, target: route53.RecordTarget.fromAlias(new r53targets.CloudFrontTarget(dist)), deleteExisting: true });
       }
+    } else if (zone && staffOnly) {
+      // a new name, so nothing to replace; the same record ids as the full cutover, so that later step takes these over in place
+      new route53.ARecord(this, 'StaffHostA', { zone, recordName: staffHost, target: route53.RecordTarget.fromAlias(new r53targets.CloudFrontTarget(staff)) });
+      new route53.AaaaRecord(this, 'StaffHostAaaa', { zone, recordName: staffHost, target: route53.RecordTarget.fromAlias(new r53targets.CloudFrontTarget(staff)) });
     }
 
     new CfnOutput(this, 'SiteUrl', { value: props.attachDomains ? `https://${www}` : `https://${site.distributionDomainName}` });
-    new CfnOutput(this, 'StaffUrl', { value: props.attachDomains ? `https://${staffHost}` : `https://${staff.distributionDomainName}` });
+    new CfnOutput(this, 'StaffUrl', { value: staffCert ? `https://${staffHost}` : `https://${staff.distributionDomainName}` });
     new CfnOutput(this, 'KeysSecret', { value: appSecret.secretName, description: 'Add Stripe and Twilio keys here' });
     new CfnOutput(this, 'TwilioWebhook', { value: `https://${props.attachDomains ? www : site.distributionDomainName}/api/webhooks/twilio` });
     new CfnOutput(this, 'StripeWebhook', { value: `https://${props.attachDomains ? www : site.distributionDomainName}/api/webhooks/stripe` });
