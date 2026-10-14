@@ -15,12 +15,18 @@ export async function uniqueReferralCode(store: Store, first: string) {
 
 export type ClientInput = { first: string; last: string; phone: string; email?: string; smsReminders?: boolean; smsMarketing?: boolean; birthday?: string };
 
-/** Match a returning client by phone, or add a new one. */
-export async function upsertClient(store: Store, input: ClientInput) {
+/**
+ * Match a returning client by phone, or add a new one. Only `trusted` input (the
+ * team, signed in) changes a client already on file: anyone can type any phone
+ * number into the website, so from there an existing client's text choices and
+ * details stay as they are. A STOP is only undone by the client replying START.
+ */
+export async function upsertClient(store: Store, input: ClientInput, opts: { trusted?: boolean } = {}) {
   const phone = toE164(input.phone ?? '');
   if (!phone) throw bad('Enter a 10-digit US mobile number.');
   if (!input.first?.trim()) throw bad('Enter a first name.');
   const existing = await findClientByPhone(store, phone);
+  if (existing && !opts.trusted) return { client: existing, isNew: false };
   if (existing) {
     existing.email ||= input.email?.trim() ?? '';
     if (input.smsReminders !== undefined) existing.smsReminders = input.smsReminders;

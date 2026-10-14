@@ -220,7 +220,7 @@ function ClientCard({ id, onChanged }: { id: string; onChanged: () => Promise<vo
             </button>
             {owner ? <MembershipPicker client={c} onDone={load} /> : null}
           </div>
-          {cardMode ? <DeskCard clientId={c.id} onDone={async () => (setCardMode(false), await load())} /> : null}
+          {cardMode ? <CardLink client={c} onClose={() => setCardMode(false)} /> : null}
         </section>
         <section className="box">
           <h3>Referrals</h3>
@@ -305,30 +305,63 @@ const Left = ({ label, left, of }: { label: string; left: number; of: number }) 
   </>
 );
 
-/** Add a card at the desk. With Stripe connected this becomes Stripe's card field or reader. */
-function DeskCard({ clientId, onDone }: { clientId: string; onDone: () => Promise<void> }) {
-  const boot = useBoot();
-  const [num, setNum] = useState('');
+/**
+ * A card for a client who booked by phone or walked in: text them a link to Stripe's
+ * secure card form on our site. Nobody at the studio types or sees a card number.
+ * Their card shows here once they've saved it (reopen the client to see it).
+ */
+function CardLink({ client, onClose }: { client: Client; onClose: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ link: string; texted: boolean; queued?: boolean; reason?: string; error?: string } | null>(null);
   const [error, setError] = useState('');
   return (
-    <form
-      className="new-client"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        try {
-          const s = await api<{ setupId: string }>(`/clients/${clientId}/card/start`, {});
-          await api(`/clients/${clientId}/card/confirm`, { setupId: s.setupId, simulatedCard: { number: num } });
-          await onDone();
-        } catch (err) {
-          setError((err as Error).message);
-        }
-      }}
-    >
-      {!boot.live.payments ? <p className="muted small">Practice mode: Stripe isn’t connected, so no real card is stored.</p> : null}
-      <input value={num} onChange={(e) => setNum(e.target.value)} placeholder="Card number" inputMode="numeric" required />
-      {error ? <p className="form-error">{error}</p> : null}
-      <button className="btn btn--dark">Save card</button>
-    </form>
+    <div className="new-client">
+      {!result ? (
+        <>
+          <p className="small">
+            {client.first} gets a text with a link to add {client.card ? 'a new' : 'a'} card securely through Stripe. It works for 7 days, and the card shows here once they’ve
+            saved it.
+          </p>
+          {error ? <p className="form-error">{error}</p> : null}
+          <div className="row-actions">
+            <button
+              className="btn btn--dark"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                setError('');
+                try {
+                  setResult(await api(`/clients/${client.id}/card-link`, {}));
+                } catch (e) {
+                  setError((e as Error).message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Text {client.first} a card link
+            </button>
+            <button className="btn btn--ghost" onClick={onClose}>
+              Not now
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="small">
+            {result.texted
+              ? result.queued
+                ? `It’s quiet hours, so the link goes to ${client.first} when they end.`
+                : `Sent. ${client.first} can add their card from the link in the text.`
+              : (result.reason ?? `The text didn’t go through${result.error ? ` (${result.error})` : ''}. Share the link another way.`)}
+          </p>
+          <input readOnly value={result.link} onFocus={(e) => e.currentTarget.select()} aria-label="Card link" />
+          <button className="chip" onClick={onClose}>
+            Done
+          </button>
+        </>
+      )}
+    </div>
   );
 }
 

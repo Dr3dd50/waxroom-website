@@ -9,7 +9,7 @@ import { getSettings, isFree } from './availability';
 import { futureAppointments, hasVisited } from './clients';
 import { payments } from './payments';
 import { fill, sendText } from './sms';
-import { alertStaff, type Actor } from './alerts';
+import { alertStaff, sendOrQueue, type Actor } from './alerts';
 import { calendarLink } from './calendar';
 import { switched, withLock, withStaffLock } from './switchover';
 
@@ -18,13 +18,33 @@ export const manageLink = (a: Appointment) => `${config.siteUrl}/booking/?t=${a.
 export const bookingLink = (service?: Service) => `${config.siteUrl}/book/${service ? `?service=${encodeURIComponent(nice(service.name))}` : ''}`;
 export const referralLink = (c: Client) => `${config.siteUrl}/r/${c.referralCode}`;
 
-/** Text one of the automatic messages, if it's switched on and the client wants texts. */
-export async function autoText(store: Store, key: string, client: Client, vars: Record<string, string>, kind = key as never) {
+/**
+ * Text one of the automatic messages, if it's switched on and the client wants texts.
+ * `fromStudio`: set off by the team rather than the client, so it waits out quiet hours.
+ */
+export async function autoText(store: Store, key: string, client: Client, vars: Record<string, string>, kind = key as never, opts: { fromStudio?: boolean } = {}) {
   const settings = await getSettings(store);
   const auto = settings.automations[key];
   // nothing goes to clients from here until the switch from GlossGenius
   if (!switched(settings) || !auto?.enabled || !client.smsReminders) return null;
-  return sendText(store, client.phone, fill(auto.text, { first: client.first, ...vars }), kind, client);
+  const body = fill(auto.text, { first: client.first, ...vars });
+  if (opts.fromStudio) return sendOrQueue(store, settings, client.phone, body, kind, client);
+  return sendText(store, client.phone, body, kind, client);
+}
+
+/**
+ * Change one appointment, one change at a time, working on its latest copy: the
+ * client's link and the dashboard can act on the same booking at the same moment.
+ * The lock follows the booking's manage link, which stays the same when it moves.
+ */
+export function onAppointment<T>(store: Store, appt: Appointment, fn: (current: Appointment) => Promise<T>): Promise<T> {
+  return withLock(store, `appt|${appt.manageToken}`, async () => {
+    const t = await store.get<{ id: string; appointmentId: string }>('tokens', appt.manageToken);
+    const current = t && (await store.get<Appointment>('appointments', t.appointmentId));
+    // moved (a move gives it a new id) or gone since it was looked up
+    if (!current || current.id !== appt.id) throw new HttpError(409, 'This booking was just changed. Refresh to see the latest.');
+    return fn(current);
+  });
 }
 
 export async function apptVars(store: Store, a: Appointment, settings?: Settings) {
@@ -143,7 +163,7 @@ async function recordDeposit(store: Store, appt: Appointment, client: Client, am
 
 /** The booking is final: the client's confirmation text and the team's heads-up. */
 export async function announceBooking(store: Store, appt: Appointment, client: Client, actor: Actor) {
-  const msg = await autoText(store, 'booking', client, await apptVars(store, appt), 'booking' as never);
+  const msg = await autoText(store, 'booking', client, await apptVars(store, appt), 'booking' as never, { fromStudio: 'staff' in actor });
   if (msg) appt.texts.bookedAt = msg.at;
   await store.put('appointments', appt);
   await alertStaff(store, appt, { kind: 'booked' }, actor);
@@ -233,37 +253,41 @@ export async function finalizeStaffBooking(store: Store, appt: Appointment, clie
 }
 
 /** A new time (and maybe a new person): reminders start over, the client and team are told. */
-export async function moveAppointment(store: Store, appt: Appointment, dest: { start: string; staffId: string }, actor: Actor) {
+export async function moveAppointment(store: Store, found: Appointment, dest: { start: string; staffId: string }, actor: Actor) {
   const to = { ...dest, start: utcIso(dest.start) };
   const byStaff = 'staff' in actor;
-  if (!['booked', 'confirmed', ...(byStaff ? ['checked-in'] : [])].includes(appt.status)) throw bad('This booking can’t be changed.');
-  if (appt.deposit?.status === 'pending') throw bad('The client is still approving the deposit with their bank. Try again in a few minutes.');
-  const service = (await store.get<Service>('services', appt.serviceId))!;
-  const moved = await withStaffLock(store, to.staffId, to.start, async () => {
-    if (!(await isFree(store, to.staffId, to.start, service.duration, appt.id))) throw new HttpError(409, 'That time isn’t available. Please pick another.');
-    // the id carries the start time, so a new time is a new record
-    await store.delete('appointments', appt.id);
-    const next: Appointment = {
-      ...appt,
-      id: `${to.start}_${rid(4)}`,
-      staffId: to.staffId,
-      start: to.start,
-      end: new Date(Date.parse(to.start) + service.duration * 60000).toISOString(),
-      // a client's own change asks them to confirm again; the desk's keeps what it was
-      status: byStaff ? appt.status : 'booked',
-      texts: {},
-      calendarSeq: (appt.calendarSeq ?? 0) + 1,
-    };
-    await store.put('appointments', next);
-    await store.put('tokens', { id: next.manageToken, appointmentId: next.id });
-    // a referral follows its appointment, so the referrer is still credited at checkout
-    const ref = (await store.list<Referral>('referrals')).find((r) => r.appointmentId === appt.id);
-    if (ref) await store.put('referrals', { ...ref, appointmentId: next.id });
-    return next;
+  const service = (await store.get<Service>('services', found.serviceId))!;
+  const { appt, moved } = await onAppointment(store, found, async (appt) => {
+    if (!['booked', 'confirmed', ...(byStaff ? ['checked-in'] : [])].includes(appt.status)) throw bad('This booking can’t be changed.');
+    if (appt.deposit?.status === 'pending') throw bad('The client is still approving the deposit with their bank. Try again in a few minutes.');
+    const moved = await withStaffLock(store, to.staffId, to.start, async () => {
+      if (!(await isFree(store, to.staffId, to.start, service.duration, appt.id))) throw new HttpError(409, 'That time isn’t available. Please pick another.');
+      // the id carries the start time, so a new time is a new record
+      await store.delete('appointments', appt.id);
+      const next: Appointment = {
+        ...appt,
+        id: `${to.start}_${rid(4)}`,
+        staffId: to.staffId,
+        start: to.start,
+        end: new Date(Date.parse(to.start) + service.duration * 60000).toISOString(),
+        // a client's own change asks them to confirm again; the desk's keeps what it was
+        status: byStaff ? appt.status : 'booked',
+        texts: {},
+        movedAt: nowIso(),
+        calendarSeq: (appt.calendarSeq ?? 0) + 1,
+      };
+      await store.put('appointments', next);
+      await store.put('tokens', { id: next.manageToken, appointmentId: next.id });
+      // a referral follows its appointment, so the referrer is still credited at checkout
+      const ref = (await store.list<Referral>('referrals')).find((r) => r.appointmentId === appt.id);
+      if (ref) await store.put('referrals', { ...ref, appointmentId: next.id });
+      return next;
+    });
+    return { appt, moved };
   });
   const client = (await store.get<Client>('clients', moved.clientId))!;
   if (moved.start !== appt.start || moved.staffId !== appt.staffId) {
-    const m = await autoText(store, 'moved', client, await apptVars(store, moved), 'moved' as never);
+    const m = await autoText(store, 'moved', client, await apptVars(store, moved), 'moved' as never, { fromStudio: byStaff });
     if (m) moved.texts.bookedAt = m.at;
     await store.put('appointments', moved);
     await alertStaff(store, moved, { kind: 'moved', from: { start: appt.start, staffId: appt.staffId } }, actor);
@@ -271,38 +295,73 @@ export async function moveAppointment(store: Store, appt: Appointment, dest: { s
   return moved;
 }
 
-export function feeFor(appt: Appointment, settings: Settings, noShow: boolean) {
+export function feeFor(appt: Appointment, settings: Settings, noShow: boolean, now = Date.now()) {
   if (noShow) return Math.round((appt.price * settings.policies.noShowFeePercent) / 100);
-  const hoursAway = (Date.parse(appt.start) - Date.now()) / 3600000;
+  const hoursAway = (Date.parse(appt.start) - now) / 3600000;
   return hoursAway < settings.policies.cancellationWindowHours ? Math.round((appt.price * settings.policies.cancellationFeePercent) / 100) : 0;
 }
 
-/** Cancel (or mark a no-show). Policy fees go on the card on file unless staff waive them. */
-export async function cancelAppointment(store: Store, appt: Appointment, opts: { by: 'client' | 'staff'; noShow?: boolean; waive?: boolean; staff?: Staff }) {
-  if (['cancelled', 'no-show', 'completed'].includes(appt.status)) throw bad('This appointment can’t be cancelled now.');
-  const settings = await getSettings(store);
-  // a deposit still waiting on the bank's approval is called off, so it can't go through later
-  if (appt.deposit?.status === 'pending') {
-    await payments.cancelPayment(appt.deposit.paymentId ?? '');
-    appt.deposit = { ...appt.deposit, status: 'failed' };
+/** How many hours ahead a client must cancel to get a paid deposit back. */
+export const refundHours = (s: Settings) => s.policies.depositRefundHours ?? s.policies.cancellationWindowHours;
+
+/**
+ * What cancelling now means in money, the same for what the client and the team are
+ * shown and what is charged. A paid deposit goes toward a late or no-show fee (only
+ * the rest is charged, and any deposit beyond the fee goes back); with no fee it is
+ * refunded when the client cancels at least the refund window ahead, and kept inside
+ * it. Waiving means no charge at all: the deposit goes back too.
+ */
+export function cancelOutcome(appt: Appointment, settings: Settings, opts: { noShow?: boolean; waive?: boolean } = {}, now = Date.now()) {
+  const policyFee = feeFor(appt, settings, !!opts.noShow, now);
+  const deposit = appt.deposit?.status === 'paid' ? appt.deposit.amount : 0;
+  if (opts.waive) return { policyFee, fee: 0, depositKept: 0, depositRefund: deposit, deposit };
+  if (policyFee) {
+    const depositKept = Math.min(deposit, policyFee);
+    return { policyFee, fee: policyFee - depositKept, depositKept, depositRefund: deposit - depositKept, deposit };
   }
+  const inTime = (Date.parse(appt.start) - now) / 3600000 >= refundHours(settings);
+  return { policyFee: 0, fee: 0, depositKept: inTime ? 0 : deposit, depositRefund: inTime ? deposit : 0, deposit };
+}
+
+/** Cancel (or mark a no-show). Policy fees go on the card on file unless staff waive them. */
+export async function cancelAppointment(store: Store, found: Appointment, opts: { by: 'client' | 'staff'; noShow?: boolean; waive?: boolean; staff?: Staff }) {
+  const settings = await getSettings(store);
+  // the status changes first, under the booking's lock: a second cancel, a move or a
+  // checkout at the same moment finds it already closed. Money moves after.
+  const { appt, outcome } = await onAppointment(store, found, async (appt) => {
+    if (['cancelled', 'no-show', 'completed'].includes(appt.status)) throw bad('This appointment can’t be cancelled now.');
+    // a deposit still waiting on the bank's approval is called off, so it can't go through later
+    if (appt.deposit?.status === 'pending') {
+      await payments.cancelPayment(appt.deposit.paymentId ?? '');
+      appt.deposit = { ...appt.deposit, status: 'failed' };
+    }
+    const outcome = cancelOutcome(appt, settings, opts);
+    appt.status = opts.noShow ? 'no-show' : 'cancelled';
+    appt.cancel = {
+      at: nowIso(),
+      by: opts.by,
+      fee: outcome.fee,
+      feeStatus: opts.waive && outcome.policyFee ? 'waived' : 'none',
+      noShow: !!opts.noShow,
+      depositKept: outcome.depositKept,
+      depositRefund: outcome.depositRefund,
+    };
+    appt.calendarSeq = (appt.calendarSeq ?? 0) + 1;
+    await store.put('appointments', appt);
+    return { appt, outcome };
+  });
+
   const client = (await store.get<Client>('clients', appt.clientId))!;
-  let fee = feeFor(appt, settings, !!opts.noShow);
-  // a paid deposit counts toward the fee
-  const depositPaid = appt.deposit?.status === 'paid' ? appt.deposit.amount : 0;
-  fee = Math.max(0, fee - depositPaid);
-  let feeStatus: NonNullable<Appointment['cancel']>['feeStatus'] = 'none';
-  if (fee && opts.waive) feeStatus = 'waived';
-  else if (fee) {
-    const r = await payments.charge(client.customerId ?? '', client.card, fee, opts.noShow ? 'No-show fee' : 'Late cancellation fee', { appointmentId: appt.id });
-    feeStatus = r.ok ? 'charged' : 'failed';
+  if (outcome.fee) {
+    const r = await payments.charge(client.customerId ?? '', client.card, outcome.fee, opts.noShow ? 'No-show fee' : 'Late cancellation fee', { appointmentId: appt.id });
+    appt.cancel!.feeStatus = r.ok ? 'charged' : 'failed';
     await store.put('payments', {
       id: `${nowIso()}_${rid(4)}`,
       at: nowIso(),
       clientId: client.id,
       appointmentId: appt.id,
       kind: opts.noShow ? 'no-show-fee' : 'cancel-fee',
-      amount: fee,
+      amount: outcome.fee,
       tip: 0,
       method: 'card',
       status: r.ok ? 'paid' : 'failed',
@@ -311,16 +370,34 @@ export async function cancelAppointment(store: Store, appt: Appointment, opts: {
       error: r.error,
     });
   }
-  appt.status = opts.noShow ? 'no-show' : 'cancelled';
-  appt.cancel = { at: nowIso(), by: opts.by, fee: opts.waive ? 0 : fee, feeStatus, noShow: !!opts.noShow };
-  appt.calendarSeq = (appt.calendarSeq ?? 0) + 1;
+  const depositPayment = appt.deposit?.paymentId;
+  if (outcome.depositRefund && appt.deposit && depositPayment) {
+    await payments.refund(depositPayment, outcome.depositRefund);
+    appt.deposit = { ...appt.deposit, status: outcome.depositKept ? 'applied' : 'refunded' };
+    await store.put('payments', {
+      id: `${nowIso()}_${rid(4)}`,
+      at: nowIso(),
+      clientId: client.id,
+      appointmentId: appt.id,
+      kind: 'refund',
+      amount: -outcome.depositRefund,
+      tip: 0,
+      method: 'card',
+      status: 'paid',
+      providerId: depositPayment,
+      simulated: !payments.live() || depositPayment.startsWith('pi_sim_'),
+    });
+  } else if (outcome.depositKept && appt.deposit) appt.deposit = { ...appt.deposit, status: 'applied' };
   await store.put('appointments', appt);
+
   const ref = (await store.list<Referral>('referrals')).find((r) => r.appointmentId === appt.id && r.status === 'booked');
   if (ref) await store.put('referrals', { ...ref, status: 'cancelled' });
   if (!opts.noShow) {
-    const feeNote = feeStatus === 'charged' ? ` A ${money(fee)} late-cancellation fee was charged per our policy.` : '';
-    await autoText(store, 'cancel', client, { ...(await apptVars(store, appt, settings)), fee_note: feeNote }, 'cancel' as never);
-    await alertStaff(store, appt, { kind: 'cancelled', fee: feeStatus === 'waived' ? 0 : fee, feeCharged: feeStatus === 'charged' }, opts.staff ? { staff: opts.staff } : { client: true });
+    const feeNote =
+      (appt.cancel!.feeStatus === 'charged' ? ` A ${money(outcome.fee)} late-cancellation fee was charged per our policy.` : '') +
+      (outcome.depositRefund ? ` Your ${money(outcome.depositRefund)} deposit is being refunded to your card.` : outcome.depositKept && !outcome.policyFee ? ` Your ${money(outcome.depositKept)} deposit isn’t refundable this close to the appointment.` : '');
+    await autoText(store, 'cancel', client, { ...(await apptVars(store, appt, settings)), fee_note: feeNote }, 'cancel' as never, { fromStudio: opts.by === 'staff' });
+    await alertStaff(store, appt, { kind: 'cancelled', fee: appt.cancel!.feeStatus === 'waived' ? 0 : outcome.fee, feeCharged: appt.cancel!.feeStatus === 'charged' }, opts.staff ? { staff: opts.staff } : { client: true });
   }
   return appt;
 }
@@ -384,7 +461,12 @@ export async function quote(store: Store, appt: Appointment, input: Omit<Checkou
   return { lines, due, membershipUsed, membershipLeft, pkgIndex, referralDiscount, creditUsed, deposit, client, service };
 }
 
-export async function checkoutAppointment(store: Store, appt: Appointment, input: CheckoutInput) {
+export function checkoutAppointment(store: Store, found: Appointment, input: CheckoutInput) {
+  // one checkout at a time, and not on a booking cancelled or moved a moment ago
+  return onAppointment(store, found, (appt) => checkoutNow(store, appt, input));
+}
+
+async function checkoutNow(store: Store, appt: Appointment, input: CheckoutInput) {
   if (appt.status === 'completed') throw bad('Already checked out.');
   if (['cancelled', 'no-show'].includes(appt.status)) throw bad('This appointment was cancelled.');
   if (appt.deposit?.status === 'pending') throw bad('The client is still approving the deposit with their bank. Try again in a few minutes.');
@@ -452,7 +534,7 @@ export async function checkoutAppointment(store: Store, appt: Appointment, input
       referrer.credit += settings.referrals.referrerGets;
       await store.put('clients', referrer);
       await store.put('referrals', { ...ref, status: 'completed', completedAt: nowIso() });
-      await autoText(store, 'referral', referrer, { friend: q.client.first, amount: money(settings.referrals.referrerGets) }, 'referral' as never);
+      await autoText(store, 'referral', referrer, { friend: q.client.first, amount: money(settings.referrals.referrerGets) }, 'referral' as never, { fromStudio: true });
     }
   }
   await autoText(
@@ -461,6 +543,7 @@ export async function checkoutAppointment(store: Store, appt: Appointment, input
     q.client,
     { total: money(total), referral_link: referralLink(q.client), referral_amount: money(settings.referrals.friendGets) },
     'receipt' as never,
+    { fromStudio: true },
   );
   return appt;
 }

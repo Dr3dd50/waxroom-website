@@ -10,7 +10,7 @@ import { getSettings, isFree, slotsFor } from '../services/availability';
 import { upsertClient, type ClientInput } from '../services/clients';
 import { payments } from '../services/payments';
 import { twilioLive } from '../config';
-import { apptVars, cancelAppointment, completeDeposit, createAppointment, feeFor, finalizeOnlineBooking, manageLink, moveAppointment } from '../services/appointments';
+import { apptVars, cancelAppointment, cancelOutcome, completeDeposit, createAppointment, finalizeOnlineBooking, manageLink, moveAppointment, refundHours } from '../services/appointments';
 import { googleCalendarUrl, icsFor } from '../services/calendar';
 import { grantPackage } from '../services/clients';
 import { switched, withLock } from '../services/switchover';
@@ -107,6 +107,7 @@ export function publicRoutes(store: Store) {
         cancellationPolicy: s.policies.cancellationPolicy,
         cancellationWindowHours: s.policies.cancellationWindowHours,
         cancellationFeePercent: s.policies.cancellationFeePercent,
+        depositRefundHours: refundHours(s),
         cardRequired: s.policies.cardRequired,
       },
     });
@@ -213,6 +214,9 @@ export function publicRoutes(store: Store) {
     const settings = await getSettings(store);
     const v = await apptVars(store, appt, settings);
     const client = (await store.get<Client>('clients', appt.clientId))!;
+    const open = ['booked', 'confirmed'].includes(appt.status);
+    // what cancelling now would mean, worked out exactly as the cancel itself does
+    const ifCancelled = open ? cancelOutcome(appt, settings) : null;
     return {
       token: appt.manageToken,
       status: appt.status,
@@ -227,9 +231,14 @@ export function publicRoutes(store: Store) {
       referralDiscount: appt.referral?.friendDiscount ?? 0,
       first: client.first,
       card: client.card ? `${client.card.brand} •• ${client.card.last4}` : null,
-      cancelFee: ['booked', 'confirmed'].includes(appt.status) ? feeFor(appt, settings, false) : 0,
+      cancelPolicyFee: ifCancelled?.policyFee ?? 0,
+      cancelFee: ifCancelled?.fee ?? 0,
+      cancelDepositRefund: ifCancelled?.depositRefund ?? 0,
+      cancelDepositKept: ifCancelled?.depositKept ?? 0,
+      cancelled: appt.cancel ? { fee: appt.cancel.feeStatus === 'charged' ? appt.cancel.fee : 0, depositRefund: appt.cancel.depositRefund ?? 0 } : null,
       canCancelOnline: settings.policies.allowOnlineCancellations,
       windowHours: settings.policies.cancellationWindowHours,
+      refundHours: refundHours(settings),
       calendar: { ics: `${config.siteUrl}/api/cal/${appt.manageToken}`, google: googleCalendarUrl(appt, (await store.get<Service>('services', appt.serviceId))!, manageLink(appt)) },
     };
   }
@@ -256,6 +265,35 @@ export function publicRoutes(store: Store) {
     const offered = (await slotsFor(store, service, zoned(b.start).day, appt.staffId)).some((s) => s.start === b.start);
     if (!offered) throw new HttpError(409, 'That time isn’t available. Please pick another.');
     return c.json(await describe(await moveAppointment(store, appt, { start: b.start, staffId: appt.staffId }, { client: true })));
+  });
+
+  // A card for a client booked by phone or at the desk, from the link the studio texted.
+  type CardToken = { id: string; kind: 'card'; clientId: string; expiresAt: string };
+  async function cardToken(token: string) {
+    const t = await store.get<CardToken>('tokens', token);
+    const client = t?.kind === 'card' && t.expiresAt > nowIso() ? await store.get<Client>('clients', t.clientId) : null;
+    if (!t || !client) throw new HttpError(404, 'This card link has expired. Text us for a new one.');
+    return { t, client };
+  }
+  r.get('/card/:token', async (c) => {
+    const { client } = await cardToken(c.req.param('token'));
+    return c.json({ first: client.first, card: client.card ? `${client.card.brand} •• ${client.card.last4}` : null });
+  });
+  r.post('/card/:token/start', async (c) => {
+    await requireOpen(store);
+    const { client } = await cardToken(c.req.param('token'));
+    client.customerId = await payments.ensureCustomer(client);
+    await store.put('clients', client);
+    return c.json(await payments.startCardSetup(client.customerId));
+  });
+  r.post('/card/:token/confirm', async (c) => {
+    await requireOpen(store);
+    const { t, client } = await cardToken(c.req.param('token'));
+    const b = await c.req.json<{ setupId: string; simulatedCard?: { number: string } }>();
+    client.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
+    await store.put('clients', client);
+    await store.delete('tokens', t.id); // one card per link
+    return c.json({ first: client.first, card: `${client.card.brand} •• ${client.card.last4}` });
   });
 
   r.get('/referral/:code', async (c) => {

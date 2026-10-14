@@ -105,8 +105,11 @@ test('late cancellation charges the policy fee; no-show charges in full; staff c
   const owner = login.json.id;
   const soon = new Date(Math.ceil((Date.now() + 2 * 3600000) / 900000) * 900000).toISOString();
   const client = (await call('POST', '/staff/clients', { first: 'Fay', last: 'T', phone: '804-555-0106' })).json;
-  await call('POST', `/staff/clients/${client.id}/card/start`, {});
-  await call('POST', `/staff/clients/${client.id}/card/confirm`, { setupId: 'x', simulatedCard: { number: '5555555555554444' } });
+  // the card goes on file through the link the studio texts
+  const link = (await call('POST', `/staff/clients/${client.id}/card-link`, {})).json.link;
+  const token = new URL(link).searchParams.get('t');
+  const setup = (await call('POST', `/public/card/${token}/start`, {})).json;
+  assert.equal((await call('POST', `/public/card/${token}/confirm`, { setupId: setup.setupId, simulatedCard: { number: '5555555555554444' } })).status, 200);
   const a = await call('POST', '/staff/appointments', { clientId: client.id, serviceId: brazilian.id, staffId: owner, start: soon });
   assert.equal(a.status, 200, JSON.stringify(a.json));
   const t = (await store.get<any>('appointments', a.json.id)).manageToken;
@@ -116,6 +119,7 @@ test('late cancellation charges the policy fee; no-show charges in full; staff c
   assert.equal(cancelled.json.status, 'cancelled');
   const fees = (await store.list<any>('payments')).filter((p) => p.kind === 'cancel-fee');
   assert.equal(fees[0].amount, 3250);
+  assert.equal(fees[0].status, 'paid');
 
   const b = await call('POST', '/staff/appointments', { clientId: client.id, serviceId: brazilian.id, staffId: owner, start: soon });
   const ns = await call('POST', `/staff/appointments/${encodeURIComponent(b.json.id)}/cancel`, { noShow: true });

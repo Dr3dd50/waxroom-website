@@ -60,10 +60,10 @@ const PREVIOUS_DEFAULTS: Record<string, string[]> = {
 };
 
 /**
- * When to nudge a client to rebook, from what each service page tells clients:
- * waxing every 3–5 weeks, brows every 3–4, lash fills every 2–3, lamination 6–8,
- * anything else about 6 weeks. The nudge goes at the start of the range, so there's
- * time to book inside it. The owner can change it per service.
+ * The starting timing for each service's book-again text, from what the service
+ * pages tell clients (waxing every 3–5 weeks, brows 3–4, lash fills 2–3,
+ * lamination 6–8, anything else about 6). The text itself is off until the owner
+ * turns it on for a service in Settings, where the timing can be changed too.
  */
 export function defaultRebookDays(s: Pick<Service, 'name' | 'category'>): number {
   if (s.category === 'Lash Art') return /fill|full set/i.test(s.name) ? 14 : 42;
@@ -162,6 +162,12 @@ export async function upgrade(store: Store) {
     const brazilian = services.find((s) => s.name === 'Brazilian');
     const ritual = brazilian && services.find((s) => s.ritualOf === brazilian.id);
     if (ritual && ritual.duration !== RITUAL_LENGTH.new_client_ritual) await store.put('services', { ...ritual, duration: RITUAL_LENGTH.new_client_ritual });
+  });
+  // The book-again text is off for every service until the owner turns it on in
+  // Settings; each keeps a timing ready to use (one that had "none" gets its default).
+  await once('rebook-texts-off-until-chosen', async () => {
+    for (const svc of await store.list<Service>('services'))
+      await store.put('services', { ...svc, rebookText: false, rebookAfterDays: svc.rebookAfterDays ?? defaultRebookDays(svc) });
   });
 }
 

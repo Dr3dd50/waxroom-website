@@ -13,7 +13,7 @@ behind it.
 | Booking | on the website | Pick service → staff → time → details → card on file (Stripe) |
 | API | AWS | Appointments, availability, clients, catalog, referrals, webhooks |
 | Payments | Stripe | Card on file, deposits, checkout, no-show fees, membership subscriptions, referral credit |
-| Texts | Twilio | Confirmations, reminders, calendar links, rebooking nudges timed per service, team texts for bookings, moves and cancellations, marketing campaigns (opt-in only) |
+| Texts | Twilio | Confirmations, reminders, calendar links, book-again texts (per service, switched on by the owner), team texts for bookings, moves and cancellations, marketing campaigns (opt-in only) |
 
 Hosting is AWS, alongside the CloudFront distribution that already serves the
 domain: the dashboard as its own static site on the `employee` subdomain, the
@@ -23,7 +23,7 @@ owner/employee logins, EventBridge Scheduler for timed texts.
 ## What the port covers (public GlossGenius data)
 
 - **Business and policies.** Contact details, hours, timezone. Cancellation: within 24 h = 50% fee, no-show = 100%. A card is always required. Deposits apply to new clients only. Clients can hold up to 3 future bookings. Default tip is 20%. Waitlist is on, buy-now-pay-later is on, birthday emails are on, and an intake form is required.
-- **Texts and emails.** Confirmation goes 72 h before, the reminder 24 h before, and a rebooking nudge 6 weeks after.
+- **Texts and emails.** By default the confirmation request goes 72 h before and the reminder 24 h before; the owner sets both, the quiet hours, and which services get a book-again text and when, in Settings → Client texts.
 - **Staff and who performs what.** All 42 services, with price, price-varies flag, durations (including processing time), deposits, descriptions and the staff assigned to each.
 - **Memberships and packages.** All 6 memberships, with what each includes per month, and all 3 packages, which expire after 1 year.
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api';
-import { DAY_KEYS, useBoot } from '../ctx';
-import type { Staff } from '../types';
+import { CATEGORY_ORDER, DAY_KEYS, nice, useBoot } from '../ctx';
+import type { Service, Staff } from '../types';
 import { Drawer, PageHead, Pill, Toggle } from '../ui';
 import { OnlineBooking } from './OnlineBooking';
 
@@ -107,6 +107,16 @@ export function SettingsView() {
             <dd>
               <input className="qty" type="number" value={policies.cancellationFeePercent} onChange={(e) => setPolicies({ ...policies, cancellationFeePercent: +e.target.value })} />
             </dd>
+            <dt>Deposit refunded when cancelled at least (hours ahead)</dt>
+            <dd>
+              <input
+                className="qty"
+                type="number"
+                min={0}
+                value={policies.depositRefundHours ?? policies.cancellationWindowHours}
+                onChange={(e) => setPolicies({ ...policies, depositRefundHours: +e.target.value })}
+              />
+            </dd>
             <dt>No-show fee (%)</dt>
             <dd>
               <input className="qty" type="number" value={policies.noShowFeePercent} onChange={(e) => setPolicies({ ...policies, noShowFeePercent: +e.target.value })} />
@@ -162,12 +172,195 @@ export function SettingsView() {
           </dl>
         </section>
       </div>
+      <ClientTexts />
+      <RebookTexts />
       <section className="card-panel">
         <h2>Cancellation & no-show policy</h2>
         <p className="policy">{s.policies.cancellationPolicy}</p>
       </section>
       {editing ? <TeamEditor m={editing === 'new' ? null : editing} onClose={() => setEditing(null)} /> : null}
     </div>
+  );
+}
+
+const REMINDER_HOURS = [2, 4, 6, 12, 24, 36, 48, 72];
+const CONFIRM_HOURS = [24, 36, 48, 72, 96, 120, 168];
+const ahead = (h: number) => (h % 24 === 0 ? `${h / 24} day${h === 24 ? '' : 's'} before` : `${h} hours before`);
+
+/** When clients get their appointment texts. The wording of each is under Texts. */
+function ClientTexts() {
+  const boot = useBoot();
+  const s = boot.settings;
+  const [n, setN] = useState(s.notifications);
+  const [msg, setMsg] = useState('');
+  const auto = (key: string) => !!s.automations[key]?.enabled;
+  const toggle = async (key: string, on: boolean) => {
+    await api('/settings', { automations: { [key]: { ...s.automations[key], enabled: on } } }, 'PUT');
+    await boot.reload();
+  };
+  const changed = JSON.stringify(n) !== JSON.stringify(s.notifications);
+  return (
+    <section className="card-panel" id="client-texts">
+      <h2>Client texts</h2>
+      <p className="muted small">When clients get their appointment texts. Change the wording of each under Texts.</p>
+      <dl className="kv kv--settings">
+        <dt>Appointment reminder</dt>
+        <dd className="hours">
+          <Toggle on={auto('reminder')} onChange={(v) => toggle('reminder', v)} label="Appointment reminder on" />
+          <select value={n.reminderHoursBefore} disabled={!auto('reminder')} onChange={(e) => (setN({ ...n, reminderHoursBefore: +e.target.value }), setMsg(''))} aria-label="Reminder timing">
+            {REMINDER_HOURS.map((h) => (
+              <option key={h} value={h}>
+                {ahead(h)}
+              </option>
+            ))}
+          </select>
+        </dd>
+        <dt>Ask the client to confirm (reply C)</dt>
+        <dd className="hours">
+          <Toggle on={auto('confirm-request')} onChange={(v) => toggle('confirm-request', v)} label="Confirmation request on" />
+          <select value={n.confirmHoursBefore} disabled={!auto('confirm-request')} onChange={(e) => (setN({ ...n, confirmHoursBefore: +e.target.value }), setMsg(''))} aria-label="Confirmation request timing">
+            {CONFIRM_HOURS.filter((h) => h > n.reminderHoursBefore).map((h) => (
+              <option key={h} value={h}>
+                {ahead(h)}
+              </option>
+            ))}
+          </select>
+        </dd>
+        <dt>No texts to clients between</dt>
+        <dd className="hours">
+          <select value={n.quietStart} onChange={(e) => (setN({ ...n, quietStart: +e.target.value }), setMsg(''))} aria-label="Quiet hours start">
+            {Array.from({ length: 24 }, (_, h) => (
+              <option key={h} value={h}>
+                {hr(h)}
+              </option>
+            ))}
+          </select>
+          and
+          <select value={n.quietEnd} onChange={(e) => (setN({ ...n, quietEnd: +e.target.value }), setMsg(''))} aria-label="Quiet hours end">
+            {Array.from({ length: 24 }, (_, h) => (
+              <option key={h} value={h}>
+                {hr(h)}
+              </option>
+            ))}
+          </select>
+        </dd>
+      </dl>
+      <div className="row-actions mt">
+        <button
+          className="btn btn--dark"
+          disabled={!changed}
+          onClick={async () => {
+            try {
+              await api('/settings', { notifications: n }, 'PUT');
+              await boot.reload();
+              setMsg('Saved.');
+            } catch (e) {
+              setMsg((e as Error).message);
+            }
+          }}
+        >
+          Save timing
+        </button>
+        {msg ? <span className="muted small">{msg}</span> : null}
+      </div>
+      <p className="muted small mt">
+        A booking made inside these windows skips the text it would have missed: its booking confirmation already did the job. Texts the studio sends during quiet hours
+        (offers, and the texts a change at the desk sets off) wait until they end.
+      </p>
+    </section>
+  );
+}
+
+type RebookRow = { on: boolean; weeks: string };
+/** The timing shown for a service with none saved (the API's fallback is the same). */
+const FALLBACK_DAYS = 42;
+const weeksOf = (s: Service) => String(Math.round(((s.rebookAfterDays ?? FALLBACK_DAYS) / 7) * 2) / 2);
+
+/** Per service: whether clients get a text inviting them to book again, and how long after their visit. */
+function RebookTexts() {
+  const boot = useBoot();
+  const services = boot.services.filter((s) => s.active && !s.ritualOf);
+  const initial = () => Object.fromEntries(services.map((s) => [s.id, { on: !!s.rebookText, weeks: weeksOf(s) }])) as Record<string, RebookRow>;
+  const [rows, setRows] = useState<Record<string, RebookRow>>(initial);
+  const [msg, setMsg] = useState('');
+  const changed = services.filter((s) => rows[s.id] && (rows[s.id].on !== !!s.rebookText || rows[s.id].weeks !== weeksOf(s)));
+  const categories = [...CATEGORY_ORDER.filter((c) => services.some((s) => s.category === c)), ...[...new Set(services.map((s) => s.category))].filter((c) => !CATEGORY_ORDER.includes(c))];
+  const set = (id: string, patch: Partial<RebookRow>) => (setRows({ ...rows, [id]: { ...rows[id], ...patch } }), setMsg(''));
+  const masterOn = !!boot.settings.automations.rebook?.enabled;
+  const count = services.filter((s) => rows[s.id]?.on).length;
+  return (
+    <section className="card-panel" id="rebook-texts">
+      <div className="row-actions row-actions--spread">
+        <h2>Time to book again</h2>
+        <Toggle
+          on={masterOn}
+          onChange={async (v) => {
+            await api('/settings', { automations: { rebook: { ...boot.settings.automations.rebook, enabled: v } } }, 'PUT');
+            await boot.reload();
+          }}
+          label="Book-again texts on"
+        />
+      </div>
+      <p className="muted small">
+        A text inviting the client to book again, sent at 10am once the time after their visit has passed and they have nothing booked. Turn it on for each service that
+        should get one. A New Client Ritual follows its service. {masterOn ? `On for ${count} service${count === 1 ? '' : 's'}.` : 'All of these are paused while the switch above is off.'}
+      </p>
+      <div className="table-wrap">
+        <table className="table table--compact">
+          <tbody>
+            {categories.map((cat) => [
+              <tr key={cat}>
+                <th colSpan={3}>{cat}</th>
+              </tr>,
+              ...services
+                .filter((s) => s.category === cat)
+                .sort((a, b) => a.order - b.order)
+                .map((s) => (
+                  <tr key={s.id}>
+                    <td>{nice(s.name)}</td>
+                    <td>
+                      <Toggle on={rows[s.id].on} onChange={(v) => set(s.id, { on: v })} label={`Book-again text for ${nice(s.name)}`} />
+                    </td>
+                    <td>
+                      <span className="hours">
+                        <input
+                          className="qty"
+                          type="number"
+                          min={0.5}
+                          max={52}
+                          step={0.5}
+                          value={rows[s.id].weeks}
+                          onChange={(e) => set(s.id, { weeks: e.target.value })}
+                          aria-label={`Weeks after a ${nice(s.name)}`}
+                        />
+                        weeks after
+                      </span>
+                    </td>
+                  </tr>
+                )),
+            ])}
+          </tbody>
+        </table>
+      </div>
+      <div className="row-actions mt">
+        <button
+          className="btn btn--dark"
+          disabled={!changed.length}
+          onClick={async () => {
+            try {
+              await api('/rebook-texts', { services: changed.map((s) => ({ id: s.id, on: rows[s.id].on, days: Math.round(Number(rows[s.id].weeks) * 7) })) }, 'PUT');
+              await boot.reload();
+              setMsg('Saved.');
+            } catch (e) {
+              setMsg((e as Error).message);
+            }
+          }}
+        >
+          Save {changed.length ? `${changed.length} change${changed.length === 1 ? '' : 's'}` : ''}
+        </button>
+        {msg ? <span className="muted small">{msg}</span> : null}
+      </div>
+    </section>
   );
 }
 

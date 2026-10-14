@@ -1,6 +1,7 @@
 // Timed texts, run every 15 minutes: the confirmation request (72 h before),
-// the reminder (24 h before), the rebooking nudge (when the service's follow-up
-// time has passed with nothing booked) and birthdays. Nothing goes out to clients
+// the reminder (24 h before), the text inviting a client to book again (for the
+// services the owner turned it on for, once that service's time has passed with
+// nothing booked) and birthdays. Nothing goes out to clients
 // during quiet hours; staff texts that waited them out go at the end.
 //
 // Nothing runs before the switch from GlossGenius. After it, appointments that
@@ -33,8 +34,10 @@ export async function runDueTexts(store: Store, now = new Date()) {
     const hours = (Date.parse(a.start) - now.getTime()) / 3600000;
     const client = await store.get<Client>('clients', a.clientId);
     if (!client) continue;
-    // booked well ahead: ask them to confirm; booked inside the window already got the booking text
-    const bookedAhead = (Date.parse(a.start) - Date.parse(a.createdAt)) / 3600000 > n.confirmHoursBefore;
+    // booked (or last moved) well ahead: ask them to confirm; inside the window, the
+    // booking or "moved" text they just got already did that job
+    const since = Date.parse(a.movedAt ?? a.createdAt);
+    const bookedAhead = (Date.parse(a.start) - since) / 3600000 > n.confirmHoursBefore;
     if (hours <= n.confirmHoursBefore && hours > n.reminderHoursBefore && !a.texts.confirmRequestAt && bookedAhead && a.status === 'booked') {
       const m = await autoText(store, 'confirm-request', client, await apptVars(store, a, settings), 'confirm-request' as never);
       a.texts.confirmRequestAt = m?.at ?? now.toISOString();
@@ -42,7 +45,7 @@ export async function runDueTexts(store: Store, now = new Date()) {
       if (m) sent++;
     }
     // booked inside the reminder window: the booking text was the reminder
-    const remindable = (Date.parse(a.start) - Date.parse(a.createdAt)) / 3600000 > n.reminderHoursBefore;
+    const remindable = (Date.parse(a.start) - since) / 3600000 > n.reminderHoursBefore;
     if (hours <= n.reminderHoursBefore && !a.texts.reminderAt && remindable) {
       const m = await autoText(store, 'reminder', client, await apptVars(store, a, settings), 'reminder' as never);
       a.texts.reminderAt = m?.at ?? now.toISOString();
@@ -51,7 +54,7 @@ export async function runDueTexts(store: Store, now = new Date()) {
     }
   }
 
-  // Rebooking nudge and birthdays: once a day is plenty, around 10am.
+  // Time to book again, and birthdays: once a day is plenty, around 10am.
   if (local.hour === 10 && now.getMinutes() < 15) {
     const clients = await store.list<Client>('clients');
     const future = new Set((await store.range<Appointment>('appointments', now.toISOString(), '9999')).filter((a) => a.status !== 'cancelled' && a.status !== 'no-show').map((a) => a.clientId));
@@ -59,8 +62,11 @@ export async function runDueTexts(store: Store, now = new Date()) {
     for (const c of clients) {
       if (c.lastVisitAt && !future.has(c.id) && c.rebookNudgedFor !== c.lastVisitAt) {
         const due = await rebookDue(store, c, services, n.rebookAfterDays);
-        if (due && now.getTime() - Date.parse(c.lastVisitAt) >= due.days * 86400000) {
-          const m = await autoText(store, 'rebook', c, { service: nice(due.service.name), weeks: String(Math.round(due.days / 7)), booking_link: bookingLink(due.service) }, 'rebook' as never);
+        const days = (now.getTime() - Date.parse(c.lastVisitAt)) / 86400000;
+        // only while it's timely: a visit long past (an old GlossGenius client, say) gets no
+        // "it's been 4 weeks" text, and the weeks in the text are the real time since
+        if (due && days >= due.days && days < due.days + REBOOK_GRACE_DAYS) {
+          const m = await autoText(store, 'rebook', c, { service: nice(due.service.name), weeks: String(Math.max(1, Math.round(days / 7))), booking_link: bookingLink(due.service) }, 'rebook' as never);
           c.rebookNudgedFor = c.lastVisitAt;
           await store.put('clients', c);
           if (m) sent++;
@@ -77,10 +83,13 @@ export async function runDueTexts(store: Store, now = new Date()) {
   return { sent, quiet: false, released };
 }
 
+/** How long after its due day the book-again text can still go out (a missed day, or a visit from before the switch). */
+export const REBOOK_GRACE_DAYS = 14;
+
 /**
- * Which service sets the follow-up after a client's last visit, and after how many
- * days: of everything done that day, the one due soonest. null when none of them
- * asks for a nudge.
+ * Which service sets the book-again text after a client's last visit, and after how
+ * many days: of everything done that day with the text turned on, the one due
+ * soonest. null when none of them has it on.
  */
 export async function rebookDue(store: Store, c: Client, services: Map<string, Service>, fallbackDays: number) {
   // the visit: everything that ended in the 14 hours up to the last checkout
@@ -91,8 +100,8 @@ export async function rebookDue(store: Store, c: Client, services: Map<string, S
     // after a ritual, the next visit is the service itself (the ritual was a first-time offer)
     const done = services.get(a.serviceId);
     const service = done?.ritualOf ? (services.get(done.ritualOf) ?? done) : done;
-    if (!service) continue;
-    const days = service.rebookAfterDays === undefined ? fallbackDays : service.rebookAfterDays;
+    if (!service?.rebookText) continue;
+    const days = service.rebookAfterDays == null ? fallbackDays : service.rebookAfterDays;
     if (days !== null && (!best || days < best.days)) best = { service, days };
   }
   return best;

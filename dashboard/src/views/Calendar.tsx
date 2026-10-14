@@ -223,6 +223,26 @@ function WeekGrid({ start, staffId, appts, clients, onOpen, onDay }: { start: st
   );
 }
 
+type Outcome = { policyFee: number; fee: number; depositKept: number; depositRefund: number; deposit: number };
+type CancelPreview = { late: boolean; windowHours: number; refundHours: number; cancel: Outcome; waive: Outcome; noShow: Outcome };
+
+/** "charges $14.50 (the $10 deposit covers the rest)", "refunds the $10 deposit", "no charge" */
+/** After checkout: when this service's book-again text goes, if it's on. */
+function rebookNote(sv: { rebookText?: boolean; rebookAfterDays?: number | null; ritualOf?: string; id: string }, boot: ReturnType<typeof useBoot>) {
+  const base = sv.ritualOf ? (boot.services.find((x) => x.id === sv.ritualOf) ?? sv) : sv;
+  if (!base.rebookText || !boot.settings.automations.rebook?.enabled) return '';
+  const weeks = Math.round(((base.rebookAfterDays ?? 42) / 7) * 2) / 2;
+  return ` A text inviting them to book again goes out in ${weeks} week${weeks === 1 ? '' : 's'} if nothing’s booked.`;
+}
+
+function outcomeText(o: Outcome) {
+  const parts: string[] = [];
+  if (o.fee) parts.push(`charges ${money(o.fee)} to the card on file`);
+  if (o.depositKept) parts.push(`keeps the ${money(o.depositKept)} deposit${o.policyFee ? ' toward the fee' : ''}`);
+  if (o.depositRefund) parts.push(`refunds ${money(o.depositRefund)} of the deposit`);
+  return parts.length ? parts.join(', ') : 'no charge';
+}
+
 type Quote = { lines: { label: string; amount: number }[]; due: number; membershipLeft: number; credit: number; card: string | null; tipBase: number; defaultTipPercent: number };
 
 function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; client: Client; onClose: () => void; onChanged: (movedId?: string) => Promise<void> }) {
@@ -239,10 +259,14 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
   const [useMembership, setUseMembership] = useState(true);
   const [notes, setNotes] = useState(a.notes);
   const closed = ['completed', 'cancelled', 'no-show'].includes(a.status);
-  const hoursAway = (Date.parse(a.start) - Date.now()) / 3600000;
-  const late = hoursAway < boot.settings.policies.cancellationWindowHours;
-  const lateFee = Math.round((a.price * boot.settings.policies.cancellationFeePercent) / 100);
+  // what each way of cancelling would charge and refund, worked out by the server exactly as the cancel does
+  const [preview, setPreview] = useState<CancelPreview | null>(null);
   const tip = customTip !== '' ? Math.round(Number(customTip) * 100) : Math.round((a.price * tipPct) / 100);
+
+  useEffect(() => {
+    if (step !== 'cancel') return;
+    api<CancelPreview>(`/appointments/${encodeURIComponent(a.id)}/cancel-preview`).then(setPreview, (e) => setError(e.message));
+  }, [step, a.id]);
 
   useEffect(() => {
     if (step !== 'checkout') return;
@@ -434,7 +458,10 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
             <Icon name="check" size={28} />
           </span>
           <h3>Checked out</h3>
-          <p className="muted">Receipt texted to {client.first}. A rebooking nudge goes out in 6 weeks if nothing’s booked.</p>
+          <p className="muted">
+            {client.smsReminders ? `Receipt texted to ${client.first}.` : `${client.first} has opted out of texts, so no receipt was texted.`}
+            {rebookNote(sv, boot)}
+          </p>
           <button className="btn btn--dark" onClick={onClose}>
             Done
           </button>
@@ -443,26 +470,32 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
 
       {step === 'cancel' ? (
         <section className="cancel">
-          <p>
-            {late
-              ? `This is within ${boot.settings.policies.cancellationWindowHours} hours of the appointment, so the ${boot.settings.policies.cancellationFeePercent}% fee (${money(lateFee)}) applies.`
-              : `More than ${boot.settings.policies.cancellationWindowHours} hours ahead: no fee.`}
-            {a.deposit?.status === 'paid' ? ` The ${money(a.deposit.amount)} deposit counts toward any fee.` : ''}
-          </p>
-          <button className="btn btn--ghost" disabled={busy} onClick={() => act(() => api(`${path}/cancel`, {}), 'details')}>
-            {late ? `Cancel and charge the fee` : 'Cancel with no fee'}
-          </button>
-          {late ? (
-            <button className="btn btn--ghost" disabled={busy} onClick={() => act(() => api(`${path}/cancel`, { waive: true }), 'details')}>
-              Cancel and waive the fee
-            </button>
-          ) : null}
-          <button className="btn btn--ghost danger" disabled={busy} onClick={() => act(() => api(`${path}/cancel`, { noShow: true }), 'details')}>
-            Mark no-show and charge {money(a.price)}
-          </button>
-          <button className="btn btn--ghost" disabled={busy} onClick={() => act(() => api(`${path}/cancel`, { noShow: true, waive: true }), 'details')}>
-            Mark no-show, no charge
-          </button>
+          {!preview ? (
+            <p className="muted">Working out the fees…</p>
+          ) : (
+            <>
+              <p>
+                {preview.late
+                  ? `This is within ${preview.windowHours} hours of the appointment, so the ${boot.settings.policies.cancellationFeePercent}% late-cancel fee applies.`
+                  : `More than ${preview.windowHours} hours ahead: no late-cancel fee.`}
+                {preview.cancel.deposit ? ` A ${money(preview.cancel.deposit)} deposit was paid; it’s refunded when cancelled at least ${preview.refundHours} hours ahead, and goes toward any fee.` : ''}
+              </p>
+              <button className="btn btn--ghost" disabled={busy} onClick={() => act(() => api(`${path}/cancel`, {}), 'details')}>
+                Cancel: {outcomeText(preview.cancel)}
+              </button>
+              {preview.cancel.fee || preview.cancel.depositKept ? (
+                <button className="btn btn--ghost" disabled={busy} onClick={() => act(() => api(`${path}/cancel`, { waive: true }), 'details')}>
+                  Cancel and waive: {outcomeText(preview.waive)}
+                </button>
+              ) : null}
+              <button className="btn btn--ghost danger" disabled={busy} onClick={() => act(() => api(`${path}/cancel`, { noShow: true }), 'details')}>
+                No-show: {outcomeText(preview.noShow)}
+              </button>
+              <button className="btn btn--ghost" disabled={busy} onClick={() => act(() => api(`${path}/cancel`, { noShow: true, waive: true }), 'details')}>
+                No-show, waived: {outcomeText(preview.waive)}
+              </button>
+            </>
+          )}
           <p className="muted small">The client gets a cancellation text. Fees go on the card on file.</p>
           <button className="linkish" onClick={() => setStep('details')}>
             ← Back
@@ -607,7 +640,8 @@ function NewAppointment({ day: initialDay, onClose, onBooked }: { day: string; o
             {client.first} · {nice(sv.name)}
           </h3>
           <p className="muted">
-            {dateLong(day)} at {slot && time(slot)}. Confirmation texted to {client.contactHidden ? 'the client' : phone(client.phone)}.
+            {dateLong(day)} at {slot && time(slot)}.{' '}
+            {client.smsReminders ? `Confirmation texted to ${client.contactHidden ? 'the client' : phone(client.phone)}.` : `${client.first} has opted out of texts, so no confirmation was sent.`}
             {client.card ? '' : ' No card on file yet: add one in Clients before the visit.'}
           </p>
           <button className="btn btn--dark" onClick={onClose}>

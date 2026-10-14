@@ -98,7 +98,7 @@ test('before the switch nothing here books, texts or charges, and GlossGenius im
   const day = nextWeekday(4);
   assert.equal((await call('POST', '/staff/appointments', { clientId: rena.id, serviceId: svc('Bikini').id, staffId: boot.me.id, start: zonedToUtc(day, 10 * 60).toISOString() })).status, 409);
   assert.equal((await call('POST', `/staff/clients/${rena.id}/text`, { body: 'hi' })).status, 409);
-  assert.equal((await call('POST', `/staff/clients/${rena.id}/card/start`, {})).status, 409);
+  assert.equal((await call('POST', `/staff/clients/${rena.id}/card-link`, {})).status, 409);
   assert.equal((await call('POST', '/staff/campaigns', { audience: 'all', body: 'Sale' })).status, 409);
   assert.equal((await call('POST', '/staff/run-texts', {})).status, 409);
   const imported = (await store.list<any>('appointments')).find((a: any) => a.source === 'import' && a.status === 'booked');
@@ -157,9 +157,21 @@ test('two people booking the same time at the same moment: only one gets it', as
   assert.equal(live.length, 1);
 });
 
-test('follow-ups go out after each service’s own interval', async () => {
+test('book-again texts: off until the owner turns them on, then after each service’s own interval', async () => {
   const s = await settings();
   const tenAm = zonedToUtc(today, 10 * 60 + 5);
+  // off for every service to start with
+  await runDueTexts(store, tenAm);
+  assert.equal((await store.list<any>('messages')).filter((m: any) => m.kind === 'rebook').length, 0);
+  const tia0 = (await store.list<any>('clients')).find((c: any) => c.first === 'Tia');
+  assert.equal(tia0.rebookNudgedFor, undefined);
+  await asOwner();
+  const services = await store.list<any>('services');
+  const id = (name: string) => services.find((x: any) => x.name === name).id;
+  // a timing has to make sense before it can be on
+  assert.equal((await call('PUT', '/staff/rebook-texts', { services: [{ id: id('Eyebrow Wax'), on: true, days: 0 }] })).status, 400);
+  const on = await call('PUT', '/staff/rebook-texts', { services: [{ id: id('Eyebrow Wax'), on: true, days: 21 }, { id: id('1 Week Fill'), on: true, days: 14 }] });
+  assert.equal(on.status, 200);
   await runDueTexts(store, tenAm);
   const nudges = (await store.list<any>('messages')).filter((m: any) => m.kind === 'rebook');
   const tia = (await store.list<any>('clients')).find((c: any) => c.first === 'Tia');
@@ -415,7 +427,9 @@ test('a ritual is only for a client new to that service, and their follow-up is 
   const client = await store.get<any>('clients', first.clientId);
   await store.put('clients', { ...client, lastVisitAt: appt.end });
   const { rebookDue } = await import('../src/services/notify');
-  const services = new Map((await store.list<any>('services')).map((s: any) => [s.id, s]));
+  const all = await store.list<any>('services');
+  const vajacial = all.find((s: any) => s.name === 'Vajacial');
+  const services = new Map(all.map((s: any) => [s.id, s.id === vajacial.id ? { ...s, rebookText: true } : s]));
   const due = await rebookDue(store, { ...client, lastVisitAt: appt.end }, services as any, 42);
   assert.equal(due?.service.name, 'Vajacial');
 });

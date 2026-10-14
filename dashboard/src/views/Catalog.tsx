@@ -175,8 +175,6 @@ function ServiceEditor({ service, cats, onClose }: { service: Service | null; ca
             depositNewClientsOnly: f.get('depositWho') === 'new',
             description: String(f.get('description')) || null,
             prepTip: String(f.get('prepTip')) || undefined,
-            // blank: no rebooking text for this service; a new one gets its category's usual time
-            rebookAfterDays: !service ? undefined : Number(f.get('rebookWeeks')) ? Math.round(Number(f.get('rebookWeeks')) * 7) : null,
             staffIds,
             active: f.get('active') === 'on',
           };
@@ -236,12 +234,7 @@ function ServiceEditor({ service, cats, onClose }: { service: Service | null; ca
           Reminder tip (texted the day before)
           <input name="prepTip" defaultValue={service?.prepTip ?? ''} />
         </label>
-        {service ? (
-          <label className="field">
-            Rebooking text after (weeks; blank for none)
-            <input name="rebookWeeks" type="number" min="1" max="52" step="0.5" defaultValue={service.rebookAfterDays ? service.rebookAfterDays / 7 : ''} />
-          </label>
-        ) : null}
+        <p className="muted small">The text inviting clients to book this again is set in Settings → Client texts.</p>
         <fieldset className="field">
           <legend>Who performs it</legend>
           {boot.staff

@@ -6,10 +6,10 @@ import { PageHead, Pill, Toggle } from '../ui';
 const AUTOMATIONS: { key: string; name: string; when: (n: ReturnType<typeof useBoot>['settings']['notifications']) => string }[] = [
   { key: 'booking', name: 'Booking confirmation', when: () => 'Right after booking' },
   { key: 'moved', name: 'Time changed', when: () => 'When the client or the studio moves an appointment' },
-  { key: 'confirm-request', name: 'Confirmation request', when: (n) => `${n.confirmHoursBefore} hours before (if booked further ahead)` },
-  { key: 'reminder', name: 'Reminder', when: (n) => `${n.reminderHoursBefore} hours before` },
+  { key: 'confirm-request', name: 'Confirmation request', when: (n) => `${n.confirmHoursBefore} hours before (if booked further ahead) · timing in Settings` },
+  { key: 'reminder', name: 'Reminder', when: (n) => `${n.reminderHoursBefore} hours before · timing in Settings` },
   { key: 'receipt', name: 'Receipt + referral link', when: () => 'After checkout' },
-  { key: 'rebook', name: 'Rebooking nudge', when: () => 'After each service’s rebooking time (set per service), if nothing’s booked' },
+  { key: 'rebook', name: 'Time to book again', when: () => 'For the services turned on in Settings, after each one’s own time, if nothing’s booked' },
   { key: 'referral', name: 'Referral credit earned', when: () => 'When a referred friend’s first visit is paid' },
   { key: 'cancel', name: 'Cancellation', when: () => 'When an appointment is cancelled' },
   { key: 'birthday', name: 'Birthday', when: () => 'On their birthday, around 10am' },
@@ -146,15 +146,19 @@ function Campaign() {
           Message
           <textarea rows={4} value={msg} onChange={(e) => (setMsg(e.target.value), setConfirm(false))} />
         </label>
-        <p className="muted small">{msg.length + 24} characters · “Reply STOP to opt out” is added automatically · send between 9am and 8pm.</p>
+        <p className="muted small">{msg.length + 24} characters · “Reply STOP to opt out” is added automatically · sent during quiet hours, it waits until they end.</p>
         {result ? <p className="note">{result}</p> : null}
         {confirm ? (
           <div className="row-actions">
             <button
               className="btn btn--honey"
               onClick={async () => {
-                const r = await api<{ sent: number; of: number; simulated: boolean }>('/campaigns', { audience: aud, body: msg });
-                setResult(`${r.simulated ? 'Saved' : 'Sent'} to ${r.sent} of ${r.of} clients${r.simulated ? ' (Twilio isn’t connected yet, so nothing went out)' : ''}.`);
+                const r = await api<{ sent: number; queued: number; of: number; simulated: boolean }>('/campaigns', { audience: aud, body: msg });
+                setResult(
+                  r.queued
+                    ? `It’s quiet hours: ${r.queued} of ${r.of} texts go out when they end.`
+                    : `${r.simulated ? 'Saved' : 'Sent'} to ${r.sent} of ${r.of} clients${r.simulated ? ' (Twilio isn’t connected yet, so nothing went out)' : ''}.`,
+                );
                 setConfirm(false);
               }}
             >

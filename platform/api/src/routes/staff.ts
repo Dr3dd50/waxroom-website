@@ -7,16 +7,20 @@ import type { Appointment, Client, Membership, Message, Package, Payment, Referr
 import { addDays, zoned, zonedToUtc } from '../lib/time';
 import { HttpError, bad, nowIso, rid, toE164 } from '../lib/util';
 import { appointmentsBetween, getSettings, isFree, slotsFor } from '../services/availability';
-import { cancelAppointment, checkoutAppointment, createAppointment, finalizeStaffBooking, membershipVisitsLeft, moveAppointment, quote } from '../services/appointments';
+import { cancelAppointment, cancelOutcome, checkoutAppointment, feeFor, refundHours, createAppointment, finalizeStaffBooking, membershipVisitsLeft, moveAppointment, quote } from '../services/appointments';
 import { importGlossGenius } from '../services/importer';
 import { requireSwitched, switched } from '../services/switchover';
 import { defaultRebookDays } from '../seed';
-import { upsertClient, uniqueReferralCode } from '../services/clients';
+import { findClientByPhone, upsertClient, uniqueReferralCode } from '../services/clients';
 import { payments } from '../services/payments';
 import { sendText } from '../services/sms';
+import { sendOrQueue } from '../services/alerts';
 import { runDueTexts } from '../services/notify';
 import { hashPassword } from '../seed';
 import { config, stripeLive, twilioLive } from '../config';
+
+/** How long a texted card link works. */
+const CARD_LINK_DAYS = 7;
 
 const publicStaff = (s: Staff) => ({ id: s.id, name: s.name, short: s.short, email: s.email, phone: s.phone, role: s.role, color: s.color, active: s.active, bookable: s.bookable, schedule: s.schedule, timeOff: s.timeOff ?? [], alerts: s.alerts !== false });
 
@@ -101,7 +105,7 @@ export function staffRoutes(store: Store) {
     let isNew = false;
     if (b.clientId) client = await store.get<Client>('clients', b.clientId);
     // a new client starts on appointment texts; an existing one keeps their choice (a STOP stays a STOP)
-    else if (b.client) ({ client, isNew } = await upsertClient(store, b.client));
+    else if (b.client) ({ client, isNew } = await upsertClient(store, b.client, { trusted: true }));
     if (!client) throw bad('Pick or add a client.');
     if (b.clientId && !isOwner(c)) await clientOr404(c, client.id);
     const appt = await createAppointment(store, { client, isNewClient: isNew, service, staffId: b.staffId, start: b.start, source: 'staff', notes: b.notes, price: b.price });
@@ -138,6 +142,21 @@ export function staffRoutes(store: Store) {
     const b = await c.req.json<{ noShow?: boolean; waive?: boolean }>();
     await requireSwitched(store, 'Cancelling appointments here');
     return c.json(await cancelAppointment(store, a, { by: 'staff', noShow: b.noShow, waive: b.waive, staff: c.get('staff') }));
+  });
+
+  // What each way of cancelling would charge and refund right now (the same sums the cancel uses).
+  r.get('/appointments/:id/cancel-preview', async (c) => {
+    const a = await apptOr404(c, c.req.param('id')!);
+    const settings = await getSettings(store);
+    const late = feeFor(a, settings, false) > 0;
+    return c.json({
+      late,
+      windowHours: settings.policies.cancellationWindowHours,
+      refundHours: refundHours(settings),
+      cancel: cancelOutcome(a, settings),
+      waive: cancelOutcome(a, settings, { waive: true }),
+      noShow: cancelOutcome(a, settings, { noShow: true }),
+    });
   });
 
   r.get('/appointments/:id/quote', async (c) => {
@@ -219,8 +238,9 @@ export function staffRoutes(store: Store) {
 
   r.post('/clients', async (c) => {
     const b = await c.req.json<{ first: string; last: string; phone: string; email?: string; smsMarketing?: boolean; birthday?: string }>();
-    const { client, isNew } = await upsertClient(store, b);
-    if (!isNew) throw bad(`${client.first} ${client.last} already has that phone number.`);
+    const phone = toE164(b.phone ?? '');
+    if (phone && (await findClientByPhone(store, phone))) throw bad('A client with that phone number is already on file. Search for them instead.');
+    const { client } = await upsertClient(store, b, { trusted: true });
     return c.json(clientSummary(client, await seesContact(c)));
   });
 
@@ -248,21 +268,18 @@ export function staffRoutes(store: Store) {
     return c.json(clientSummary(x, contact));
   });
 
-  // Add a card at the desk (card reader or typed in): same SetupIntent flow as online.
-  r.post('/clients/:id/card/start', async (c) => {
-    await requireSwitched(store, 'Saving cards here');
+  // A card for a client booked by phone or at the desk: text them a link to Stripe's
+  // card form on our site. Nobody at the studio types or sees a card number.
+  r.post('/clients/:id/card-link', async (c) => {
+    await requireSwitched(store, 'Saving cards');
     const x = await clientOr404(c, c.req.param('id')!);
-    x.customerId = await payments.ensureCustomer(x);
-    await store.put('clients', x);
-    return c.json(await payments.startCardSetup(x.customerId));
-  });
-  r.post('/clients/:id/card/confirm', async (c) => {
-    await requireSwitched(store, 'Saving cards here');
-    const x = await clientOr404(c, c.req.param('id')!);
-    const b = await c.req.json<{ setupId: string; simulatedCard?: { number: string } }>();
-    x.card = await payments.finishCardSetup(b.setupId, b.simulatedCard);
-    await store.put('clients', x);
-    return c.json(clientSummary(x, await seesContact(c)));
+    const token = rid(16);
+    await store.put('tokens', { id: token, kind: 'card', clientId: x.id, expiresAt: new Date(Date.now() + CARD_LINK_DAYS * 86400000).toISOString() });
+    const link = `${config.siteUrl}/card/?t=${token}`;
+    if (!x.smsReminders) return c.json({ link, texted: false, reason: `${x.first} has opted out of texts, so share the link another way.` });
+    const settings = await getSettings(store);
+    const m = await sendOrQueue(store, settings, x.phone, `Hi ${x.first}, add a card for your Wax Room appointments here: ${link} It's saved securely with Stripe. The link works for ${CARD_LINK_DAYS} days.`, 'card-link', x);
+    return c.json({ link, texted: m.status !== 'failed', queued: m.status === 'queued', error: m.error });
   });
 
   r.post('/clients/:id/membership', requireOwner, async (c) => {
@@ -278,12 +295,16 @@ export function staffRoutes(store: Store) {
     }
     const m = await store.get<Membership>('memberships', membershipId);
     if (!m) throw bad('Pick a membership.');
-    if (!x.card) throw bad('Add a card on file first.');
+    const current = x.membership && x.membership.status !== 'cancelled' ? x.membership : null;
+    if (current?.membershipId === m.id && current.status === 'active') throw bad(`${x.first} is already on ${m.name}.`);
+    if (!x.card) throw bad('Text the client a card link first (Add a card).');
     x.customerId ??= await payments.ensureCustomer(x);
     // the client isn't here to approve a payment their bank flags; then they join online instead
     const sub = await payments.subscribe(x.customerId, x.card, m);
     if (sub.priceId && !m.stripePriceId) await store.put('memberships', { ...m, stripePriceId: sub.priceId });
     if (!sub.active) throw new HttpError(402, `The first month didn’t go through: ${sub.error ?? 'card declined'}. The client can join online, where they can approve it with their bank.`);
+    // a switch: the old membership stops billing once the new one is running
+    if (current?.subscriptionId && current.subscriptionId !== sub.id) await payments.cancelSubscription(current.subscriptionId);
     x.membership = { membershipId: m.id, since: nowIso(), status: 'active', subscriptionId: sub.id, periodStart: nowIso() };
     await store.put('clients', x);
     await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: x.id, kind: 'membership', amount: m.price, tip: 0, method: 'card', status: 'paid', providerId: sub.invoiceId ?? sub.id, simulated: !payments.live() });
@@ -330,12 +351,16 @@ export function staffRoutes(store: Store) {
     const list = await audience(b.audience);
     // marketing texts always carry the opt-out line
     const text = `${b.body.trim()}\nReply STOP to opt out`;
+    const settings = await getSettings(store);
     let sent = 0;
+    let queued = 0;
     for (const x of list) {
-      const m = await sendText(store, x.phone, text.replace('{first}', x.first), 'campaign', x);
-      if (m.status !== 'failed') sent++;
+      // during quiet hours each one waits in the outbox until morning
+      const m = await sendOrQueue(store, settings, x.phone, text.replace('{first}', x.first), 'campaign', x);
+      if (m.status === 'queued') queued++;
+      else if (m.status !== 'failed') sent++;
     }
-    return c.json({ sent, of: list.length, simulated: !twilioLive() });
+    return c.json({ sent, queued, of: list.length, simulated: !twilioLive() });
   });
 
   r.post('/run-texts', requireOwner, async (c) => {
@@ -359,6 +384,19 @@ export function staffRoutes(store: Store) {
   });
 
   // ── owner settings ──
+  // The text inviting a client to book again, per service: on or off, and after how many days.
+  r.put('/rebook-texts', requireOwner, async (c) => {
+    const b = await c.req.json<{ services: { id: string; on: boolean; days: number }[] }>();
+    for (const row of b.services ?? []) {
+      const s = await store.get<Service>('services', row.id);
+      if (!s) continue;
+      const days = Math.round(Number(row.days));
+      if (row.on && !(days >= 1 && days <= 365)) throw bad(`Set the timing for ${s.name} (1 to 52 weeks).`);
+      await store.put('services', { ...s, rebookText: !!row.on, rebookAfterDays: days >= 1 ? Math.min(365, days) : s.rebookAfterDays });
+    }
+    return c.json(await store.list<Service>('services'));
+  });
+
   r.put('/services/:id', requireOwner, async (c) => {
     const s = await store.get<Service>('services', c.req.param('id')!);
     if (!s) throw new HttpError(404, 'Service not found.');
@@ -396,11 +434,21 @@ export function staffRoutes(store: Store) {
   r.put('/settings', requireOwner, async (c) => {
     const s = await getSettings(store);
     const b = await c.req.json<Partial<Settings>>();
+    const n = { ...s.notifications, ...b.notifications };
+    const whole = (v: unknown, lo: number, hi: number) => Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi;
+    if (b.notifications) {
+      if (!whole(n.reminderHoursBefore, 1, 72)) throw bad('Send the reminder 1 to 72 hours before.');
+      if (!whole(n.confirmHoursBefore, 2, 168) || n.confirmHoursBefore <= n.reminderHoursBefore) throw bad('Ask for confirmation earlier than the reminder (up to 7 days before).');
+      // the same start and end means no quiet hours
+      if (!whole(n.quietStart, 0, 23) || !whole(n.quietEnd, 0, 23)) throw bad('Pick when quiet hours start and end.');
+    }
+    const refund = b.policies?.depositRefundHours;
+    if (refund !== undefined && !whole(refund, 0, 720)) throw bad('Set the deposit refund window in hours (0 to 720).');
     const next: Settings = {
       ...s,
       hours: b.hours ?? s.hours,
       policies: { ...s.policies, ...b.policies },
-      notifications: { ...s.notifications, ...b.notifications },
+      notifications: n,
       automations: { ...s.automations, ...b.automations },
       referrals: { ...s.referrals, ...b.referrals },
       staffAlerts: { ...s.staffAlerts, ...b.staffAlerts },

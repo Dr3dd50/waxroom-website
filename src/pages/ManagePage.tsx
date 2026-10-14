@@ -17,9 +17,14 @@ type Booking = {
   deposit: number;
   first: string;
   card: string | null;
+  cancelPolicyFee: number;
   cancelFee: number;
+  cancelDepositRefund: number;
+  cancelDepositKept: number;
+  cancelled: { fee: number; depositRefund: number } | null;
   canCancelOnline: boolean;
   windowHours: number;
+  refundHours: number;
   calendar?: { ics: string; google: string };
 };
 
@@ -112,11 +117,7 @@ export function ManagePage() {
 
             {mode === 'cancel' && b ? (
               <div className="manage__confirm">
-                <p>
-                  {b.cancelFee
-                    ? `Because it’s within ${b.windowHours} hours, cancelling now charges a ${cents(b.cancelFee)} fee to ${b.card ?? 'your card on file'}, per our policy.`
-                    : 'There’s no charge to cancel.'}
-                </p>
+                <p>{cancelTerms(b)}</p>
                 <div className="book__actions">
                   <button className="btn btn--honey" disabled={busy} onClick={cancel}>
                     {busy ? 'Cancelling…' : b.cancelFee ? `Cancel and pay ${cents(b.cancelFee)}` : 'Yes, cancel it'}
@@ -130,6 +131,12 @@ export function ManagePage() {
 
             {mode === 'move' && b ? <MovePicker b={b} onMoved={(nb) => (setB(nb), setMode('view'))} /> : null}
 
+            {b.status === 'cancelled' && b.cancelled && (b.cancelled.fee || b.cancelled.depositRefund) ? (
+              <p className="muted">
+                {b.cancelled.fee ? `A ${cents(b.cancelled.fee)} late-cancellation fee was charged. ` : ''}
+                {b.cancelled.depositRefund ? `Your ${cents(b.cancelled.depositRefund)} deposit is being refunded to your card; it can take 5–10 days to show.` : ''}
+              </p>
+            ) : null}
             {b.status === 'cancelled' ? (
               <a className="btn btn--honey" href="/book/">
                 Book another time
@@ -140,6 +147,21 @@ export function ManagePage() {
       </div>
     </section>
   );
+}
+
+/** What cancelling now means, in the same sums the cancellation itself uses. */
+function cancelTerms(b: Booking) {
+  const card = b.card ?? 'your card on file';
+  if (b.cancelPolicyFee) {
+    let t = `Because it’s within ${b.windowHours} hours, a ${cents(b.cancelPolicyFee)} late-cancellation fee applies, per our policy`;
+    if (b.cancelDepositKept) t += `. Your ${cents(b.cancelDepositKept)} deposit goes toward it`;
+    t += b.cancelFee ? `, and ${cents(b.cancelFee)} is charged to ${card}.` : ', so nothing more is charged.';
+    if (b.cancelDepositRefund) t += ` The other ${cents(b.cancelDepositRefund)} of your deposit is refunded.`;
+    return t;
+  }
+  if (b.cancelDepositKept) return `There’s no fee to cancel, but deposits are refunded only when you cancel at least ${b.refundHours} hours ahead, so your ${cents(b.cancelDepositKept)} deposit is kept.`;
+  if (b.cancelDepositRefund) return `There’s no charge to cancel, and your ${cents(b.cancelDepositRefund)} deposit is refunded to ${card}.`;
+  return 'There’s no charge to cancel.';
 }
 
 function MovePicker({ b, onMoved }: { b: Booking; onMoved: (b: Booking) => void }) {

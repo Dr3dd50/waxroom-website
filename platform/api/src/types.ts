@@ -41,8 +41,10 @@ export type Service = {
   bookableOnline: boolean;
   /** Short note texted with the reminder ("let hair grow to ¼ inch…"). */
   prepTip?: string;
-  /** Days after a visit to text a rebooking nudge, if nothing is booked. null = no nudge. */
+  /** Days after a visit before the text inviting the client to book again (when nothing is booked). */
   rebookAfterDays?: number | null;
+  /** Send that text for this service. Off until the owner turns it on in Settings. */
+  rebookText?: boolean;
   /**
    * A New Client Ritual: this service (its id) plus a complimentary steam, at an
    * introductory price, for a client who hasn't had that service before.
@@ -118,10 +120,21 @@ export type Appointment = {
   deposit?: { amount: number; status: 'pending' | 'paid' | 'failed' | 'applied' | 'refunded'; paymentId?: string };
   referral?: { referrerId: string; code: string; friendDiscount: number };
   texts: { bookedAt?: string; confirmRequestAt?: string; reminderAt?: string; confirmedAt?: string };
+  /** When it last moved to a new time: the reminder timing counts from here, as from a new booking. */
+  movedAt?: string;
   /** Bumped on every change, so a calendar that already has the event replaces it. */
   calendarSeq?: number;
   checkout?: Checkout;
-  cancel?: { at: string; by: 'client' | 'staff'; fee: number; feeStatus: 'none' | 'charged' | 'failed' | 'waived'; noShow: boolean };
+  cancel?: {
+    at: string;
+    by: 'client' | 'staff';
+    fee: number;
+    feeStatus: 'none' | 'charged' | 'failed' | 'waived';
+    noShow: boolean;
+    /** Of a paid deposit: what went back to the card, and what was kept toward the fee. */
+    depositRefund?: number;
+    depositKept?: number;
+  };
 };
 
 export type Checkout = {
@@ -158,7 +171,7 @@ export type Message = {
   to: string;
   from?: string;
   clientId?: string;
-  kind: 'booking' | 'moved' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff' | 'alert';
+  kind: 'booking' | 'moved' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff' | 'alert' | 'card-link';
   body: string;
   status: 'sent' | 'simulated' | 'failed' | 'received' | 'queued';
   /** Queued: held until this time (a staff text that came in during quiet hours). */
@@ -172,7 +185,7 @@ export type Payment = {
   at: string;
   clientId: string;
   appointmentId?: string;
-  kind: 'deposit' | 'checkout' | 'cancel-fee' | 'no-show-fee' | 'membership' | 'package';
+  kind: 'deposit' | 'checkout' | 'cancel-fee' | 'no-show-fee' | 'membership' | 'package' | 'refund';
   amount: number;
   tip: number;
   method: 'card' | 'cash' | 'other';
@@ -191,6 +204,8 @@ export type Settings = {
     cancellationPolicy: string;
     cancellationWindowHours: number;
     cancellationFeePercent: number;
+    /** A paid deposit is refunded when the client cancels at least this many hours ahead. Missing = the late-cancel window. */
+    depositRefundHours?: number;
     noShowFeePercent: number;
     allowOnlineCancellations: boolean;
     cardRequired: boolean;

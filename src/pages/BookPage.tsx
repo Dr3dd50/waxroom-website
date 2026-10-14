@@ -10,7 +10,7 @@ import { SERVICE_GROUPS, findServicePage, groupCategories } from '../content/ser
 
 type Svc = { id: string; name: string; category: string; price: number; priceVaries: boolean; duration: number; deposit: number | null; depositNewClientsOnly: boolean; description: string | null; staffIds: string[] };
 type Catalog = { staff: { id: string; short: string; color: string }[]; services: Svc[] };
-export type Config = { booking: 'open' | 'closed'; payments: 'stripe' | 'simulated'; texts: 'twilio' | 'simulated'; stripePublishableKey: string | null; referrals: { enabled: boolean; friendGets: number }; policies: { cancellationPolicy: string; cancellationWindowHours: number; cancellationFeePercent: number } };
+export type Config = { booking: 'open' | 'closed'; payments: 'stripe' | 'simulated'; texts: 'twilio' | 'simulated'; stripePublishableKey: string | null; referrals: { enabled: boolean; friendGets: number }; policies: { cancellationPolicy: string; cancellationWindowHours: number; cancellationFeePercent: number; depositRefundHours: number } };
 type Slot = { start: string; staffIds: string[] };
 type Booked = { token: string; start: string; service: string; staff: string; price: number; deposit: number; referralDiscount: number; card: string | null; first: string; calendar?: { ics: string; google: string } };
 
@@ -289,7 +289,7 @@ function NativeBooking({ config }: { config: Config }) {
               <h2>Card to hold your booking</h2>
               <p className="muted">
                 {deposit
-                  ? `${service.depositNewClientsOnly ? 'New clients pay' : 'This service takes'} a ${cents(deposit)} deposit when booking; it comes off your total. Everything else is paid at your visit.`
+                  ? `${service.depositNewClientsOnly ? 'New clients pay' : 'This service takes'} a ${cents(deposit)} deposit when booking; it comes off your total. Everything else is paid at your visit. Cancel at least ${config.policies.depositRefundHours} hours ahead and the deposit is refunded; after that it’s kept, and goes toward any late fee.`
                   : 'Nothing is charged now. You pay at your visit.'}{' '}
                 Late cancellations (within {config.policies.cancellationWindowHours} hours) are charged {config.policies.cancellationFeePercent}% and no-shows in full.
               </p>

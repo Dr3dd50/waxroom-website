@@ -2,7 +2,8 @@
 // it's with, and the owner a copy of every one. Whoever made the change isn't told
 // about it. Client phone numbers and emails are never in these texts, so they
 // don't leak to employees who aren't allowed to see them. During quiet hours the
-// text waits in the outbox until the morning.
+// text waits in the outbox until the morning, as do texts to clients that the
+// studio sends (offers, and the texts a change at the desk sets off).
 import type { Store } from '../store/store';
 import type { Appointment, Client, Message, Service, Settings, Staff } from '../types';
 import { addDays, fmtDate, fmtTime, zoned, zonedToUtc } from '../lib/time';
@@ -16,12 +17,14 @@ export type AlertEvent =
   | { kind: 'moved'; from: { start: string; staffId: string } }
   | { kind: 'cancelled'; fee?: number; feeCharged?: boolean };
 
-/** Who made the change: a staff member, the client (online or by text), or an import. */
+/** Who made the change: a staff member, or the client (online or by text). */
 export type Actor = { staff: Staff } | { client: true };
 
 export async function alertStaff(store: Store, appt: Appointment, event: AlertEvent, actor: Actor) {
   const settings = await getSettings(store);
-  if (!switched(settings) || !settings.staffAlerts?.enabled || appt.source === 'import') return [];
+  // appointments that came over from GlossGenius count like any other once they're ours
+  // (the import itself runs before the switch, so it never sends any)
+  if (!switched(settings) || !settings.staffAlerts?.enabled) return [];
 
   const team = await store.list<Staff>('staff');
   const ids = new Set([appt.staffId, ...(event.kind === 'moved' ? [event.from.staffId] : []), ...team.filter((s) => s.role === 'owner').map((s) => s.id)]);
@@ -41,16 +44,18 @@ export async function alertStaff(store: Store, appt: Appointment, event: AlertEv
   else if (event.kind === 'moved') body = `Moved: ${what}, now ${when(appt.start)} with ${who(appt.staffId)} (was ${when(event.from.start)}${event.from.staffId !== appt.staffId ? ` with ${who(event.from.staffId)}` : ''}). Moved by ${by}.`;
   else body = `Cancelled: ${what}, ${when(appt.start)} with ${who(appt.staffId)}. Cancelled by ${by}.${event.fee ? ` ${event.feeCharged ? 'Late fee charged' : 'Late fee not charged'}: ${money(event.fee)}.` : ''}`;
 
-  const sendAfter = quietUntil(settings);
   const out: Message[] = [];
-  for (const s of to) {
-    if (sendAfter) {
-      const at = nowIso();
-      const msg: Message = { id: `${at}_${rid(4)}`, at, direction: 'out', to: s.phone!, kind: 'alert', body, status: 'queued', sendAfter };
-      out.push(await store.put('outbox', msg));
-    } else out.push(await sendText(store, s.phone!, body, 'alert'));
-  }
+  for (const s of to) out.push(await sendOrQueue(store, settings, s.phone!, body, 'alert'));
   return out;
+}
+
+/** Text now, or during quiet hours hold it in the outbox until they end. */
+export async function sendOrQueue(store: Store, settings: Settings, to: string, body: string, kind: Message['kind'], client?: Client) {
+  const sendAfter = quietUntil(settings);
+  if (!sendAfter) return sendText(store, to, body, kind, client);
+  const at = nowIso();
+  const msg: Message = { id: `${at}_${rid(4)}`, at, direction: 'out', to, clientId: client?.id, kind, body, status: 'queued', sendAfter };
+  return store.put('outbox', msg);
 }
 
 /** Quiet hours run from quietStart to quietEnd, usually overnight (21 → 9). */
@@ -76,9 +81,14 @@ async function flushNow(store: Store, now: Date) {
   let sent = 0;
   for (const m of await store.list<Message>('outbox')) {
     if (m.sendAfter && m.sendAfter > now.toISOString()) continue;
-    await sendText(store, m.to, m.body, m.kind);
+    // a client who opted out overnight doesn't get what was waiting
+    const client = m.clientId ? await store.get<Client>('clients', m.clientId) : undefined;
+    const wanted = !m.clientId || (!!client?.smsReminders && (m.kind !== 'campaign' || client.smsMarketing));
+    if (wanted) {
+      await sendText(store, client?.phone ?? m.to, m.body, m.kind, client);
+      sent++;
+    }
     await store.delete('outbox', m.id);
-    sent++;
   }
   return sent;
 }

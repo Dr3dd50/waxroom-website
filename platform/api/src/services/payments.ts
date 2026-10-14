@@ -62,7 +62,7 @@ export const payments = {
       return { brand, last4: digits.slice(-4) || '4242', paymentMethodId: `pm_sim_${rid()}` };
     }
     const si = await api().setupIntents.retrieve(setupId, { expand: ['payment_method'] });
-    if (si.status !== 'succeeded') throw new Error('The card wasn’t saved. Please try again.');
+    if (si.status !== 'succeeded') throw new HttpError(402, 'The card wasn’t saved. Please try again.');
     const pm = si.payment_method as Stripe.PaymentMethod;
     return { brand: cap(pm.card?.brand ?? 'card'), last4: pm.card?.last4 ?? '••••', paymentMethodId: pm.id };
   },
@@ -118,10 +118,11 @@ export const payments = {
     }
   },
 
-  async refund(id: string) {
+  /** Refund a payment: all of it, or `amount` cents of it. */
+  async refund(id: string, amount?: number) {
     if (!stripeLive() || !id || id.startsWith('pi_sim_')) return;
     try {
-      await api().refunds.create({ payment_intent: id });
+      await api().refunds.create({ payment_intent: id, ...(amount ? { amount } : {}) });
     } catch (e) {
       // Stripe can send the same event again: a second refund is already done
       if ((e as Stripe.errors.StripeError).code !== 'charge_already_refunded') throw e;
