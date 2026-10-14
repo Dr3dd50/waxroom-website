@@ -1261,10 +1261,17 @@ code {
   .side__nav {
     display: flex;
     width: 100%;
-    justify-content: space-around;
+    /* owners have more buttons than fit: they scroll sideways, starting from the first */
+    justify-content: flex-start;
     overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .side__nav::-webkit-scrollbar {
+    display: none;
   }
   .side__nav button {
+    flex: 1 0 auto;
+    min-width: 64px;
     flex-direction: column;
     gap: 2px;
     padding: 0.4rem 0.5rem;
@@ -1316,6 +1323,30 @@ code {
   background: rgba(248, 241, 231, 0.08);
   font-size: 0.72rem;
   color: rgba(248, 241, 231, 0.7);
+}
+/* phones only: who's signed in, sign-out and the notice, above the page */
+.mobile-top {
+  display: none;
+}
+@media (max-width: 860px) {
+  .side .side__mode {
+    display: none;
+  }
+  .mobile-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .mobile-top .side__mode {
+    flex-basis: 100%;
+    background: rgba(23, 17, 11, 0.06);
+    color: var(--muted);
+  }
 }
 .form-error {
   margin: 0;

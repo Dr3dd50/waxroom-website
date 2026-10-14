@@ -94,16 +94,26 @@ export default function App() {
               <Icon name="out" />
             </button>
           </div>
-          {!boot.settings.switchover.done ? (
-            <p className="side__mode">GlossGenius is still the booking system. Booking, payments and texts here start when the owner switches over in Settings.</p>
-          ) : !boot.live.payments || !boot.live.texts ? (
-            <p className="side__mode">
-              {!boot.live.payments ? 'Payments are simulated until Stripe is connected. ' : ''}
-              {!boot.live.texts ? 'Texts are saved, not sent, until Twilio is connected.' : ''}
-            </p>
-          ) : null}
+          <ModeNote boot={boot} />
         </aside>
         <main className="main">
+          {/* phones: the sidebar becomes the bottom menu, so who's signed in, sign-out and the notice sit up top */}
+          <div className="mobile-top">
+            <span>
+              {boot.me.short} · {owner ? 'Owner' : 'Esthetician'}
+            </span>
+            <button
+              className="chip"
+              onClick={async () => {
+                await api('/logout', {});
+                setBoot(null);
+                setState('signed-out');
+              }}
+            >
+              Sign out
+            </button>
+            <ModeNote boot={boot} />
+          </div>
           {current === 'calendar' ? <CalendarView /> : null}
           {current === 'availability' ? <AvailabilityView /> : null}
           {current === 'clients' ? <ClientsView /> : null}
@@ -115,5 +125,18 @@ export default function App() {
         </main>
       </div>
     </BootCtx.Provider>
+  );
+}
+
+/** Why booking, payments or texts aren't fully on yet. */
+function ModeNote({ boot }: { boot: Boot }) {
+  if (!boot.settings.switchover.done)
+    return <p className="side__mode">GlossGenius is still the booking system. Booking, payments and texts here start when the owner switches over in Settings.</p>;
+  if (boot.live.payments && boot.live.texts) return null;
+  return (
+    <p className="side__mode">
+      {!boot.live.payments ? 'Payments are simulated until Stripe is connected. ' : ''}
+      {!boot.live.texts ? 'Texts are saved, not sent, until Twilio is connected.' : ''}
+    </p>
   );
 }
