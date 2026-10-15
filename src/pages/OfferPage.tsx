@@ -7,7 +7,7 @@ import ritualData from '../data/rituals.json';
 import { business, duration, money } from '../data';
 import { api } from '../lib/api';
 import { bookLink, membershipLink, packageLink } from '../lib/booking';
-import { LIVE_OFFERS, membershipOf, needsOurBooking, offerPath, pageFor, partsOf, type Offer } from '../content/offers';
+import { LIVE_OFFERS, membershipOf, needsOurBooking, offerPath, pageFor, partsOf, vSteam, type Offer } from '../content/offers';
 import { findServicePage, servicePath, type Faq } from '../content/services';
 import { Visit } from '../sections/Visit';
 import { ExploreMore, FaqSection, Film, Highlights, LandingHero, OffersSection, PricesSection, ReviewsSection, nice, useLandingMotion } from './serviceParts';
@@ -18,8 +18,8 @@ const TAG = { ritual: 'New client ritual', membership: 'Membership', package: 'P
 const STEAM_TEXT = 'A quiet, seated session over a warm infusion of premium-grade herbs: a private hour to pause, breathe and reset.';
 /** Danielle takes clients from ads for Jet Plasma, BioRePeel and lashes only, so other offers' pages don't lead with reviews naming her. */
 const DANIELLE_PAGES = new Set(['skin-treatments', 'lash-extensions']);
-/** A non-breaking hyphen keeps "V-steam" on one line. */
-const nb = (s: string) => s.replace(/V-steam/g, 'V‑steam');
+/** "V-steam" for the steam, with a non-breaking hyphen that keeps it on one line. */
+const nb = (s: string) => vSteam(s).replace(/V-steam/g, 'V‑steam');
 
 /** Where the button goes: the ritual's booking, or joining/buying the membership or package. */
 function ctaFor(o: Offer) {
@@ -172,7 +172,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
               <div className="price__row">
                 <h3 className="price__name">
                   {quantity > 1 ? `${quantity} × ` : ''}
-                  {nice(s!.name)}
+                  {nb(nice(s!.name))}
                 </h3>
                 <span className="price__dots" aria-hidden="true" />
                 <span className="price__meta">{duration(s!.duration)}</span>
@@ -183,7 +183,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
                   s!.description
                     .split(/\n+/)
                     .filter((p) => !/valued at|\$\d/.test(p))
-                    .map((p, i) => <p key={i}>{p}</p>)
+                    .map((p, i) => <p key={i}>{nb(p)}</p>)
                 ) : /steam/i.test(s!.name) ? (
                   <p>{STEAM_TEXT}</p>
                 ) : null}
@@ -217,7 +217,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
               {membership?.description
                 .split(/\n+/)
                 .filter(Boolean)
-                .map((p, i) => <p key={i}>{p}</p>)}
+                .map((p, i) => <p key={i}>{nb(p)}</p>)}
               {math && o.kind !== 'ritual' ? <p className="price__note">{math[0].toUpperCase() + math.slice(1)}.</p> : null}
               {terms.map((t) => (
                 <p className="price__note" key={t}>
@@ -251,7 +251,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
                     {i + 1}
                   </span>
                   <h3>{nb(s.title)}</h3>
-                  <p>{s.body}</p>
+                  <p>{nb(s.body)}</p>
                 </li>
               ))}
             </ol>
@@ -265,7 +265,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
             <p className="eyebrow">Before your visit</p>
             <ul>
               {before.map((t) => (
-                <li key={t}>{t}</li>
+                <li key={t}>{nb(t)}</li>
               ))}
             </ul>
           </article>
@@ -273,7 +273,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
             <p className="eyebrow">Aftercare</p>
             <ul>
               {after.map((t) => (
-                <li key={t}>{t}</li>
+                <li key={t}>{nb(t)}</li>
               ))}
             </ul>
           </article>
@@ -282,9 +282,9 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
 
       <ReviewsSection match={page.reviewMatch} label={page.navLabel} exclude={DANIELLE_PAGES.has(page.slug) ? undefined : /danielle/i} />
 
-      <OffersSection memberships={page.memberships} packages={page.packages} categories={page.categories} leaveOut={{ key: o.key, name: o.name }} />
+      <OffersSection memberships={page.memberships} packages={page.packages} categories={page.categories} leaveOut={{ key: o.key, name: o.name }} say={nb} />
 
-      <FaqSection faqs={faqs} />
+      <FaqSection faqs={faqs.map((f) => ({ q: nb(f.q), a: nb(f.a) }))} />
 
       <ExploreMore
         links={[{ href: servicePath(page), label: page.name }, ...others.map((x) => ({ href: offerPath(x), label: `${x.name} · ${TAG[x.kind].toLowerCase()}` }))]}

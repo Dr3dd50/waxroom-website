@@ -240,11 +240,14 @@ export function OffersSection({
   packages: pNames,
   categories,
   leaveOut,
+  say = (t) => t,
 }: {
   memberships: string[];
   packages: string[];
   categories: string[];
   leaveOut?: { key: string; name: string };
+  /** Rewords the cards' text (an offer's page says V-steam). */
+  say?: (t: string) => string;
 }) {
   const rituals = useRituals(categories).filter((r) => r.key !== leaveOut?.key);
   const memberships = business.memberships.filter((m) => mNames.includes(m.name) && m.name !== leaveOut?.name);
@@ -262,7 +265,7 @@ export function OffersSection({
             <a className="card reveal" key={m.name} {...membershipLink(m.name, m.url)}>
               <span className="card__tag">Membership</span>
               <h3>{m.name}</h3>
-              <p>{m.description}</p>
+              <p>{say(m.description)}</p>
               <p className="card__price">
                 {money(m.price ?? 0)}
                 <small>/{m.period}</small>
@@ -273,7 +276,7 @@ export function OffersSection({
             <a className="card card--pkg reveal" key={p.name} {...packageLink(p.name)}>
               <span className="card__tag">Package</span>
               <h3>{p.name}</h3>
-              <p>{p.items.map((i) => (i.quantity > 1 ? `${i.quantity}× ${i.name}` : i.name)).join(' + ')}</p>
+              <p>{say(p.items.map((i) => (i.quantity > 1 ? `${i.quantity}× ${i.name}` : i.name)).join(' + '))}</p>
               <p className="card__price">{money(p.price ?? 0)}</p>
             </a>
           ))}
