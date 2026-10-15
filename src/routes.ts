@@ -1,6 +1,6 @@
 import { NATIVE } from './lib/booking';
 import { SERVICE_GROUPS, SERVICE_PAGES, findGroupLanding, findServicePage, groupPath, servicePath, type ServiceGroup, type ServicePage } from './content/services';
-import { LIVE_OFFERS, findOffer, offerPath, type Offer } from './content/offers';
+import { LIVE_OFFERS, findOffer, offerPath, vSteam, type Offer } from './content/offers';
 
 export const SITE_URL = 'https://www.waxroomrichmond.com';
 
@@ -75,7 +75,7 @@ export function headFor(route: Route) {
     const price = `$${(o.price / 100).toFixed(o.price % 100 ? 2 : 0)}${o.billing ? '/month' : ''}`;
     return {
       title: `${o.name}: ${price} | The Wax Room, Midlothian VA`,
-      description: `${o.includes}, ${price}${o.kind === 'ritual' ? ' for your first visit for this service' : ''}. At The Wax Room in Midlothian, VA.`,
+      description: `${vSteam(o.includes)}, ${price}${o.kind === 'ritual' ? ' for your first visit for this service' : ''}. At The Wax Room in Midlothian, VA.`,
       canonical: `${SITE_URL}${offerPath(o)}`,
     };
   }

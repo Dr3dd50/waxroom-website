@@ -25,6 +25,10 @@ export type Offer = (typeof offerData.offers)[number] & {
 };
 
 export const OFFERS = offerData.offers as Offer[];
+
+/** Offer pages call the steam a V-steam, whatever the menu calls it. */
+export const vSteam = (s: string) =>
+  s.replace(/\b(a |an )?yoni[ -]steam(s?)\b/gi, (_m, art: string | undefined, plural: string) => `${art ? 'a ' : ''}V-steam${plural}`);
 export const offerPath = (o: Offer) => `/offers/${o.slug}/`;
 
 /** Can this offer be booked from this build of the site? */

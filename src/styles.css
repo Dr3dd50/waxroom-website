@@ -2792,40 +2792,43 @@ h3 {
 }
 
 
-/* ───────────────── Offer landing pages ───────────────── */
-.offer__title {
-  font-size: clamp(2.6rem, 7vw, 5.2rem);
-}
-.offer__lead {
-  font-size: clamp(1.15rem, 2.2vw, 1.4rem);
-  color: var(--ink);
+/* ───────────────── Offer landing pages ─────────────────
+   The service pages' hero, with what you get as the headline (the biggest thing)
+   and the price under it: large, but a step below the headline. */
+.hero__title em {
+  font-style: italic;
+  color: var(--honey-deep);
 }
 .offer__price {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  text-align: center;
   align-items: baseline;
   gap: 0.2rem 0.7rem;
-  margin: 0 0 2rem;
+  margin: -0.4rem 0 1.6rem;
+  text-align: center;
 }
 .offer__amt {
-  font: 600 clamp(2.4rem, 6vw, 3.6rem) / 1 var(--serif);
-  color: var(--honey-deep);
+  font: 400 clamp(1.9rem, 4.6vw, 3.6rem) / 1 var(--serif);
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }
 .offer__price small {
   margin-left: -0.5rem;
+  font-size: 1.05rem;
   color: var(--muted);
 }
 .offer__price s {
-  font-size: 1.3rem;
+  font: 400 clamp(1.4rem, 2.6vw, 2rem) / 1 var(--serif);
   color: var(--muted);
 }
 .offer__math {
   flex-basis: 100%;
-  margin: 0;
-  color: var(--muted);
+  margin: 0.2rem 0 0;
+  font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+  color: var(--ink);
 }
-.offer__again {
-  margin-top: 2rem;
+
+.nowrap {
+  white-space: nowrap;
 }
