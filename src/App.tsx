@@ -7,6 +7,7 @@ import { GroupPage } from './pages/GroupPage';
 import { BookPage } from './pages/BookPage';
 import { ManagePage } from './pages/ManagePage';
 import { CardPage } from './pages/CardPage';
+import { OfferPage } from './pages/OfferPage';
 import { JoinPage } from './pages/JoinPage';
 import { ReferralPage } from './pages/ReferralPage';
 import { BookContext, type BookTarget } from './lib/booking';
@@ -64,6 +65,7 @@ export default function App({ path }: { path: string }) {
         {route.kind === 'join' ? <JoinPage /> : null}
         {route.kind === 'referral' ? <ReferralPage /> : null}
         {route.kind === 'card' ? <CardPage /> : null}
+        {route.kind === 'offer' ? <OfferPage offer={route.offer} /> : null}
         {route.kind === 'notFound' ? (
           <section className="hero">
             <div className="hero__inner">

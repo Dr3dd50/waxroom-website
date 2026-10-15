@@ -1,5 +1,6 @@
 import { NATIVE } from './lib/booking';
 import { SERVICE_GROUPS, SERVICE_PAGES, findGroupLanding, findServicePage, groupPath, servicePath, type ServiceGroup, type ServicePage } from './content/services';
+import { LIVE_OFFERS, findOffer, offerPath, type Offer } from './content/offers';
 
 export const SITE_URL = 'https://www.waxroomrichmond.com';
 
@@ -13,6 +14,7 @@ export type Route =
   | { kind: 'join' }
   | { kind: 'referral' }
   | { kind: 'card' }
+  | { kind: 'offer'; offer: Offer }
   | { kind: 'notFound' };
 
 export function resolve(pathname: string): Route {
@@ -25,6 +27,11 @@ export function resolve(pathname: string): Route {
   if (NATIVE && path === '/join') return { kind: 'join' };
   if (NATIVE && path === '/card') return { kind: 'card' };
   if (NATIVE && /^\/r\/[A-Za-z0-9]+$/.test(path)) return { kind: 'referral' };
+  const offer = /^\/offers\/([a-z0-9-]+)$/.exec(path);
+  if (offer) {
+    const o = findOffer(offer[1]);
+    return o ? { kind: 'offer', offer: o } : { kind: 'notFound' };
+  }
   const m = /^\/services\/([a-z0-9-]+)$/.exec(path);
   const group = m && findGroupLanding(m[1]);
   if (group) return { kind: 'group', group };
@@ -34,7 +41,7 @@ export function resolve(pathname: string): Route {
 
 /** Every path that gets a pre-rendered HTML file. */
 /** Pages search engines should list. */
-export const SITEMAP_PATHS = ['/', ...SERVICE_GROUPS.filter((g) => g.landing).map(groupPath), ...SERVICE_PAGES.map(servicePath), '/gallery/'];
+export const SITEMAP_PATHS = ['/', ...SERVICE_GROUPS.filter((g) => g.landing).map(groupPath), ...SERVICE_PAGES.map(servicePath), ...LIVE_OFFERS.map(offerPath), '/gallery/'];
 /** Every path that gets a pre-rendered HTML file (/r/ serves every referral link). */
 export const PRERENDER_PATHS = [...SITEMAP_PATHS, '/404/', '/book/', ...(NATIVE ? ['/booking/', '/join/', '/r/', '/card/'] : [])];
 
@@ -63,6 +70,15 @@ export function headFor(route: Route) {
   if (route.kind === 'book') return { title: 'Book Online | The Wax Room, Midlothian VA', description: 'Book waxing, brows, lashes, Jet Plasma and more at The Wax Room in Midlothian, VA.', canonical: `${SITE_URL}/book/` };
   if (route.kind === 'manage') return { title: 'Your Booking | The Wax Room', description: 'View, change or cancel your appointment.', canonical: `${SITE_URL}/booking/` };
   if (route.kind === 'join') return { title: 'Memberships & Packages | The Wax Room', description: 'Join a monthly membership or buy a package at The Wax Room.', canonical: `${SITE_URL}/join/` };
+  if (route.kind === 'offer') {
+    const o = route.offer;
+    const price = `$${(o.price / 100).toFixed(o.price % 100 ? 2 : 0)}${o.billing ? '/month' : ''}`;
+    return {
+      title: `${o.name}: ${price} | The Wax Room, Midlothian VA`,
+      description: `${o.includes}, ${price}${o.kind === 'ritual' ? ' for your first visit for this service' : ''}. At The Wax Room in Midlothian, VA.`,
+      canonical: `${SITE_URL}${offerPath(o)}`,
+    };
+  }
   if (route.kind === 'card') return { title: 'Card on File | The Wax Room', description: 'Add a card to hold your appointments at The Wax Room.', canonical: `${SITE_URL}/card/` };
   if (route.kind === 'referral') return { title: 'A Gift From a Friend | The Wax Room', description: 'Money off your first visit to The Wax Room in Midlothian, VA.', canonical: `${SITE_URL}/` };
   if (route.kind === 'notFound') {

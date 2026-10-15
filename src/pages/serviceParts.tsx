@@ -170,9 +170,11 @@ export function PricesSection({ children }: { children: ReactNode }) {
   );
 }
 
-export function ReviewsSection({ match, label }: { match: RegExp; label: string }) {
-  const matched = reviews.reviews.filter((r) => match.test(r.text));
-  const shown = (matched.length >= 3 ? matched : [...matched, ...reviews.reviews.filter((r) => !matched.includes(r))]).slice(0, 6);
+/** `exclude`: reviews to leave out here (on an ad's page, ones naming someone who doesn't take those clients). */
+export function ReviewsSection({ match, label, exclude }: { match: RegExp; label: string; exclude?: RegExp }) {
+  const pool = exclude ? reviews.reviews.filter((r) => !exclude.test(r.text)) : reviews.reviews;
+  const matched = pool.filter((r) => match.test(r.text));
+  const shown = (matched.length >= 3 ? matched : [...matched, ...pool.filter((r) => !matched.includes(r))]).slice(0, 6);
   return (
     <section className="svc-section svc-section--paper" id="reviews">
       <div className="container">

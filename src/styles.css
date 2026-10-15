@@ -2791,3 +2791,41 @@ h3 {
   max-width: 60ch;
 }
 
+
+/* ───────────────── Offer landing pages ───────────────── */
+.offer__title {
+  font-size: clamp(2.6rem, 7vw, 5.2rem);
+}
+.offer__lead {
+  font-size: clamp(1.15rem, 2.2vw, 1.4rem);
+  color: var(--ink);
+}
+.offer__price {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  text-align: center;
+  align-items: baseline;
+  gap: 0.2rem 0.7rem;
+  margin: 0 0 2rem;
+}
+.offer__amt {
+  font: 600 clamp(2.4rem, 6vw, 3.6rem) / 1 var(--serif);
+  color: var(--honey-deep);
+}
+.offer__price small {
+  margin-left: -0.5rem;
+  color: var(--muted);
+}
+.offer__price s {
+  font-size: 1.3rem;
+  color: var(--muted);
+}
+.offer__math {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+}
+.offer__again {
+  margin-top: 2rem;
+}
