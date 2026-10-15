@@ -112,7 +112,7 @@ export const SERVICE_PAGES: ServicePage[] = [
       },
       {
         q: 'I’ve never been here before. Is there a first-visit deal?',
-        a: 'Yes. The New Client Ritual pairs your first Brazilian with a complimentary Yoni Steam (up to 1 hour) at an introductory price, with a small deposit when booking.',
+        a: 'Yes. The New Client Ritual pairs your first Brazilian with a complimentary V-Steam (up to 1 hour) at an introductory price, with a small deposit when booking.',
       },
     ],
     reviewMatch: /brazilian|bikini|intimate|manzilian/i,
@@ -648,7 +648,7 @@ const WAXING: GroupLanding = {
     },
     {
       q: 'I’ve never been here before. Is there a first-visit deal?',
-      a: 'Yes. The New Client Ritual pairs your first Brazilian with a complimentary Yoni Steam (up to 1 hour) at an introductory price, with a small deposit when booking.',
+      a: 'Yes. The New Client Ritual pairs your first Brazilian with a complimentary V-Steam (up to 1 hour) at an introductory price, with a small deposit when booking.',
     },
   ],
   reviewMatch: /wax|brazilian|bikini|leg|underarm/i,

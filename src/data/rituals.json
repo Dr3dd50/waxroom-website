@@ -13,7 +13,7 @@
       "value": 10500,
       "deposit": 1000,
       "arithmetic": "$65 + $40",
-      "includes": "Brazilian and a complimentary Yoni Steam (up to 1 hour)",
+      "includes": "Brazilian and a complimentary V-Steam (up to 1 hour)",
       "eligibility": "new to this service",
       "visitMinutes": 60
     },
@@ -27,7 +27,7 @@
       "value": 31500,
       "deposit": 5000,
       "arithmetic": "$275 + $40",
-      "includes": "Jet Plasma Facial and a complimentary Yoni Steam (up to 1 hour)",
+      "includes": "Jet Plasma Facial and a complimentary V-Steam (up to 1 hour)",
       "eligibility": "new to this service",
       "visitMinutes": 75
     },
@@ -41,7 +41,7 @@
       "value": 41500,
       "deposit": 7500,
       "arithmetic": "$375 + $40",
-      "includes": "Jet Plasma Body and a complimentary Yoni Steam (up to 1 hour)",
+      "includes": "Jet Plasma Body and a complimentary V-Steam (up to 1 hour)",
       "eligibility": "new to this service",
       "visitMinutes": 75
     },
@@ -55,7 +55,7 @@
       "value": 41500,
       "deposit": 7500,
       "arithmetic": "$375 + $40",
-      "includes": "Jet Plasma Hair Restoration and a complimentary Yoni Steam (up to 1 hour)",
+      "includes": "Jet Plasma Hair Restoration and a complimentary V-Steam (up to 1 hour)",
       "eligibility": "new to this service",
       "visitMinutes": 75
     },
@@ -69,7 +69,7 @@
       "value": 11500,
       "deposit": 1500,
       "arithmetic": "$75 + $40",
-      "includes": "Jet Plasma Eye and a complimentary Yoni Steam (up to 1 hour)",
+      "includes": "Jet Plasma Eye and a complimentary V-Steam (up to 1 hour)",
       "eligibility": "new to this service",
       "visitMinutes": 45
     },
@@ -83,7 +83,7 @@
       "value": 21500,
       "deposit": 3500,
       "arithmetic": "$175 + $40",
-      "includes": "BioRePeel and a complimentary Yoni Steam (up to 1 hour)",
+      "includes": "BioRePeel and a complimentary V-Steam (up to 1 hour)",
       "eligibility": "new to this service",
       "visitMinutes": 75
     },
@@ -97,7 +97,7 @@
       "value": 24000,
       "deposit": 4000,
       "arithmetic": "$200 + $40",
-      "includes": "Lash full set and a complimentary Yoni Steam (up to 1 hour)",
+      "includes": "Lash full set and a complimentary V-Steam (up to 1 hour)",
       "eligibility": "new to this service",
       "visitMinutes": 135
     },
@@ -111,7 +111,7 @@
       "value": 13000,
       "deposit": 1000,
       "arithmetic": "$90 + $40",
-      "includes": "Brazilian and underarm wax and a complimentary Yoni Steam (up to 1 hour)",
+      "includes": "Brazilian and underarm wax and a complimentary V-Steam (up to 1 hour)",
       "eligibility": "new to this service",
       "visitMinutes": 45
     },
@@ -125,7 +125,7 @@
       "value": 10000,
       "deposit": 1000,
       "arithmetic": "$60 + $40",
-      "includes": "Brow lamination and wax and a complimentary Yoni Steam (up to 1 hour)",
+      "includes": "Brow lamination and wax and a complimentary V-Steam (up to 1 hour)",
       "eligibility": "new to this service",
       "visitMinutes": 45
     },
@@ -139,7 +139,7 @@
       "value": 9000,
       "deposit": 1000,
       "arithmetic": "$50 + $40",
-      "includes": "Vajacial and a complimentary Yoni Steam (up to 1 hour)",
+      "includes": "Vajacial and a complimentary V-Steam (up to 1 hour)",
       "eligibility": "new to this service",
       "visitMinutes": 75
     }

@@ -66,7 +66,7 @@ const PHRASES: { noun: string; verb: string; service: string; learn: string }[] 
     noun: 'confidence',
     verb: 'back',
     service: 'New client ritual',
-    learn: 'New here? Your first Brazilian comes with a complimentary Yoni Steam (up to 1 hour), a gentle start to self-care.',
+    learn: 'New here? Your first Brazilian comes with a complimentary V-Steam (up to 1 hour), a gentle start to self-care.',
   },
 ];
 const INTERVAL_MS = 3400;

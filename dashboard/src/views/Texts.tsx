@@ -34,8 +34,8 @@ const SAMPLE: Record<string, string> = {
   prep_tip: 'Let hair grow to about ¼ inch and skip lotion on the area.',
   weeks: '4',
   calendar_link: 'waxroomrichmond.com/api/cal/Xy7…',
-  reward_note: ' To say thanks for answering, your next Yoni Steam is on us.',
-  reward_line: 'Your free Yoni Steam is on your account, good until Jan 12. ',
+  reward_note: ' To say thanks for answering, your next V-Steam is on us.',
+  reward_line: 'Your free V-Steam is on your account, good until Jan 12. ',
   review_link: 'search.google.com/local/writereview?placeid=…',
 };
 const preview = (t: string) => t.replace(/\{(\w+)\}/g, (m, k) => SAMPLE[k] ?? (k.endsWith('_link') ? 'waxroomrichmond.com/b/4k2' : m));

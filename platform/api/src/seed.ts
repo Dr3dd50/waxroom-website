@@ -57,10 +57,10 @@ export const DEFAULT_AUTOMATIONS: Settings['automations'] = {
   'rating-thanks-low': { enabled: true, text: 'Thank you for telling us, {first}. {reward_line}We’d love to hear more, so reply here anytime. You can also leave a Google review: {review_link}' },
 };
 
-/** Rating texts on, 2 hours after checkout, a free Yoni Steam (the Yoni Steam service) as the once-per-client thank-you. */
+/** Rating texts on, 2 hours after checkout, a free V-Steam (the V-Steam service) as the once-per-client thank-you. */
 function defaultReviews(services: Service[]): NonNullable<Settings['reviews']> {
   const steam = services.find((s) => s.name.toLowerCase() === 'yoni steam' && !s.ritualOf);
-  return { enabled: true, delayHours: 2, everyDays: 90, reviewUrl: REVIEW_URL, rewardServiceId: steam?.id ?? null, rewardLabel: 'Yoni Steam', rewardDays: 90 };
+  return { enabled: true, delayHours: 2, everyDays: 90, reviewUrl: REVIEW_URL, rewardServiceId: steam?.id ?? null, rewardLabel: 'V-Steam', rewardDays: 90 };
 }
 
 // Texts the first deploy was seeded with; an untouched one is replaced by today's default.

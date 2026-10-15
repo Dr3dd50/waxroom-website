@@ -76,7 +76,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
       ? [
           `For your first ${label} with us. If you’ve had a ${label} here before, book the ${label} itself.`,
           ...(o.deposit ? [`${dollars(o.deposit)} deposit when you book; it comes off your total.`] : []),
-          'Your Yoni Steam is up to an hour, at the same visit. Stay as long as you like.',
+          'Your V-Steam is up to an hour, at the same visit. Stay as long as you like.',
         ]
       : o.kind === 'membership'
         ? [`${dollars(o.price)} a month, billed to your card.`, 'For clients who come in every month.', 'Book your visits as usual; your membership is applied when you check out.']
@@ -87,7 +87,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
       ? [
           { title: 'Book', body: `Pick a time for the ${o.name}${o.deposit ? ` and pay the ${dollars(o.deposit)} deposit` : ''}.` },
           { title: `Your ${label}`, body: page.expect[1]?.body ?? page.intro },
-          { title: 'Your Yoni Steam', body: steamPage?.expect[1]?.body ?? 'An hour of warm herbal steam, private and unhurried.' },
+          { title: 'Your V-Steam', body: steamPage?.expect[1]?.body ?? 'An hour of warm herbal steam, private and unhurried.' },
         ]
       : page.expect;
 
@@ -98,7 +98,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
       ? [
           { q: `Who is the ${o.name} for?`, a: `Anyone new to ${label} at The Wax Room. It’s priced for your first one; if you’ve had a ${label} with us before, book the ${label} itself.` },
           ...(o.deposit ? [{ q: 'Is there a deposit?', a: `Yes, ${dollars(o.deposit)} when you book. It comes off your total at your visit.` }] : []),
-          { q: 'Is the Yoni Steam a medical treatment?', a: 'No. We offer it as a relaxation and self-care ritual, not as a treatment for any condition. Please see your healthcare provider for medical concerns.' },
+          { q: 'Is the V-Steam a medical treatment?', a: 'No. We offer it as a relaxation and self-care ritual, not as a treatment for any condition. Please see your healthcare provider for medical concerns.' },
         ]
       : o.kind === 'membership'
         ? [{ q: `How is ${o.name} billed?`, a: `${dollars(o.price)} a month, charged to the card you join with.` }]
@@ -170,7 +170,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
             {o.kind === 'ritual' ? (
               <li className="price">
                 <div className="price__row">
-                  <h3 className="price__name">{nb('Yoni Steam')}</h3>
+                  <h3 className="price__name">{nb('V-Steam')}</h3>
                   <span className="price__dots" aria-hidden="true" />
                   <span className="price__meta">1 hr</span>
                   <span className="price__amt">Complimentary</span>
