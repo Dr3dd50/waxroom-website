@@ -11,7 +11,7 @@ import { business } from '../data';
 
 export const NATIVE = import.meta.env.VITE_BOOKING === 'native';
 
-type LinkProps = { href: string; target?: string; rel?: string; 'data-book-service'?: string };
+export type LinkProps = { href: string; target?: string; rel?: string; 'data-book-service'?: string };
 const external = (href: string): LinkProps => ({ href, target: '_blank', rel: 'noopener' });
 
 /** What a Book button is for: a group (umbrella), the service page it's on, or one service. */

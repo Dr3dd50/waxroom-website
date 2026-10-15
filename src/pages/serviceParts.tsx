@@ -9,22 +9,37 @@ import { Sparkles } from '../components/Sparkles';
 import { serviceAnchor, type Faq } from '../content/services';
 import { business, duration, money, reviews } from '../data';
 import { gsap, useGSAP } from '../lib/motion';
-import { bookLink, membershipLink, packageLink, useBookLink } from '../lib/booking';
+import { bookLink, membershipLink, packageLink, useBookLink, type LinkProps } from '../lib/booking';
 
 export const nice = (s: string) => (s === s.toUpperCase() ? s.toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase()) : s);
 
 type Service = (typeof business.categories)[number]['services'][number];
 
+type Link = LinkProps;
+
+/** `section`, `cta` and `second` let an offer's page use the same hero with its own words and button. */
 export function LandingHero({
   name,
   crumbs,
   flips,
   intro,
+  section = { label: 'Services', href: '/#menu' },
+  cta,
+  second = { label: 'Services & prices', href: '#prices' },
+  title,
+  children,
 }: {
   name: string;
   crumbs: { label: string; href?: string }[];
   flips: [string, string][];
-  intro: string;
+  intro?: ReactNode;
+  /** A fixed headline in place of "Get your …" (an offer's page names what you get). */
+  title?: ReactNode;
+  /** Under the headline: an offer's price. */
+  children?: ReactNode;
+  section?: { label: string; href: string };
+  cta?: { label: string; link: Link };
+  second?: { label: string; href: string };
 }) {
   const book = useBookLink();
   const [i, setI] = useState(0);
@@ -42,7 +57,7 @@ export function LandingHero({
       <Sparkles density={0.00003} />
       <div className="hero__inner">
         <nav className="crumbs hero__reveal" aria-label="Breadcrumb">
-          <a href="/">Home</a> <span aria-hidden="true">/</span> <a href="/#menu">Services</a>
+          <a href="/">Home</a> <span aria-hidden="true">/</span> <a href={section.href}>{section.label}</a>
           {crumbs.map((c) => (
             <span key={c.label}>
               {' '}
@@ -52,22 +67,27 @@ export function LandingHero({
           ))}
         </nav>
         <p className="eyebrow hero__reveal">{name} · Midlothian, VA</p>
-        <h1 className="hero__title hero__reveal">
-          <span className="sr-only">{name} in Midlothian, VA</span>
-          <span className="hero__static" aria-hidden="true">
-            Get your{' '}
-          </span>
-          <span className="hero__flips" aria-hidden="true">
-            <FlipWord word={noun} /> <FlipWord word={verb} delay={150} />
-          </span>
-        </h1>
-        <p className="hero__intro hero__reveal">{intro}</p>
+        {title ? (
+          <h1 className="hero__title hero__reveal">{title}</h1>
+        ) : (
+          <h1 className="hero__title hero__reveal">
+            <span className="sr-only">{name} in Midlothian, VA</span>
+            <span className="hero__static" aria-hidden="true">
+              Get your{' '}
+            </span>
+            <span className="hero__flips" aria-hidden="true">
+              <FlipWord word={noun} /> <FlipWord word={verb} delay={150} />
+            </span>
+          </h1>
+        )}
+        {children}
+        {intro ? <p className="hero__intro hero__reveal">{intro}</p> : null}
         <div className="hero__ctas hero__reveal">
-          <a className="btn btn--honey" {...book()}>
-            Book your appointment
+          <a className="btn btn--honey" {...(cta?.link ?? book())}>
+            {cta?.label ?? 'Book your appointment'}
           </a>
-          <a className="btn btn--ghost" href="#prices">
-            Services & prices
+          <a className="btn btn--ghost" href={second.href}>
+            {second.label}
           </a>
         </div>
         <div className="hero__reveal">
@@ -151,17 +171,21 @@ export function PriceRows({ services }: { services: Service[] }) {
   );
 }
 
-export function PricesSection({ children }: { children: ReactNode }) {
+export function PricesSection({ children, title, cta }: { children: ReactNode; title?: ReactNode; cta?: { label: string; link: Link } }) {
   const book = useBookLink();
   return (
     <section className="svc-section svc-section--paper" id="prices">
       <div className="container">
         <div className="prices__head">
           <h2 className="display">
-            Services <em>& prices</em>
+            {title ?? (
+              <>
+                Services <em>& prices</em>
+              </>
+            )}
           </h2>
-          <a className="btn btn--dark" {...book()}>
-            Book online
+          <a className="btn btn--dark" {...(cta?.link ?? book())}>
+            {cta?.label ?? 'Book online'}
           </a>
         </div>
         {children}
@@ -210,10 +234,21 @@ export function ReviewsSection({ match, label, exclude }: { match: RegExp; label
 }
 
 /** This page's New Client Rituals, memberships and packages. */
-export function OffersSection({ memberships: mNames, packages: pNames, categories }: { memberships: string[]; packages: string[]; categories: string[] }) {
-  const rituals = useRituals(categories);
-  const memberships = business.memberships.filter((m) => mNames.includes(m.name));
-  const packages = business.packages.filter((p) => pNames.includes(p.name));
+/** `leaveOut`: the offer whose own page this is. */
+export function OffersSection({
+  memberships: mNames,
+  packages: pNames,
+  categories,
+  leaveOut,
+}: {
+  memberships: string[];
+  packages: string[];
+  categories: string[];
+  leaveOut?: { key: string; name: string };
+}) {
+  const rituals = useRituals(categories).filter((r) => r.key !== leaveOut?.key);
+  const memberships = business.memberships.filter((m) => mNames.includes(m.name) && m.name !== leaveOut?.name);
+  const packages = business.packages.filter((p) => pNames.includes(p.name) && p.name !== leaveOut?.name);
   if (!rituals.length && !memberships.length && !packages.length) return null;
   return (
     <section className="svc-section">
