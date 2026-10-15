@@ -1026,6 +1026,16 @@ code {
 .field textarea {
   resize: vertical;
 }
+/* a tick box keeps its own size and sits right beside its words */
+.field input[type='checkbox'],
+.field input[type='radio'] {
+  width: auto;
+  flex: none;
+  padding: 0;
+}
+.field .check {
+  justify-content: flex-start;
+}
 .check {
   display: inline-flex;
   align-items: center;
