@@ -9,7 +9,7 @@ name: Refresh Google reviews, menu & gallery
 
 on:
   schedule:
-    - cron: '17 11 * * *' # daily, ~7am Eastern
+    - cron: '* * * * *' # daily, ~7am Eastern
   workflow_dispatch:
 
 permissions:
