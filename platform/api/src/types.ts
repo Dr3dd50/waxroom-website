@@ -252,7 +252,7 @@ export type Settings = {
     reviewUrl: string;
     /** The thank-you: a free visit of this service, once per client. null = none. */
     rewardServiceId: string | null;
-    /** What clients are told they get ("V-steam"); blank = the service's name. */
+    /** What clients are told they get ("Yoni Steam"); blank = the service's name. */
     rewardLabel?: string;
     rewardDays: number | null;
   };

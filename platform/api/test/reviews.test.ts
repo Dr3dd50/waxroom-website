@@ -1,4 +1,4 @@
-// After a visit: the rating text, the thank-you for answering (a free V-steam, once
+// After a visit: the rating text, the thank-you for answering (a free Yoni Steam, once
 // per client, whatever the score), the review link for every answer, the owner's
 // private heads-up on a low score, and the free visit used at checkout.
 //   npx tsx --test platform/api/test/reviews.test.ts
@@ -49,7 +49,7 @@ async function visit(clientId: string, serviceName: string) {
 }
 const newClient = async (first: string, phone: string) => (await call('POST', '/staff/clients', { first, last: 'Rater', phone })).json;
 
-test('the rating text goes 2 hours after checkout, once, offering the free V-steam for answering', async () => {
+test('the rating text goes 2 hours after checkout, once, offering the free Yoni Steam for answering', async () => {
   const c = await newClient('Ava', '804-555-0501');
   await visit(c.id, 'Brazilian');
   await runDueTexts(store, later(1));
@@ -59,7 +59,7 @@ test('the rating text goes 2 hours after checkout, once, offering the free V-ste
   const asked = await texts(c.id, 'rating-request');
   assert.equal(asked.length, 1);
   assert.match(asked[0].body, /How was your Brazilian with Danielle\? Reply with a number from 1 to 5/);
-  assert.match(asked[0].body, /your next V-steam is on us/);
+  assert.match(asked[0].body, /your next Yoni Steam is on us/);
 });
 
 test('any answer earns the thank-you once; 4–5 get the review link', async () => {
@@ -67,14 +67,14 @@ test('any answer earns the thank-you once; 4–5 get the review link', async () 
   await handleInbound(store, c.phone, '5');
   const after = await store.get<any>('clients', c.id);
   assert.equal(after.perks.length, 1);
-  assert.equal(after.perks[0].label, 'Free V-steam');
+  assert.equal(after.perks[0].label, 'Free Yoni Steam');
   const days = (Date.parse(after.perks[0].expiresAt) - Date.now()) / 86400000;
   assert.ok(days > 89 && days < 91, `expires in ${days} days`);
   const appt = (await store.list<any>('appointments')).find((a) => a.clientId === c.id);
   assert.equal(appt.rating.score, 5);
   const thanks = await texts(c.id, 'rating-thanks');
   assert.equal(thanks.length, 1);
-  assert.match(thanks[0].body, /Your free V-steam is on your account, good until/);
+  assert.match(thanks[0].body, /Your free Yoni Steam is on your account, good until/);
   assert.match(thanks[0].body, /search\.google\.com\/local\/writereview/);
   // a second "5" isn't a rating any more: no second thank-you
   await handleInbound(store, c.phone, '5');
@@ -92,7 +92,7 @@ test('a low score gets the same thank-you and the review link, and the owner a p
   const thanks = await texts(c.id, 'rating-thanks');
   assert.equal(thanks.length, 1);
   assert.match(thanks[0].body, /Thank you for telling us, Bea/);
-  assert.match(thanks[0].body, /free V-steam is on your account/);
+  assert.match(thanks[0].body, /free Yoni Steam is on your account/);
   assert.match(thanks[0].body, /writereview/);
   assert.doesNotMatch(thanks[0].body, /owner|reach out/i);
   assert.equal((await store.get<any>('clients', c.id)).perks.length, 1);
@@ -116,14 +116,14 @@ test('asked at most once every 90 days; the thank-you is once per client, ever',
   assert.doesNotMatch(asked[1].body, /on us/);
   await handleInbound(store, '+18045550502', '4');
   assert.equal((await store.get<any>('clients', c.id)).perks.length, 1);
-  assert.doesNotMatch((await texts(c.id, 'rating-thanks')).at(-1).body, /V-steam/);
+  assert.doesNotMatch((await texts(c.id, 'rating-thanks')).at(-1).body, /Yoni Steam/);
 });
 
-test('the free V-steam comes off at checkout, once', async () => {
+test('the free Yoni Steam comes off at checkout, once', async () => {
   const c = (await store.list<any>('clients')).find((x) => x.first === 'Ava');
   const first = await visit(c.id, 'Yoni Steam');
   assert.equal(first.checkout.total, 0);
-  assert.ok(first.checkout.lines.some((l: any) => /Thank-you: free V-steam/.test(l.label)));
+  assert.ok(first.checkout.lines.some((l: any) => /Thank-you: free Yoni Steam/.test(l.label)));
   const used = (await store.get<any>('clients', c.id)).perks[0];
   assert.ok(used.usedAt);
   const second = await visit(c.id, 'Yoni Steam');
