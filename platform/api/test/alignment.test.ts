@@ -390,7 +390,7 @@ test('a time written with an offset is stored like any other, so the overlap che
 });
 
 // ── New Client Rituals ──
-test('each ritual is bookable as the service plus a 1-hour steam, at its own price and deposit', async () => {
+test('each ritual is bookable as the service plus 15 minutes (the steam is up to an hour and needs no staff), at its own price and deposit', async () => {
   const services = await store.list<any>('services');
   const rituals = services.filter((s: any) => s.ritualOf);
   assert.equal(rituals.length, 10);
@@ -398,7 +398,7 @@ test('each ritual is bookable as the service plus a 1-hour steam, at its own pri
   const base = services.find((s: any) => s.id === facial.ritualOf);
   assert.equal(base.name, 'Jet Plasma Facial');
   assert.equal(base.duration, 60, 'Jet Plasma Facial is 1 hour');
-  assert.deepEqual([facial.price, facial.deposit, facial.duration, facial.depositNewClientsOnly], [22000, 5000, 120, false]);
+  assert.deepEqual([facial.price, facial.deposit, facial.duration, facial.depositNewClientsOnly], [22000, 5000, 75, false]);
   // the Brazilian one is GlossGenius's NEW CLIENT RITUAL, not a second copy
   const brazilian = rituals.find((s: any) => s.name === 'NEW CLIENT RITUAL');
   assert.equal(services.find((s: any) => s.id === brazilian.ritualOf).name, 'Brazilian');

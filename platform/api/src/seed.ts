@@ -113,7 +113,7 @@ async function addRituals(store: Store) {
       order: existing?.order ?? base.order,
       price: r.price,
       priceVaries: false,
-      duration: RITUAL_LENGTH[r.key] ?? base.duration + ritualBank.steamMinutes,
+      duration: RITUAL_LENGTH[r.key] ?? r.visitMinutes ?? base.duration + (ritualBank.bookingExtraMinutes ?? 15),
       deposit: r.deposit,
       depositNewClientsOnly: false,
       description: r.includes,

@@ -76,7 +76,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
       ? [
           `For your first ${label} with us. If you’ve had a ${label} here before, book the ${label} itself.`,
           ...(o.deposit ? [`${dollars(o.deposit)} deposit when you book; it comes off your total.`] : []),
-          'Your Yoni Steam is the full hour, at the same visit.',
+          'Your Yoni Steam is up to an hour, at the same visit. Stay as long as you like.',
         ]
       : o.kind === 'membership'
         ? [`${dollars(o.price)} a month, billed to your card.`, 'For clients who come in every month.', 'Book your visits as usual; your membership is applied when you check out.']

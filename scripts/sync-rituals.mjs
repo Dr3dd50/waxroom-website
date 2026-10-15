@@ -36,12 +36,15 @@ for (const [key, o] of Object.entries(bank.offers)) {
     arithmetic: o.arithmetic,
     includes: o.includes,
     eligibility: o.eligibility,
+    visitMinutes: o.visit_minutes ?? null,
   });
 }
 const out = {
   _source: 'waxroom-content factory/offers.json, by scripts/sync-rituals.mjs. Edit the offer bank there, then re-run.',
-  // the steam that comes with every ritual, added to the service's own length when it's booked
+  // the steam is up to 60 minutes, needs no staff, and the client may leave early (owner, 2026-10-14),
+  // so a ritual books the service's own length plus only bookingExtraMinutes (the Brazilian stays 60)
   steamMinutes: 60,
+  bookingExtraMinutes: 15,
   rituals,
 };
 writeFileSync(resolve(root, 'src/data/rituals.json'), JSON.stringify(out, null, 2) + '\n');
