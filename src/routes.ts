@@ -1,4 +1,5 @@
 import { NATIVE } from './lib/booking';
+import { AD_LANDING_PAGES, adLandingPath, findAdLanding, type AdLandingPage } from './content/adLandingPages';
 import { SERVICE_GROUPS, SERVICE_PAGES, findGroupLanding, findServicePage, groupPath, servicePath, type ServiceGroup, type ServicePage } from './content/services';
 
 export const SITE_URL = 'https://www.waxroomrichmond.com';
@@ -7,6 +8,7 @@ export type Route =
   | { kind: 'home' }
   | { kind: 'service'; page: ServicePage }
   | { kind: 'group'; group: ServiceGroup }
+  | { kind: 'adLanding'; ad: AdLandingPage; page: ServicePage }
   | { kind: 'gallery' }
   | { kind: 'book' }
   | { kind: 'manage' }
@@ -25,6 +27,12 @@ export function resolve(pathname: string): Route {
   if (NATIVE && path === '/join') return { kind: 'join' };
   if (NATIVE && path === '/card') return { kind: 'card' };
   if (NATIVE && /^\/r\/[A-Za-z0-9]+$/.test(path)) return { kind: 'referral' };
+  const lp = /^\/lp\/([a-z0-9-]+)$/.exec(path);
+  if (lp) {
+    const ad = findAdLanding(lp[1]);
+    const page = ad && findServicePage(ad.page);
+    return ad && page ? { kind: 'adLanding', ad, page } : { kind: 'notFound' };
+  }
   const m = /^\/services\/([a-z0-9-]+)$/.exec(path);
   const group = m && findGroupLanding(m[1]);
   if (group) return { kind: 'group', group };
@@ -32,11 +40,13 @@ export function resolve(pathname: string): Route {
   return page ? { kind: 'service', page } : { kind: 'notFound' };
 }
 
-/** Every path that gets a pre-rendered HTML file. */
 /** Pages search engines should list. */
 export const SITEMAP_PATHS = ['/', ...SERVICE_GROUPS.filter((g) => g.landing).map(groupPath), ...SERVICE_PAGES.map(servicePath), '/gallery/'];
-/** Every path that gets a pre-rendered HTML file (/r/ serves every referral link). */
-export const PRERENDER_PATHS = [...SITEMAP_PATHS, '/404/', '/book/', ...(NATIVE ? ['/booking/', '/join/', '/r/', '/card/'] : [])];
+/**
+ * Every path that gets a pre-rendered HTML file (/r/ serves every referral link). Ad
+ * landing pages are prerendered but never listed in the sitemap: paid traffic only.
+ */
+export const PRERENDER_PATHS = [...SITEMAP_PATHS, ...AD_LANDING_PAGES.map(adLandingPath), '/404/', '/book/', ...(NATIVE ? ['/booking/', '/join/', '/r/', '/card/'] : [])];
 
 export function headFor(route: Route) {
   if (route.kind === 'service') {
@@ -51,6 +61,14 @@ export function headFor(route: Route) {
       title: route.group.landing!.seoTitle,
       description: route.group.landing!.metaDescription,
       canonical: `${SITE_URL}${groupPath(route.group)}`,
+    };
+  }
+  if (route.kind === 'adLanding') {
+    return {
+      title: route.ad.seoTitle,
+      description: route.ad.metaDescription,
+      canonical: `${SITE_URL}${adLandingPath(route.ad)}`,
+      noindex: true,
     };
   }
   if (route.kind === 'gallery') {

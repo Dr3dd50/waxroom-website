@@ -78,18 +78,21 @@ export function LandingHero({
   );
 }
 
-export function Film({ video, label, gallery }: { video: string; label: string; gallery: string }) {
+/** `gallery` adds a link to that part of the gallery; ad landing pages leave it out so no button leads off the page. */
+export function Film({ video, label, gallery }: { video: string; label: string; gallery?: string }) {
   return (
     <section className="svc-film">
       <div className="container">
         <div className="svc-film__frame">
           <CodeVideo slug={video} label={label} />
         </div>
-        <div className="svc-film__cta">
-          <a className="btn btn--dark" href={`/gallery/#${gallery}`}>
-            See real results in the gallery
-          </a>
-        </div>
+        {gallery ? (
+          <div className="svc-film__cta">
+            <a className="btn btn--dark" href={`/gallery/#${gallery}`}>
+              See real results in the gallery
+            </a>
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -165,6 +168,64 @@ export function PricesSection({ children }: { children: ReactNode }) {
           </a>
         </div>
         {children}
+      </div>
+    </section>
+  );
+}
+
+/** "What to expect": a service's appointment in numbered steps. */
+export function ExpectSection({ steps }: { steps: { title: string; body: string }[] }) {
+  return (
+    <section className="svc-section svc-section--dark">
+      <div className="container steps-wrap">
+        <div>
+          <p className="eyebrow eyebrow--light">Your appointment</p>
+          <h2 className="display">
+            What to <em>expect.</em>
+          </h2>
+        </div>
+        <div className="steps">
+          <span className="steps__line" aria-hidden="true">
+            <i />
+          </span>
+          <ol>
+            {steps.map((s, i) => (
+              <li className="step" key={s.title}>
+                <span className="step__n" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Before-your-visit and aftercare cards. */
+export function CareSection({ before, after }: { before: string[]; after: string[] }) {
+  return (
+    <section className="svc-section">
+      <div className="container care reveal-group">
+        <article className="care__card reveal">
+          <p className="eyebrow">Before your visit</p>
+          <ul>
+            {before.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </article>
+        <article className="care__card care__card--honey reveal">
+          <p className="eyebrow">Aftercare</p>
+          <ul>
+            {after.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </article>
       </div>
     </section>
   );

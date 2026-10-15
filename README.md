@@ -31,6 +31,9 @@ changes. Add an `APIFY_TOKEN` repository secret to enable it.
 - `/` — home
 - `/services/<slug>/` — one in-depth page per category (see `src/content/services.ts`)
 - `/gallery/` — real results from Instagram (`npm run sync:instagram`)
+- `/lp/<slug>/` — Meta ad landing pages (`src/content/adLandingPages.ts`): a service page
+  re-cut for paid traffic, with no site menu and every button booking. Prerendered with
+  `noindex` and kept out of the sitemap. `/lp/jet-plasma/` is the first.
 
 ## SEO tracking (DataForSEO)
 

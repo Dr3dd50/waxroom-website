@@ -22,7 +22,7 @@ const SNIPPETS = reviews.reviews
   .filter((r) => r.quote.length >= 28 && r.quote.length <= 110)
   .slice(0, 14);
 
-function ReviewStrip() {
+export function ReviewStrip() {
   return (
     <a className="strip" href={reviews.profileUrl} target="_blank" rel="noopener" aria-label={`Rated ${reviews.rating} from ${reviews.count} Google reviews`}>
       <span className="strip__score">
@@ -207,6 +207,33 @@ export function Nav({ isHome }: { isHome: boolean }) {
           ))}
           {[['#memberships', 'Memberships'] as const, ...RIGHT].map(link)}
         </nav>
+      </div>
+    </header>
+  );
+}
+
+/**
+ * The header on ad landing pages (/lp/…): the review strip, the logo and one Book
+ * button, and nothing that leads off the page. The logo is a mark, not a link.
+ */
+export function AdHeader() {
+  const book = useBookLink();
+  return (
+    <header className="header header--scrolled">
+      <ReviewStrip />
+      <div className="nav">
+        {/* Holds the first grid column (the menu side / drawer toggle on the full Nav),
+            so the logo sits centred and Book on the right, as everywhere else. */}
+        <span aria-hidden="true" />
+        <span className="nav__logo">
+          <img src="/logo.png" alt="The Wax Room" width={424} height={360} />
+        </span>
+        {/* The full Nav spreads its links across this side; alone, Book goes to the edge. */}
+        <div className="nav__side nav__side--right" style={{ justifyContent: 'flex-end' }}>
+          <a className="btn btn--dark nav__book" {...book()}>
+            Book
+          </a>
+        </div>
       </div>
     </header>
   );

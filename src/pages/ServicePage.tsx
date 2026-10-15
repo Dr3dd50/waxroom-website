@@ -3,6 +3,8 @@ import { SERVICE_PAGES, groupForPage, groupPath, servicePath, type ServicePage a
 import { business } from '../data';
 import { Visit } from '../sections/Visit';
 import {
+  CareSection,
+  ExpectSection,
   ExploreMore,
   FaqSection,
   Film,
@@ -39,53 +41,9 @@ export function ServicePage({ page }: { page: Page }) {
         <PriceRows services={services} />
       </PricesSection>
 
-      <section className="svc-section svc-section--dark">
-        <div className="container steps-wrap">
-          <div>
-            <p className="eyebrow eyebrow--light">Your appointment</p>
-            <h2 className="display">
-              What to <em>expect.</em>
-            </h2>
-          </div>
-          <div className="steps">
-            <span className="steps__line" aria-hidden="true">
-              <i />
-            </span>
-            <ol>
-              {page.expect.map((s, i) => (
-                <li className="step" key={s.title}>
-                  <span className="step__n" aria-hidden="true">
-                    {i + 1}
-                  </span>
-                  <h3>{s.title}</h3>
-                  <p>{s.body}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      </section>
+      <ExpectSection steps={page.expect} />
 
-      <section className="svc-section">
-        <div className="container care reveal-group">
-          <article className="care__card reveal">
-            <p className="eyebrow">Before your visit</p>
-            <ul>
-              {page.before.map((t) => (
-                <li key={t}>{t}</li>
-              ))}
-            </ul>
-          </article>
-          <article className="care__card care__card--honey reveal">
-            <p className="eyebrow">Aftercare</p>
-            <ul>
-              {page.after.map((t) => (
-                <li key={t}>{t}</li>
-              ))}
-            </ul>
-          </article>
-        </div>
-      </section>
+      <CareSection before={page.before} after={page.after} />
 
       <ReviewsSection match={page.reviewMatch} label={page.navLabel} />
 

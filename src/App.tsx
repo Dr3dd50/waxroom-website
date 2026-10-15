@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { Nav } from './components/Nav';
+import { AdHeader, Nav } from './components/Nav';
 import { Footer } from './sections/Footer';
 import { Home } from './pages/Home';
 import { ServicePage } from './pages/ServicePage';
 import { GroupPage } from './pages/GroupPage';
+import { AdLandingPage } from './pages/AdLandingPage';
 import { BookPage } from './pages/BookPage';
 import { ManagePage } from './pages/ManagePage';
 import { CardPage } from './pages/CardPage';
@@ -19,8 +20,15 @@ import { startTracking, trackView } from './lib/tracking';
 export default function App({ path }: { path: string }) {
   const route = resolve(path);
   // A plain Book button opens the menu on this page's umbrella.
+  // On an ad landing page every Book button opens its featured treatment's calendar.
   const here: BookTarget =
-    route.kind === 'group' ? { group: route.group.key } : route.kind === 'service' ? { group: groupForPage(route.page.slug).key, page: route.page.slug } : {};
+    route.kind === 'group'
+      ? { group: route.group.key }
+      : route.kind === 'service'
+        ? { group: groupForPage(route.page.slug).key, page: route.page.slug }
+        : route.kind === 'adLanding'
+          ? { service: route.ad.primaryService }
+          : {};
 
   useEffect(() => {
     document.title = headFor(route).title;
@@ -28,6 +36,7 @@ export default function App({ path }: { path: string }) {
     startTracking();
     if (route.kind === 'group') trackView(route.group.label, 'umbrella');
     if (route.kind === 'service') trackView(route.page.name, groupForPage(route.page.slug).label);
+    if (route.kind === 'adLanding') trackView(route.ad.label, 'ad_landing');
     const stopHashLinks = handleHashLinks();
     // Honey progress bar along the top edge.
     const bar = gsap.to('.progress', {
@@ -53,11 +62,12 @@ export default function App({ path }: { path: string }) {
   return (
     <BookContext.Provider value={here}>
       <div className="progress" aria-hidden="true" />
-      <Nav isHome={route.kind === 'home'} />
+      {route.kind === 'adLanding' ? <AdHeader /> : <Nav isHome={route.kind === 'home'} />}
       <main>
         {route.kind === 'home' ? <Home /> : null}
         {route.kind === 'service' ? <ServicePage page={route.page} /> : null}
         {route.kind === 'group' ? <GroupPage group={route.group} /> : null}
+        {route.kind === 'adLanding' ? <AdLandingPage ad={route.ad} page={route.page} /> : null}
         {route.kind === 'gallery' ? <GalleryPage /> : null}
         {route.kind === 'book' ? <BookPage /> : null}
         {route.kind === 'manage' ? <ManagePage /> : null}

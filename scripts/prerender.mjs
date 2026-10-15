@@ -23,7 +23,10 @@ for (const path of PRERENDER_PATHS) {
     .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${esc(head.title)}$2`)
     .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${esc(head.description)}$2`)
     .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${head.canonical}$2`)
-    .replace('</head>', `  <link rel="canonical" href="${head.canonical}" />\n  </head>`)
+    .replace(
+      '</head>',
+      `  <link rel="canonical" href="${head.canonical}" />\n${head.noindex ? '    <meta name="robots" content="noindex, nofollow" />\n' : ''}  </head>`,
+    )
     .replace('<div id="root"></div>', `<div id="root">${html}</div>`);
   const outDir = resolve(dist, `.${path}`);
   await mkdir(outDir, { recursive: true });
