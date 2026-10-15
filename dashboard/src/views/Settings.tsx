@@ -455,6 +455,15 @@ function Ratings() {
 function TeamEditor({ m, onClose }: { m: Staff | null; onClose: () => void }) {
   const boot = useBoot();
   const [error, setError] = useState('');
+  // the menu as clients see it; a New Client Ritual follows its service
+  const menu = boot.services.filter((s) => s.active && !s.ritualOf);
+  const had = menu.filter((s) => m && s.staffIds.includes(m.id)).map((s) => s.id);
+  const [does, setDoes] = useState<string[]>(had);
+  const categories = [...CATEGORY_ORDER.filter((c) => menu.some((s) => s.category === c)), ...[...new Set(menu.map((s) => s.category))].filter((c) => !CATEGORY_ORDER.includes(c))];
+  const servicesChanged = [...does].sort().join() !== [...had].sort().join();
+  // services nobody else does stop being bookable if this person is taken off them
+  const leftEmpty = menu.filter((s) => m && had.includes(s.id) && !does.includes(s.id) && !s.staffIds.some((x) => x !== m.id && boot.staff.find((t) => t.id === x)?.active));
+  const tick = (ids: string[], on: boolean) => setDoes(on ? [...new Set([...does, ...ids])] : does.filter((x) => !ids.includes(x)));
   return (
     <Drawer title={m ? m.name : 'Add a team member'} onClose={onClose}>
       <form
@@ -475,8 +484,8 @@ function TeamEditor({ m, onClose }: { m: Staff | null; onClose: () => void }) {
             password: f.get('password') || undefined,
           };
           try {
-            if (m) await api(`/team/${m.id}`, body, 'PATCH');
-            else await api('/team', body);
+            const saved = m ? await api<Staff>(`/team/${m.id}`, body, 'PATCH') : await api<Staff>('/team', body);
+            if (servicesChanged) await api(`/team/${saved.id}/services`, { serviceIds: does }, 'PUT');
             await boot.reload();
             onClose();
           } catch (err) {
@@ -524,6 +533,37 @@ function TeamEditor({ m, onClose }: { m: Staff | null; onClose: () => void }) {
         <label className="check">
           <input type="checkbox" name="active" defaultChecked={m?.active ?? true} /> Active
         </label>
+        <fieldset className="field services-pick">
+          <legend>Services they do</legend>
+          <p className="muted small">
+            Clients can only book them for what’s ticked, online and at the desk. A New Client Ritual follows its service. Appointments they already have stay on the calendar.
+          </p>
+          {categories.map((cat) => {
+            const ids = menu.filter((s) => s.category === cat).map((s) => s.id);
+            const all = ids.every((x) => does.includes(x));
+            return (
+              <div key={cat} className="services-pick__group">
+                <label className="check services-pick__cat">
+                  <input type="checkbox" checked={all} onChange={(e) => tick(ids, e.target.checked)} /> <strong>{cat}</strong>
+                </label>
+                {menu
+                  .filter((s) => s.category === cat)
+                  .sort((a, b) => a.order - b.order)
+                  .map((s) => (
+                    <label key={s.id} className="check">
+                      <input type="checkbox" checked={does.includes(s.id)} onChange={(e) => tick([s.id], e.target.checked)} /> {nice(s.name)}
+                    </label>
+                  ))}
+              </div>
+            );
+          })}
+          {leftEmpty.length ? (
+            <p className="form-error">
+              No one else does {leftEmpty.map((s) => nice(s.name)).join(', ')}, so {leftEmpty.length === 1 ? 'it' : 'they'} can’t be booked until someone is ticked for{' '}
+              {leftEmpty.length === 1 ? 'it' : 'them'}.
+            </p>
+          ) : null}
+        </fieldset>
         <label className="field">
           {m ? 'New password (leave blank to keep)' : 'Temporary password (8+ characters)'}
           <input name="password" type="password" minLength={8} required={!m} autoComplete="new-password" />

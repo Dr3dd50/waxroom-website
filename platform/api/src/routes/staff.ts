@@ -407,7 +407,29 @@ export function staffRoutes(store: Store) {
     if (b.rebookAfterDays !== undefined) next.rebookAfterDays = b.rebookAfterDays === null ? null : Math.max(1, Math.round(b.rebookAfterDays));
     const staff = await store.list<Staff>('staff');
     next.bookableOnline = next.active && next.staffIds.some((id) => staff.find((x) => x.id === id)?.bookable);
-    return c.json(await store.put('services', next));
+    const saved = await store.put('services', next);
+    // a New Client Ritual is done by whoever does its service
+    if (b.staffIds && !s.ritualOf) await setPerformers(staff, (svc) => (svc.ritualOf === s.id ? next.staffIds : null));
+    return c.json(saved);
+  });
+  /** Which services one person does, ticked from their side. Rituals follow their service. */
+  r.put('/team/:id/services', requireOwner, async (c) => {
+    const id = c.req.param('id')!;
+    const staff = await store.list<Staff>('staff');
+    if (!staff.some((x) => x.id === id)) throw new HttpError(404, 'Not found.');
+    const b = await c.req.json<{ serviceIds?: string[] }>();
+    if (!Array.isArray(b.serviceIds)) throw bad('Pick the services they do.');
+    const on = new Set(b.serviceIds);
+    const services = await store.list<Service>('services');
+    // only what's on the menu: hidden services (and their rituals) are left as they are
+    const listed = new Set(services.filter((svc) => svc.active && !svc.ritualOf).map((svc) => svc.id));
+    const does = (svc: Service) => on.has(svc.ritualOf ?? svc.id);
+    await setPerformers(
+      staff,
+      (svc) => (svc.active && listed.has(svc.ritualOf ?? svc.id) && does(svc) !== svc.staffIds.includes(id) ? (does(svc) ? [...svc.staffIds, id] : svc.staffIds.filter((x) => x !== id)) : null),
+      services,
+    );
+    return c.json(await store.list<Service>('services'));
   });
   r.post('/services', requireOwner, async (c) => {
     const b = await c.req.json<Partial<Service>>();
@@ -548,6 +570,16 @@ export function staffRoutes(store: Store) {
     if (next.bookable !== s.bookable || next.active !== s.active) await refreshOnline();
     return c.json(publicStaff(next));
   });
+
+  /** Give services new performers (null leaves one as it is), keeping "bookable online" right. */
+  async function setPerformers(staff: Staff[], pickFor: (svc: Service) => string[] | null, services?: Service[]) {
+    const ok = new Set(staff.filter((x) => x.active && x.bookable).map((x) => x.id));
+    for (const svc of services ?? (await store.list<Service>('services'))) {
+      const ids = pickFor(svc);
+      if (!ids) continue;
+      await store.put('services', { ...svc, staffIds: ids, bookableOnline: svc.active && ids.some((x) => ok.has(x)) });
+    }
+  }
 
   /** A service can be booked online when it's offered and someone bookable performs it. */
   async function refreshOnline() {
