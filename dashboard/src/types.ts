@@ -59,6 +59,7 @@ export type Settings = {
   glossGeniusImport?: ImportReport & { by: string };
   staffAlerts: { enabled: boolean };
   privacy: { employeesSeeContact: boolean };
+  emails?: { enabled: boolean };
   reviews?: { enabled: boolean; delayHours: number; everyDays: number; reviewUrl: string; rewardServiceId: string | null; rewardLabel?: string; rewardDays: number | null };
 };
 export type ImportReport = {
@@ -66,4 +67,4 @@ export type ImportReport = {
   clients?: { added: number; matched: number; skipped: number };
   appointments?: { added: number; updated: number; unchanged: number; unmatched: number; removed?: number; problems: string[] };
 };
-export type Boot = { me: Staff; staff: Staff[]; services: Service[]; memberships: Membership[]; packages: Package[]; settings: Settings; live: { payments: boolean; texts: boolean }; today: string };
+export type Boot = { me: Staff; staff: Staff[]; services: Service[]; memberships: Membership[]; packages: Package[]; settings: Settings; live: { payments: boolean; texts: boolean; email?: boolean }; today: string };

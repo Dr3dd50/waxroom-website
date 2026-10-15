@@ -169,6 +169,8 @@ export function SettingsView() {
             <dd>{boot.live.payments ? <Pill tone="green">Connected</Pill> : <Pill tone="red">Add keys</Pill>}</dd>
             <dt>Twilio (texts)</dt>
             <dd>{boot.live.texts ? <Pill tone="green">Connected</Pill> : <Pill tone="red">Waiting on registration</Pill>}</dd>
+            <dt>Gmail (appointment emails)</dt>
+            <dd>{boot.live.email ? <Pill tone="green">Connected</Pill> : <Pill tone="red">Add the app password</Pill>}</dd>
           </dl>
         </section>
       </div>
@@ -202,9 +204,23 @@ function ClientTexts() {
   const changed = JSON.stringify(n) !== JSON.stringify(s.notifications);
   return (
     <section className="card-panel" id="client-texts">
-      <h2>Client texts</h2>
-      <p className="muted small">When clients get their appointment texts. Change the wording of each under Texts.</p>
+      <h2>Client texts and emails</h2>
+      <p className="muted small">
+        When clients get their appointment texts. Change the wording of each under Texts. With emails on, the booking, moved, confirm, reminder, cancelled and receipt
+        messages are also emailed from waxroomrichmond@gmail.com in the same words, and online booking asks for an email.
+      </p>
       <dl className="kv kv--settings">
+        <dt>Email them too</dt>
+        <dd>
+          <Toggle
+            on={!!s.emails?.enabled}
+            onChange={async (v) => {
+              await api('/settings', { emails: { enabled: v } }, 'PUT');
+              await boot.reload();
+            }}
+            label="Appointment emails on"
+          />
+        </dd>
         <dt>Appointment reminder</dt>
         <dd className="hours">
           <Toggle on={auto('reminder')} onChange={(v) => toggle('reminder', v)} label="Appointment reminder on" />
@@ -216,7 +232,7 @@ function ClientTexts() {
             ))}
           </select>
         </dd>
-        <dt>Ask the client to confirm (reply C)</dt>
+        <dt>Ask the client to confirm (reply C, or the link in the email)</dt>
         <dd className="hours">
           <Toggle on={auto('confirm-request')} onChange={(v) => toggle('confirm-request', v)} label="Confirmation request on" />
           <select value={n.confirmHoursBefore} disabled={!auto('confirm-request')} onChange={(e) => (setN({ ...n, confirmHoursBefore: +e.target.value }), setMsg(''))} aria-label="Confirmation request timing">

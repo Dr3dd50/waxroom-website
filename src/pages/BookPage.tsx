@@ -10,7 +10,7 @@ import { SERVICE_GROUPS, findServicePage, groupCategories } from '../content/ser
 
 type Svc = { id: string; name: string; category: string; price: number; priceVaries: boolean; duration: number; deposit: number | null; depositNewClientsOnly: boolean; description: string | null; staffIds: string[] };
 type Catalog = { staff: { id: string; short: string; color: string }[]; services: Svc[] };
-export type Config = { booking: 'open' | 'closed'; payments: 'stripe' | 'simulated'; texts: 'twilio' | 'simulated'; stripePublishableKey: string | null; referrals: { enabled: boolean; friendGets: number }; policies: { cancellationPolicy: string; cancellationWindowHours: number; cancellationFeePercent: number; depositRefundHours: number } };
+export type Config = { booking: 'open' | 'closed'; payments: 'stripe' | 'simulated'; texts: 'twilio' | 'simulated'; emailRequired?: boolean; stripePublishableKey: string | null; referrals: { enabled: boolean; friendGets: number }; policies: { cancellationPolicy: string; cancellationWindowHours: number; cancellationFeePercent: number; depositRefundHours: number } };
 type Slot = { start: string; staffIds: string[] };
 type Booked = { token: string; start: string; service: string; staff: string; price: number; deposit: number; referralDiscount: number; card: string | null; first: string; calendar?: { ics: string; google: string } };
 
@@ -280,6 +280,7 @@ function NativeBooking({ config }: { config: Config }) {
               onDone={(d) => setDetails(d)}
               path="/public/bookings/start"
               policy={config.policies}
+              emailRequired={!!config.emailRequired}
               cta="Continue to card"
             />
           ) : null}
@@ -521,11 +522,14 @@ export function DetailsForm({
   onDone,
   policy,
   cta,
+  emailRequired,
 }: {
   path: string;
   onDone: (d: { clientId: string; setup: CardSetup }) => void;
   policy?: { cancellationPolicy: string };
   cta: string;
+  /** The booking confirmation is emailed, so an address is needed. */
+  emailRequired?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -573,9 +577,10 @@ export function DetailsForm({
         </label>
         <label className="field">
           Email
-          <input name="email" type="email" autoComplete="email" />
+          <input name="email" type="email" autoComplete="email" required={emailRequired} />
         </label>
       </div>
+      {emailRequired ? <p className="fine">We’ll email your confirmation and reminder here.</p> : null}
       <label className="check">
         <input type="checkbox" name="reminders" defaultChecked /> Text me my booking confirmation and reminders.
       </label>

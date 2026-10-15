@@ -40,7 +40,7 @@ const SAMPLE: Record<string, string> = {
 };
 const preview = (t: string) => t.replace(/\{(\w+)\}/g, (m, k) => SAMPLE[k] ?? (k.endsWith('_link') ? 'waxroomrichmond.com/b/4k2' : m));
 
-type Msg = { id: string; at: string; direction: 'out' | 'in'; to: string; from?: string; kind: string; body: string; status: string; clientName?: string; error?: string };
+type Msg = { id: string; at: string; direction: 'out' | 'in'; to: string; from?: string; kind: string; body: string; status: string; clientName?: string; error?: string; channel?: 'sms' | 'email'; subject?: string };
 
 export function TextsView() {
   const boot = useBoot();
@@ -60,7 +60,14 @@ export function TextsView() {
   return (
     <div className="page">
       <PageHead title="Texts" sub="Appointment texts go to every client who books (unless they reply STOP). Offers only go to clients who opted in.">
-        {boot.live.texts ? <Pill tone="green">Twilio connected</Pill> : <Pill tone="red">Twilio not connected: texts are saved, not sent</Pill>}
+        {boot.live.texts ? <Pill tone="green">Twilio connected</Pill> : <Pill tone="red">Twilio not connected: texts are saved, not sent</Pill>}{' '}
+        {boot.settings.emails?.enabled ? (
+          boot.live.email ? (
+            <Pill tone="green">Appointment texts are emailed too</Pill>
+          ) : (
+            <Pill tone="red">Emails on, but Gmail not connected</Pill>
+          )
+        ) : null}
       </PageHead>
       <div className="staff-tabs">
         <button className={tab === 'auto' ? 'is-on' : ''} onClick={() => setTab('auto')}>
@@ -228,9 +235,9 @@ function Log() {
             {(list ?? []).map((m) => (
               <tr key={m.id} className={m.direction === 'in' ? 'is-in' : ''}>
                 <td>{new Date(m.at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
-                <td>{m.clientName ?? phone(m.direction === 'in' ? m.from ?? '' : m.to)}</td>
-                <td>{m.direction === 'in' ? 'Reply' : m.kind}</td>
-                <td className="msg">{m.body}</td>
+                <td>{m.clientName ?? (m.channel === 'email' ? m.to : phone(m.direction === 'in' ? m.from ?? '' : m.to))}</td>
+                <td>{m.direction === 'in' ? 'Reply' : m.channel === 'email' ? `${m.kind} · email` : m.kind}</td>
+                <td className="msg">{m.subject ? <strong>{m.subject}<br /></strong> : null}{m.body}</td>
                 <td>{m.status === 'simulated' ? <Pill>Saved</Pill> : m.status === 'failed' ? <Pill tone="red">Failed</Pill> : <Pill tone="green">{m.status === 'received' ? 'Received' : 'Sent'}</Pill>}</td>
               </tr>
             ))}

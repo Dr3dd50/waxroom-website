@@ -183,6 +183,9 @@ export type Message = {
   kind: 'booking' | 'moved' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff' | 'alert' | 'card-link' | 'rating-request' | 'rating-thanks';
   body: string;
   status: 'sent' | 'simulated' | 'failed' | 'received' | 'queued';
+  /** Texts unless marked email (then `to` is the address and `subject` is set). */
+  channel?: 'sms' | 'email';
+  subject?: string;
   /** Queued: held until this time (a staff text that came in during quiet hours). */
   sendAfter?: string;
   providerId?: string;
@@ -256,6 +259,11 @@ export type Settings = {
     rewardLabel?: string;
     rewardDays: number | null;
   };
+  /**
+   * The appointment messages (booking, moved, confirm, reminder, cancelled, receipt)
+   * also go by email to clients with an address. Online booking asks for an email while on.
+   */
+  emails?: { enabled: boolean };
   /** Texts to staff when appointments are booked, moved or cancelled. */
   staffAlerts: { enabled: boolean };
   /** Employees see clients' phone numbers and emails only when the owner allows it. */

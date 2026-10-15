@@ -34,6 +34,11 @@ export const config = {
     // only while testing in Events Manager → Test events; remove it afterwards
     testCode: env.META_TEST_EVENT_CODE,
   },
+  /** Appointment emails go out from the studio's Gmail with an app password (Google Account → Security → App passwords). */
+  gmail: {
+    user: env.GMAIL_USER || env.OWNER_EMAIL || 'waxroomrichmond@gmail.com',
+    appPassword: env.GMAIL_APP_PASSWORD?.replace(/\s+/g, ''),
+  },
   twilio: {
     accountSid: env.TWILIO_ACCOUNT_SID,
     authToken: env.TWILIO_AUTH_TOKEN,
@@ -43,4 +48,5 @@ export const config = {
 };
 
 export const stripeLive = () => !!config.stripe.secretKey;
+export const emailLive = () => !!config.gmail.appPassword;
 export const twilioLive = () => !!(config.twilio.accountSid && config.twilio.authToken && (config.twilio.messagingServiceSid || config.twilio.from));

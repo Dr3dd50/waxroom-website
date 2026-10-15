@@ -139,6 +139,7 @@ export async function upgrade(store: Store) {
   s.staffAlerts ??= { enabled: true };
   s.reviews ??= defaultReviews(await store.list<Service>('services'));
   s.privacy ??= { employeesSeeContact: false };
+  s.emails ??= { enabled: true };
   for (const [key, def] of Object.entries(DEFAULT_AUTOMATIONS)) {
     const cur = s.automations[key];
     if (!cur) s.automations[key] = def;

@@ -17,7 +17,7 @@ import { sendText } from '../services/sms';
 import { sendOrQueue } from '../services/alerts';
 import { runDueTexts } from '../services/notify';
 import { hashPassword } from '../seed';
-import { config, stripeLive, twilioLive } from '../config';
+import { config, emailLive, stripeLive, twilioLive } from '../config';
 
 /** How long a texted card link works. */
 const CARD_LINK_DAYS = 7;
@@ -71,7 +71,7 @@ export function staffRoutes(store: Store) {
       packages: await store.list<Package>('packages'),
       // employees: no text templates, and no import notes (they can carry phone numbers)
       settings: isOwner(c) ? settings : { ...settings, automations: {}, glossGeniusImport: undefined },
-      live: { payments: payments.live(), texts: twilioLive() },
+      live: { payments: payments.live(), texts: twilioLive(), email: emailLive() },
       today: zoned(new Date(), settings.timezone).day,
     });
   });
@@ -486,6 +486,7 @@ export function staffRoutes(store: Store) {
       staffAlerts: { ...s.staffAlerts, ...b.staffAlerts },
       privacy: { ...s.privacy, ...b.privacy },
       reviews: rv ?? s.reviews,
+      emails: b.emails ? { enabled: !!b.emails.enabled } : s.emails,
     };
     return c.json(await store.put('settings', next));
   });
@@ -519,7 +520,8 @@ export function staffRoutes(store: Store) {
     else if (Date.now() - Date.parse(last.at) > IMPORT_FRESH_HOURS * 3600000) out.push(`Import the appointments again: the last import is more than ${IMPORT_FRESH_HOURS} hours old.`);
     // on AWS, real payments and texts; local demos run without them
     if (config.tableName && !stripeLive()) out.push('Add the Stripe keys.');
-    if (config.tableName && !twilioLive()) out.push('Add the Twilio keys (texting).');
+    // clients have to hear about their bookings somehow: by text, or by email until texting is approved
+    if (config.tableName && !twilioLive() && !(emailLive() && s.emails?.enabled)) out.push('Add the Twilio keys (texting), or the Gmail app password with appointment emails on.');
     return out;
   }
   r.get('/switchover', requireOwner, async (c) => c.json({ blockers: await switchBlockers(), freshHours: IMPORT_FRESH_HOURS }));

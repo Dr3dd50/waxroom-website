@@ -52,6 +52,8 @@ export class WaxRoomStack extends Stack {
       removalPolicy: RemovalPolicy.RETAIN,
     });
     // Filled in by hand in the AWS console (or CLI) when the keys exist; nothing secret lives in the code.
+    // Leave this template as it is: changing it can make AWS generate a new secret value and drop the
+    // keys already filled in. New keys (GMAIL_APP_PASSWORD, GMAIL_USER) are added as rows in the console.
     const appSecret = new secrets.Secret(this, 'AppKeys', {
       description: 'The Wax Room: session secret, owner login, Stripe, Twilio and Meta keys',
       generateSecretString: {

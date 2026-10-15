@@ -183,7 +183,7 @@ test('the page and the webhook reporting one approved deposit at once: one payme
   pi.status = 'succeeded';
   await Promise.all([call('POST', `/public/booking/${done.json.token}/deposit`, {}), webhook('payment_intent.succeeded', { ...pi, object: 'payment_intent' })]);
   assert.equal((await store.list<any>('payments')).filter((p) => p.providerId === pi.id && p.status === 'paid').length, 1);
-  assert.equal((await store.list<any>('messages')).filter((m) => m.kind === 'booking' && m.clientId === clientId).length, 1);
+  assert.equal((await store.list<any>('messages')).filter((m) => m.kind === 'booking' && m.channel !== 'email' && m.clientId === clientId).length, 1);
 });
 
 test('a hold cancelled before the bank approval comes through is refunded, not kept', async () => {

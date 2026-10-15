@@ -65,7 +65,7 @@ test('the same time can’t be booked twice', async () => {
   const day = nextWeekday(4);
   const a = await book('Brazilian', '804-555-0102', 'Bria', day);
   assert.equal(a.status, 200);
-  const start = await call('POST', '/public/bookings/start', { client: { first: 'Cara', last: 'T', phone: '804-555-0103' } });
+  const start = await call('POST', '/public/bookings/start', { client: { first: 'Cara', last: 'T', phone: '804-555-0103', email: 'cara@example.com' } });
   const again = await call('POST', '/public/bookings/confirm', { clientId: start.json.clientId, setupId: start.json.setupId, serviceId: a.service.id, staffId: a.json.staffId, start: a.slot.start });
   assert.equal(again.status, 409);
 });
@@ -169,7 +169,7 @@ test('reminder goes out 24 hours before, once, outside quiet hours', async () =>
   if (local.hour < 9 || local.hour >= 21) before.setTime(zonedToUtc(local.day, 12 * 60).getTime());
   await runDueTexts(store, before);
   await runDueTexts(store, before);
-  const reminders = (await store.list<any>('messages')).filter((m) => m.kind === 'reminder' && m.clientId === r.clientId);
+  const reminders = (await store.list<any>('messages')).filter((m) => m.kind === 'reminder' && m.channel !== 'email' && m.clientId === r.clientId);
   assert.equal(reminders.length, 1);
 });
 
@@ -229,7 +229,7 @@ test('employees set their own hours and time off; online booking respects them; 
   const after = (await call('GET', `/public/availability?service=${bikini.id}&day=${next}&staff=${me.id}`)).json;
   assert.ok(after.length < before.length && after.every((s: any) => zoned(s.start).minutes >= 12 * 60));
   // a time the page never offered is refused
-  const s = await call('POST', '/public/bookings/start', { client: { first: 'Kim', last: 'T', phone: '804-555-0111' } });
+  const s = await call('POST', '/public/bookings/start', { client: { first: 'Kim', last: 'T', phone: '804-555-0111', email: 'kim@example.com' } });
   const sneaky = await call('POST', '/public/bookings/confirm', { clientId: s.json.clientId, setupId: s.json.setupId, serviceId: bikini.id, staffId: me.id, start: zonedToUtc(next, 9 * 60).toISOString() });
   assert.equal(sneaky.status, 409);
   assert.equal((await call('PUT', `/staff/services/${bikini.id}`, { price: 100 })).status, 403);

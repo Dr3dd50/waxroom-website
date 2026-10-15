@@ -43,6 +43,17 @@ export function ManagePage() {
   const upcoming = b && ['booked', 'confirmed'].includes(b.status);
   const inWindow = b && (Date.parse(b.start) - Date.now()) / 3600000 < b.windowHours;
 
+  async function attend() {
+    setBusy(true);
+    try {
+      setB(await api<Booking>(`/public/booking/${token}/attend`, {}));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function cancel() {
     setBusy(true);
     try {
@@ -93,6 +104,15 @@ export function ManagePage() {
                 <dd>{business.address}</dd>
               </dl>
             </div>
+
+            {b.status === 'booked' && mode === 'view' ? (
+              <div className="book__actions">
+                <button className="btn btn--honey" disabled={busy} onClick={attend}>
+                  {busy ? 'Confirming…' : 'Confirm I’m coming'}
+                </button>
+              </div>
+            ) : null}
+            {b.status === 'confirmed' && mode === 'view' ? <p className="muted">You’ve confirmed. See you then!</p> : null}
 
             {upcoming && mode === 'view' ? (
               <div className="book__actions">

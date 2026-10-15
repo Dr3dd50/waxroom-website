@@ -67,6 +67,13 @@ Getting ready (any time before):
 1. Fill the keys into the `AppKeys` secret (Secrets Manager → the secret → Edit):
    `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`,
    `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`.
+   Until Twilio is approved, appointment messages can go by email instead: on
+   waxroomrichmond@gmail.com turn on 2-Step Verification, make an app password
+   (Google Account → Security → App passwords), and add it to the secret as a new key,
+   `GMAIL_APP_PASSWORD` (Edit → Add row). Sending as another Gmail address: add
+   `GMAIL_USER` too. The switch needs Twilio or this. Add these as new rows by hand:
+   don't change the secret's template in `stack.ts`, which can make AWS generate a
+   fresh secret and lose the keys already in it.
    The API reads them when it starts; to restart it now, run
    `aws lambda update-function-configuration --function-name <the WaxRoom-Api… function> --description "keys updated"`.
 2. In Stripe (Developers → Webhooks → Add endpoint), send these events to the

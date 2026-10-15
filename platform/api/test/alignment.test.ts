@@ -145,7 +145,7 @@ test('two people booking the same time at the same moment: only one gets it', as
   const owner = boot.staff.find((s: any) => s.role === 'owner');
   const slot = (await call('GET', `/public/availability?service=${service.id}&day=${day}&staff=${owner.id}`)).json[0];
   const starts = await Promise.all(
-    ['804-555-0320', '804-555-0321', '804-555-0322'].map((phone, i) => call('POST', '/public/bookings/start', { client: { first: `Racer${i}`, last: 'Test', phone } })),
+    ['804-555-0320', '804-555-0321', '804-555-0322'].map((phone, i) => call('POST', '/public/bookings/start', { client: { first: `Racer${i}`, last: 'Test', phone, email: `racer${i}@example.com` } })),
   );
   const results = await Promise.all(
     starts.map((st) =>
@@ -370,7 +370,7 @@ test('employees: a text’s reply has no phone number, and booking by phone does
   const r = await call('POST', '/staff/appointments', { client: { first: 'Alexa', last: 'Test', phone: '804-555-0310' }, serviceId: service.id, staffId: nyeesha.id, start: slot.start });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   assert.equal((await store.get<any>('clients', alexa.id)).smsReminders, false);
-  assert.ok(!(await store.list<any>('messages')).some((m: any) => m.kind === 'booking' && m.clientId === alexa.id && m.at >= r.json.createdAt));
+  assert.ok(!(await store.list<any>('messages')).some((m: any) => m.kind === 'booking' && m.channel !== 'email' && m.clientId === alexa.id && m.at >= r.json.createdAt));
   // and the import notes (which can hold phone numbers) aren't sent to employees
   assert.equal((await call('GET', '/staff/bootstrap')).json.settings.glossGeniusImport, undefined);
 });

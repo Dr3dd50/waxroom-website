@@ -10,7 +10,8 @@ import { getSettings, isFree, slotsFor } from '../services/availability';
 import { upsertClient, type ClientInput } from '../services/clients';
 import { payments } from '../services/payments';
 import { twilioLive } from '../config';
-import { apptVars, cancelAppointment, cancelOutcome, completeDeposit, createAppointment, finalizeOnlineBooking, manageLink, moveAppointment, refundHours } from '../services/appointments';
+import { apptVars, cancelAppointment, cancelOutcome, completeDeposit, createAppointment, finalizeOnlineBooking, manageLink, moveAppointment, onAppointment, refundHours } from '../services/appointments';
+import { validEmail } from '../services/email';
 import { googleCalendarUrl, icsFor } from '../services/calendar';
 import { grantPackage } from '../services/clients';
 import { switched, withLock } from '../services/switchover';
@@ -101,6 +102,8 @@ export function publicRoutes(store: Store) {
       booking: switched(s) ? 'open' : 'closed',
       payments: payments.live() ? 'stripe' : 'simulated',
       texts: twilioLive() ? 'twilio' : 'simulated',
+      // while appointment emails are on, online booking asks for an address to send them to
+      emailRequired: !!s.emails?.enabled,
       stripePublishableKey: payments.publishableKey(),
       referrals: s.referrals,
       policies: {
@@ -161,6 +164,7 @@ export function publicRoutes(store: Store) {
   r.post('/bookings/start', async (c) => {
     await requireOpen(store);
     const body = await c.req.json<{ client: ClientInput }>();
+    if ((await getSettings(store)).emails?.enabled && !validEmail(body.client?.email)) throw bad('Enter your email so we can send your confirmation.');
     const { client } = await upsertClient(store, body.client);
     client.customerId = await payments.ensureCustomer(client);
     await store.put('clients', client);
@@ -250,6 +254,20 @@ export function publicRoutes(store: Store) {
     const settings = await getSettings(store);
     if (!settings.policies.allowOnlineCancellations) throw bad('Please call or text us to cancel.');
     const appt = await cancelAppointment(store, await byToken(c.req.param('token')), { by: 'client' });
+    return c.json(await describe(appt));
+  });
+
+  // "Confirm you're coming", from the link in the confirmation email (by text it's a reply of C)
+  r.post('/booking/:token/attend', async (c) => {
+    await requireOpen(store);
+    const appt = await onAppointment(store, await byToken(c.req.param('token')), async (a) => {
+      if (a.status === 'booked' && Date.parse(a.start) > Date.now()) {
+        a.status = 'confirmed';
+        a.texts.confirmedAt = nowIso();
+        await store.put('appointments', a);
+      }
+      return a;
+    });
     return c.json(await describe(appt));
   });
 

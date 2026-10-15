@@ -35,7 +35,7 @@ async function call(method: string, path: string, body?: unknown) {
   return { status: res.status, json: json as any };
 }
 const asOwner = () => call('POST', '/staff/login', { email: 'waxroomrichmond@gmail.com', password: 'owner-pass-123' });
-const messages = async (kind: string) => (await store.list<any>('messages')).filter((m) => m.kind === kind);
+const messages = async (kind: string) => (await store.list<any>('messages')).filter((m) => m.kind === kind && m.channel !== 'email');
 
 function nextWeekday(n: number) {
   let day = addDays(zoned(new Date()).day, n);
@@ -50,7 +50,7 @@ async function book(serviceName: string, phone: string, first: string, day: stri
   const service = cat.services.find((s: any) => s.name === serviceName);
   const slots = (await call('GET', `/public/availability?service=${service.id}&day=${day}`)).json;
   assert.ok(slots.length, `open times for ${serviceName} on ${day}`);
-  const start = await call('POST', '/public/bookings/start', { client: { first, last: 'Test', phone, ...client } });
+  const start = await call('POST', '/public/bookings/start', { client: { first, last: 'Test', phone, email: `${first.toLowerCase()}@example.com`, ...client } });
   assert.equal(start.status, 200, JSON.stringify(start.json));
   const done = await call('POST', '/public/bookings/confirm', { clientId: start.json.clientId, setupId: start.json.setupId, simulatedCard: { number: '4242424242424242' }, serviceId: service.id, start: slots[0].start });
   assert.equal(done.status, 200, JSON.stringify(done.json));
@@ -288,7 +288,7 @@ test('a booking moved into the reminder window isn’t sent a reminder on top of
   assert.equal(moved.status, 200, JSON.stringify(moved.json));
   assert.ok(moved.json.movedAt);
   await runDueTexts(store, new Date());
-  const mine = (await store.list<any>('messages')).filter((m) => m.clientId === r.clientId);
+  const mine = (await store.list<any>('messages')).filter((m) => m.clientId === r.clientId && m.channel !== 'email');
   assert.equal(mine.filter((m) => m.kind === 'moved').length, 1);
   assert.equal(mine.filter((m) => m.kind === 'reminder' || m.kind === 'confirm-request').length, 0);
 });
@@ -332,6 +332,6 @@ test('the owner sets when the reminder and the confirmation request go out', asy
   await store.put('appointments', { ...appt, createdAt: new Date(Date.now() - 7 * 86400000).toISOString() });
   const at = new Date(Date.parse(appt.start) - 40 * 3600000);
   await runDueTexts(store, at);
-  assert.equal((await store.list<any>('messages')).filter((m) => m.clientId === r.clientId && m.kind === 'reminder').length, 1);
+  assert.equal((await store.list<any>('messages')).filter((m) => m.clientId === r.clientId && m.kind === 'reminder' && m.channel !== 'email').length, 1);
   await call('PUT', '/staff/settings', { notifications: { reminderHoursBefore: 24, confirmHoursBefore: 72 } });
 });

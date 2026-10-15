@@ -9,6 +9,7 @@ import { getSettings, isFree } from './availability';
 import { futureAppointments, hasVisited } from './clients';
 import { payments } from './payments';
 import { fill, sendText } from './sms';
+import { autoEmail } from './email';
 import { alertStaff, sendOrQueue, type Actor } from './alerts';
 import { calendarLink } from './calendar';
 import { perkFor } from './reviews';
@@ -20,15 +21,20 @@ export const bookingLink = (service?: Service) => `${config.siteUrl}/book/${serv
 export const referralLink = (c: Client) => `${config.siteUrl}/r/${c.referralCode}`;
 
 /**
- * Text one of the automatic messages, if it's switched on and the client wants texts.
- * `fromStudio`: set off by the team rather than the client, so it waits out quiet hours.
+ * Send one of the automatic messages, if it's switched on: by text when the client
+ * wants texts, and (the appointment ones) by email when emails are on.
+ * `fromStudio`: set off by the team rather than the client, so the text waits out
+ * quiet hours; an email doesn't buzz anyone's phone, so it goes now.
+ * Returns the text, or the email when there's no text.
  */
 export async function autoText(store: Store, key: string, client: Client, vars: Record<string, string>, kind = key as never, opts: { fromStudio?: boolean } = {}) {
   const settings = await getSettings(store);
   const auto = settings.automations[key];
   // nothing goes to clients from here until the switch from GlossGenius
-  if (!switched(settings) || !auto?.enabled || !client.smsReminders) return null;
+  if (!switched(settings) || !auto?.enabled) return null;
   const body = fill(auto.text, { first: client.first, ...vars });
+  const email = await autoEmail(store, settings, key, client, body, vars, kind);
+  if (!client.smsReminders) return email;
   if (opts.fromStudio) return sendOrQueue(store, settings, client.phone, body, kind, client);
   return sendText(store, client.phone, body, kind, client);
 }
