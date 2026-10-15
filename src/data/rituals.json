@@ -1,6 +1,7 @@
 {
   "_source": "waxroom-content factory/offers.json, by scripts/sync-rituals.mjs. Edit the offer bank there, then re-run.",
   "steamMinutes": 60,
+  "bookingExtraMinutes": 15,
   "rituals": [
     {
       "key": "new_client_ritual",
@@ -9,11 +10,12 @@
       "label": "Brazilian",
       "category": "Intimate Waxing",
       "price": 4900,
-      "value": 9500,
+      "value": 10500,
       "deposit": 1000,
-      "arithmetic": "$65 + $30",
-      "includes": "Brazilian and a complimentary 1-hour V-steam",
-      "eligibility": "new to this service"
+      "arithmetic": "$65 + $40",
+      "includes": "Brazilian and a complimentary V-Steam (up to 1 hour)",
+      "eligibility": "new to this service",
+      "visitMinutes": 60
     },
     {
       "key": "jet_plasma_facial_ritual",
@@ -22,11 +24,12 @@
       "label": "Jet Plasma Facial",
       "category": "Skin Therapy",
       "price": 22000,
-      "value": 30500,
+      "value": 31500,
       "deposit": 5000,
-      "arithmetic": "$275 + $30",
-      "includes": "Jet Plasma Facial and a complimentary 1-hour V-steam",
-      "eligibility": "new to this service"
+      "arithmetic": "$275 + $40",
+      "includes": "Jet Plasma Facial and a complimentary V-Steam (up to 1 hour)",
+      "eligibility": "new to this service",
+      "visitMinutes": 75
     },
     {
       "key": "jet_plasma_body_ritual",
@@ -35,11 +38,12 @@
       "label": "Jet Plasma Body",
       "category": "Skin Therapy",
       "price": 29000,
-      "value": 40500,
+      "value": 41500,
       "deposit": 7500,
-      "arithmetic": "$375 + $30",
-      "includes": "Jet Plasma Body and a complimentary 1-hour V-steam",
-      "eligibility": "new to this service"
+      "arithmetic": "$375 + $40",
+      "includes": "Jet Plasma Body and a complimentary V-Steam (up to 1 hour)",
+      "eligibility": "new to this service",
+      "visitMinutes": 75
     },
     {
       "key": "jet_plasma_hair_ritual",
@@ -48,11 +52,12 @@
       "label": "Jet Plasma Hair Restoration",
       "category": "Hair Restoration",
       "price": 29000,
-      "value": 40500,
+      "value": 41500,
       "deposit": 7500,
-      "arithmetic": "$375 + $30",
-      "includes": "Jet Plasma Hair Restoration and a complimentary 1-hour V-steam",
-      "eligibility": "new to this service"
+      "arithmetic": "$375 + $40",
+      "includes": "Jet Plasma Hair Restoration and a complimentary V-Steam (up to 1 hour)",
+      "eligibility": "new to this service",
+      "visitMinutes": 75
     },
     {
       "key": "jet_plasma_eye_ritual",
@@ -61,11 +66,12 @@
       "label": "Jet Plasma Eye",
       "category": "Skin Therapy",
       "price": 6000,
-      "value": 10500,
+      "value": 11500,
       "deposit": 1500,
-      "arithmetic": "$75 + $30",
-      "includes": "Jet Plasma Eye and a complimentary 1-hour V-steam",
-      "eligibility": "new to this service"
+      "arithmetic": "$75 + $40",
+      "includes": "Jet Plasma Eye and a complimentary V-Steam (up to 1 hour)",
+      "eligibility": "new to this service",
+      "visitMinutes": 45
     },
     {
       "key": "biorepeel_ritual",
@@ -74,11 +80,12 @@
       "label": "BioRePeel",
       "category": "Skin Therapy",
       "price": 14000,
-      "value": 20500,
+      "value": 21500,
       "deposit": 3500,
-      "arithmetic": "$175 + $30",
-      "includes": "BioRePeel and a complimentary 1-hour V-steam",
-      "eligibility": "new to this service"
+      "arithmetic": "$175 + $40",
+      "includes": "BioRePeel and a complimentary V-Steam (up to 1 hour)",
+      "eligibility": "new to this service",
+      "visitMinutes": 75
     },
     {
       "key": "lash_full_set_ritual",
@@ -87,11 +94,12 @@
       "label": "Lash full set",
       "category": "Lash Art",
       "price": 16000,
-      "value": 23000,
+      "value": 24000,
       "deposit": 4000,
-      "arithmetic": "$200 + $30",
-      "includes": "Lash full set and a complimentary 1-hour V-steam",
-      "eligibility": "new to this service"
+      "arithmetic": "$200 + $40",
+      "includes": "Lash full set and a complimentary V-Steam (up to 1 hour)",
+      "eligibility": "new to this service",
+      "visitMinutes": 135
     },
     {
       "key": "brazilian_underarm_ritual",
@@ -100,11 +108,12 @@
       "label": "Brazilian and underarm wax",
       "category": "Intimate Waxing",
       "price": 7200,
-      "value": 12000,
+      "value": 13000,
       "deposit": 1000,
-      "arithmetic": "$90 + $30",
-      "includes": "Brazilian and underarm wax and a complimentary 1-hour V-steam",
-      "eligibility": "new to this service"
+      "arithmetic": "$90 + $40",
+      "includes": "Brazilian and underarm wax and a complimentary V-Steam (up to 1 hour)",
+      "eligibility": "new to this service",
+      "visitMinutes": 45
     },
     {
       "key": "brow_lamination_ritual",
@@ -113,11 +122,12 @@
       "label": "Brow lamination and wax",
       "category": "Brow Art",
       "price": 4500,
-      "value": 9000,
+      "value": 10000,
       "deposit": 1000,
-      "arithmetic": "$60 + $30",
-      "includes": "Brow lamination and wax and a complimentary 1-hour V-steam",
-      "eligibility": "new to this service"
+      "arithmetic": "$60 + $40",
+      "includes": "Brow lamination and wax and a complimentary V-Steam (up to 1 hour)",
+      "eligibility": "new to this service",
+      "visitMinutes": 45
     },
     {
       "key": "vajacial_ritual",
@@ -126,11 +136,12 @@
       "label": "Vajacial",
       "category": "Skin Therapy",
       "price": 4000,
-      "value": 8000,
+      "value": 9000,
       "deposit": 1000,
-      "arithmetic": "$50 + $30",
-      "includes": "Vajacial and a complimentary 1-hour V-steam",
-      "eligibility": "new to this service"
+      "arithmetic": "$50 + $40",
+      "includes": "Vajacial and a complimentary V-Steam (up to 1 hour)",
+      "eligibility": "new to this service",
+      "visitMinutes": 75
     }
   ]
 }

@@ -9,10 +9,9 @@ export function RitualCard({ r, className = '', ...rest }: { r: Ritual; classNam
     <a className={`card card--ritual ${className}`} {...bookLink({ service: r.name })} {...rest}>
       <span className="card__tag">New client ritual</span>
       <h3>{r.name}</h3>
-      {/* a non-breaking hyphen keeps "V-steam" on one line */}
-      <p>{r.includes.replace(/V-steam/g, 'V\u2011steam')}.</p>
+      <p>{r.includes}.</p>
       <p className="card__fine">
-        For your first {r.label}. A {dollars(r.value)} value ({r.arithmetic}). {dollars(r.deposit)} deposit to book.
+        For your first {r.label}. {r.arithmetic ? <>A {dollars(r.value)} value ({r.arithmetic}).</> : <>Valued at {dollars(r.value)}.</>} {dollars(r.deposit)} deposit to book.
       </p>
       <p className="card__price">
         {dollars(r.price)}

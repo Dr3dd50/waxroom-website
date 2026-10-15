@@ -108,6 +108,6 @@ export function draw(ctx, t) {
   fill(ctx, spline([[1490, 704], [1478, 690], [1490, 704 - 34 * fl], [1502, 690], [1490, 704]], 4), '#F6C35B');
   fill(ctx, spline([[1490, 704], [1484, 694], [1490, 704 - 18 * fl], [1496, 694], [1490, 704]], 4), '#FFF1CC');
 
-  write(ctx, 'warm herbal steam · a quiet half hour for you', 800, 90, 1, t, { size: 52, rot: 0 });
+  write(ctx, 'warm herbal steam · a quiet hour for you', 800, 90, 1, t, { size: 52, rot: 0 });
   void lerp;
 }

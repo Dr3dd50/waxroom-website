@@ -19,7 +19,7 @@ const STEAM_TEXT = 'A quiet, seated session over a warm infusion of premium-grad
 /** Danielle takes clients from ads for Jet Plasma, BioRePeel and lashes only, so other offers' pages don't lead with reviews naming her. */
 const DANIELLE_PAGES = new Set(['skin-treatments', 'lash-extensions']);
 /** "V-steam" for the steam, with a non-breaking hyphen that keeps it on one line. */
-const nb = (s: string) => vSteam(s).replace(/V-steam/g, 'V‑steam');
+const nb = (s: string) => vSteam(s).replace(/V-(steam)/gi, 'V‑$1');
 
 /** Where the button goes: the ritual's booking, or joining/buying the membership or package. */
 function ctaFor(o: Offer) {
@@ -30,7 +30,7 @@ function ctaFor(o: Offer) {
 
 /** What you get, in the bank's words, as the headline; the last part in gold italic like the service pages. */
 function headline(o: Offer) {
-  const text = o.kind === 'ritual' ? o.includes.replace(/ and a complimentary 1-hour V-steam$/i, ' + V-steam') : o.includes;
+  const text = o.kind === 'ritual' ? o.includes.replace(/ and a complimentary V-steam( \(up to 1 hour\))?$/i, ' + V-steam') : o.includes;
   const words = nb(text[0].toUpperCase() + text.slice(1));
   const m = words.match(/^(.*)( \+ | and | plus )(.+)$/);
   const [plain, gold] = m ? [m[1] + m[2], m[3]] : [words.replace(/\S+$/, ''), words.match(/\S+$/)![0]];
@@ -44,7 +44,7 @@ function headline(o: Offer) {
 
 /** The sum, only where the bank carries one: a ritual's value, or a saving. */
 function mathLine(o: Offer) {
-  if (o.kind === 'ritual' && o.value) return `a ${dollars(o.value)} value${o.arithmetic ? ` (${o.arithmetic})` : ''}`;
+  if (o.kind === 'ritual' && o.value) return o.arithmetic ? `a ${dollars(o.value)} value (${o.arithmetic})` : `valued at ${dollars(o.value)}`;
   if (o.saving) return `save ${dollars(o.saving)} ${o.savingBasis ?? ''}${o.arithmetic ? ` (${o.arithmetic.replace(/ x /g, ' × ').replace(/ - /g, ' − ')})` : ''}`.trim();
   return null;
 }
@@ -101,7 +101,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
       ? [
           `For your first ${label} with us. If you’ve had a ${label} here before, book the ${label} itself.`,
           ...(o.deposit ? [`${dollars(o.deposit)} deposit when you book; it comes off your total.`] : []),
-          'Your V-steam is the full hour, at the same visit.',
+          'Your V-Steam is up to an hour, at the same visit. Stay as long as you like.',
         ]
       : o.kind === 'membership'
         ? [`${dollars(o.price)} a month, billed to your card.`, 'Book your visits as usual; your membership is applied when you check out.']
@@ -112,7 +112,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
       ? [
           { title: 'Book', body: `Pick a time for the ${o.name}${o.deposit ? ` and pay the ${dollars(o.deposit)} deposit` : ''}.` },
           { title: `Your ${label}`, body: page.expect[1]?.body ?? page.intro },
-          { title: 'Your V-steam', body: steamPage?.expect[1]?.body ?? 'An hour of warm herbal steam, private and unhurried.' },
+          { title: 'Your V-Steam', body: steamPage?.expect[1]?.body ?? 'An hour of warm herbal steam, private and unhurried.' },
         ]
       : page.expect;
 
@@ -125,7 +125,7 @@ export function OfferPage({ offer: o }: { offer: Offer }) {
       ? [
           { q: `Who is the ${o.name} for?`, a: `Anyone new to ${label} at The Wax Room. It’s priced for your first one; if you’ve had a ${label} with us before, book the ${label} itself.` },
           ...(o.deposit ? [{ q: 'Is there a deposit?', a: `Yes, ${dollars(o.deposit)} when you book. It comes off your total at your visit.` }] : []),
-          { q: 'Is the V-steam a medical treatment?', a: 'No. We offer it as a relaxation and self-care ritual, not as a treatment for any condition. Please see your healthcare provider for medical concerns.' },
+          { q: 'Is the V-Steam a medical treatment?', a: 'No. We offer it as a relaxation and self-care ritual, not as a treatment for any condition. Please see your healthcare provider for medical concerns.' },
         ]
       : o.kind === 'membership'
         ? [{ q: `How is ${o.name} billed?`, a: `${dollars(o.price)} a month, charged to the card you join with.` }]
