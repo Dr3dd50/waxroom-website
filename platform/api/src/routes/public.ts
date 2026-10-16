@@ -5,9 +5,10 @@ import { Hono } from 'hono';
 import type { Store } from '../store/store';
 import type { Appointment, Client, Membership, Package, Service, Staff } from '../types';
 import { addDays, zoned } from '../lib/time';
-import { HttpError, bad, money, nice, nowIso, rid } from '../lib/util';
+import { HttpError, bad, money, nice, nowIso, rid, toE164 } from '../lib/util';
 import { getSettings, isFree, slotsFor } from '../services/availability';
-import { upsertClient, type ClientInput } from '../services/clients';
+import { findClientByPhone, upsertClient, type ClientInput } from '../services/clients';
+import { sendText } from '../services/sms';
 import { payments } from '../services/payments';
 import { twilioLive } from '../config';
 import { apptVars, cancelAppointment, cancelOutcome, completeDeposit, createAppointment, finalizeOnlineBooking, manageLink, moveAppointment, onAppointment, refundHours } from '../services/appointments';
@@ -94,6 +95,34 @@ export function publicRoutes(store: Store) {
       });
     }
     return c.body(null, 204);
+  });
+
+  // The website's text opt-out form. Offers only, or every text (the same as replying STOP).
+  // It says the same thing whether or not the number is a client's, so it can't be used to
+  // find out who is; a client's number gets one text saying it's done, so the owner of the
+  // number knows if someone else sent the form.
+  r.post('/texts/opt-out', async (c) => {
+    const b = await c.req.json<{ phone?: string; scope?: string }>();
+    const phone = toE164(b.phone ?? '');
+    if (!phone) throw bad('Enter the 10-digit mobile number our texts come to.');
+    if (b.scope !== 'offers' && b.scope !== 'all') throw bad('Choose which texts to stop.');
+    const client = await findClientByPhone(store, phone);
+    const changes = client && (client.smsMarketing || (b.scope === 'all' && client.smsReminders));
+    if (client && changes) {
+      client.smsMarketing = false;
+      if (b.scope === 'all') client.smsReminders = false;
+      await store.put('clients', client);
+      await sendText(
+        store,
+        client.phone,
+        b.scope === 'all'
+          ? 'You’re unsubscribed from all texts from The Wax Room. Reply START to get appointment texts again.'
+          : 'You won’t get offers or news from The Wax Room by text. Appointment texts continue; reply STOP to stop those too.',
+        'opt-out',
+        client,
+      );
+    }
+    return c.json({ ok: true, scope: b.scope });
   });
 
   r.get('/config', async (c) => {

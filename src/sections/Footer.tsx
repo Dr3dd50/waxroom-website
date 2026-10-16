@@ -32,6 +32,9 @@ export function Footer() {
           ))}
         </details>
         <PrivacyChoices />
+        <a className="footer__optout" href="/text-opt-out/">
+          Text message opt-out
+        </a>
         <p className="footer__fine">
           © {new Date().getFullYear()} {business.name} · {business.address}
         </p>

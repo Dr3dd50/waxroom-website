@@ -180,7 +180,7 @@ export type Message = {
   to: string;
   from?: string;
   clientId?: string;
-  kind: 'booking' | 'moved' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff' | 'alert' | 'card-link' | 'rating-request' | 'rating-thanks';
+  kind: 'booking' | 'moved' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff' | 'alert' | 'card-link' | 'rating-request' | 'rating-thanks' | 'opt-out';
   body: string;
   status: 'sent' | 'simulated' | 'failed' | 'received' | 'queued';
   /** Texts unless marked email (then `to` is the address and `subject` is set). */

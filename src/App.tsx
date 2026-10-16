@@ -7,6 +7,7 @@ import { GroupPage } from './pages/GroupPage';
 import { BookPage } from './pages/BookPage';
 import { ManagePage } from './pages/ManagePage';
 import { CardPage } from './pages/CardPage';
+import { TextOptOutPage } from './pages/TextOptOutPage';
 import { OfferPage } from './pages/OfferPage';
 import { JoinPage } from './pages/JoinPage';
 import { ReferralPage } from './pages/ReferralPage';
@@ -65,6 +66,7 @@ export default function App({ path }: { path: string }) {
         {route.kind === 'join' ? <JoinPage /> : null}
         {route.kind === 'referral' ? <ReferralPage /> : null}
         {route.kind === 'card' ? <CardPage /> : null}
+        {route.kind === 'textOptOut' ? <TextOptOutPage /> : null}
         {route.kind === 'offer' ? <OfferPage offer={route.offer} /> : null}
         {route.kind === 'notFound' ? (
           <section className="hero">

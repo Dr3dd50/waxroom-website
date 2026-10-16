@@ -1281,6 +1281,28 @@ h3 {
   font-weight: 600;
   color: var(--cream);
 }
+.footer__optout {
+  border-top: 1px solid rgba(248, 241, 231, 0.15);
+  padding-top: 1.2rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--cream);
+  text-decoration: none;
+}
+.footer__optout:hover {
+  color: var(--honey-light);
+}
+.optout__choices {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.optout__choices legend {
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
 .footer__fine {
   margin: 0;
   font-size: 0.85rem;
