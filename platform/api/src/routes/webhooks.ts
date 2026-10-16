@@ -36,8 +36,11 @@ export function webhookRoutes(store: Store) {
 
   r.post('/twilio', async (c) => {
     const form = Object.fromEntries((await c.req.formData()).entries()) as Record<string, string>;
-    const url = `${config.siteUrl}/api/webhooks/twilio`;
-    if (!validTwilioSignature(url, form, c.req.header('x-twilio-signature') ?? '')) return c.text('bad signature', 403);
+    // Twilio signs the address it posted to: the website's, or the staff site's (the one
+    // that reaches the API while www is still the GlossGenius build)
+    const signature = c.req.header('x-twilio-signature') ?? '';
+    const urls = [...new Set([config.siteUrl, config.staffUrl])].map((u) => `${u}/api/webhooks/twilio`);
+    if (!urls.some((url) => validTwilioSignature(url, form, signature))) return c.text('bad signature', 403);
     await handleInbound(store, form.From, form.Body ?? '');
     // replies are sent through the API, so answer Twilio with an empty TwiML document
     return c.body('<Response></Response>', 200, { 'Content-Type': 'text/xml' });

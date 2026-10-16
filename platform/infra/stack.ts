@@ -258,7 +258,8 @@ function handler(event) {
     new CfnOutput(this, 'SiteUrl', { value: props.attachDomains ? `https://${www}` : `https://${site.distributionDomainName}` });
     new CfnOutput(this, 'StaffUrl', { value: staffCert ? `https://${staffHost}` : `https://${staff.distributionDomainName}` });
     new CfnOutput(this, 'KeysSecret', { value: appSecret.secretName, description: 'Add Stripe and Twilio keys here' });
-    new CfnOutput(this, 'TwilioWebhook', { value: `https://${props.attachDomains ? www : site.distributionDomainName}/api/webhooks/twilio` });
+    // the staff address reaches the API before and after www moves over; the API accepts Twilio's signature for either
+    new CfnOutput(this, 'TwilioWebhook', { value: `https://${props.attachStaff || props.attachDomains ? staffHost : site.distributionDomainName}/api/webhooks/twilio` });
     new CfnOutput(this, 'StripeWebhook', { value: `https://${props.attachDomains ? www : site.distributionDomainName}/api/webhooks/stripe` });
   }
 }

@@ -139,7 +139,8 @@ export async function upgrade(store: Store) {
   s.staffAlerts ??= { enabled: true };
   s.reviews ??= defaultReviews(await store.list<Service>('services'));
   s.privacy ??= { employeesSeeContact: false };
-  s.emails ??= { enabled: true };
+  // texts are the way clients hear about bookings; emails are the owner's switch (Settings → Client texts and emails)
+  s.emails ??= { enabled: false };
   for (const [key, def] of Object.entries(DEFAULT_AUTOMATIONS)) {
     const cur = s.automations[key];
     if (!cur) s.automations[key] = def;

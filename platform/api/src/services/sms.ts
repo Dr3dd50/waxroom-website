@@ -1,7 +1,7 @@
 // Texts. With Twilio keys set they go out through Twilio (a Messaging Service
 // registered for A2P 10DLC); until then they're kept in an outbox the
 // dashboard shows, marked as not sent.
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { config, twilioLive } from '../config';
 import type { Store } from '../store/store';
 import type { Client, Message, Settings } from '../types';
@@ -44,8 +44,9 @@ export async function sendText(store: Store, to: string, body: string, kind: Mes
 export function validTwilioSignature(url: string, params: Record<string, string>, signature: string) {
   if (!config.twilio.authToken) return true; // local: nothing to verify against
   const data = url + Object.keys(params).sort().map((k) => k + params[k]).join('');
-  const expected = createHmac('sha1', config.twilio.authToken).update(data).digest('base64');
-  return expected === signature;
+  const expected = Buffer.from(createHmac('sha1', config.twilio.authToken).update(data).digest('base64'));
+  const given = Buffer.from(signature);
+  return expected.length === given.length && timingSafeEqual(expected, given);
 }
 
 /** Fill {placeholders} in a message template. */

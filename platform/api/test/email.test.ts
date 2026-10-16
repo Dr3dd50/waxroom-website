@@ -18,7 +18,9 @@ const { sendEmail, toHtml } = await import('../src/services/email');
 const { addDays, zoned } = await import('../src/lib/time');
 const store = await makeStore();
 const settings = () => store.get<any>('settings', 'settings');
-await store.put('settings', { ...(await settings()), switchover: { done: true }, notifications: { ...(await settings()).notifications, quietStart: 0, quietEnd: 0 } });
+// emails start off (texts are the default); these tests are about what happens once the owner turns them on
+assert.equal((await settings()).emails.enabled, false);
+await store.put('settings', { ...(await settings()), emails: { enabled: true }, switchover: { done: true }, notifications: { ...(await settings()).notifications, quietStart: 0, quietEnd: 0 } });
 const app = makeApp(store);
 
 let cookie = '';

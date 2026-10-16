@@ -67,11 +67,12 @@ Getting ready (any time before):
 1. Fill the keys into the `AppKeys` secret (Secrets Manager → the secret → Edit):
    `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`,
    `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`.
-   Until Twilio is approved, appointment messages can go by email instead: on
+   Appointment messages can also go by email (Settings → Client texts and emails,
+   off to start; the switch needs Twilio, or this with emails on): on
    waxroomrichmond@gmail.com turn on 2-Step Verification, make an app password
    (Google Account → Security → App passwords), and add it to the secret as a new key,
    `GMAIL_APP_PASSWORD` (Edit → Add row). Sending as another Gmail address: add
-   `GMAIL_USER` too. The switch needs Twilio or this. Add these as new rows by hand:
+   `GMAIL_USER` too. Add these as new rows by hand:
    don't change the secret's template in `stack.ts`, which can make AWS generate a
    fresh secret and lose the keys already in it.
    The API reads them when it starts; to restart it now, run
@@ -80,8 +81,10 @@ Getting ready (any time before):
    `StripeWebhook` output URL: `invoice.paid`, `invoice.payment_failed`,
    `customer.subscription.deleted`, `payment_intent.succeeded`. Its signing secret is
    `STRIPE_WEBHOOK_SECRET`. Any API version works.
-   In Twilio, set the Messaging Service's incoming-message webhook to the
-   `TwilioWebhook` output URL.
+   In Twilio, set the Messaging Service's incoming-message webhook (Messaging →
+   Services → the service → Integration → Send a webhook) to the `TwilioWebhook`
+   output URL, `https://staff.waxroomrichmond.com/api/webhooks/twilio`, method POST.
+   It keeps working after www moves over.
 3. Each team member's mobile number goes in Settings → Team, for their booking texts.
 4. `npm run build:native && npx cdk deploy -c booking=native -c attachDomains=true …`.
 5. Dashboard → Settings → Switch from GlossGenius: upload the GlossGenius clients
