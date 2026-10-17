@@ -171,7 +171,11 @@ function handler(event) {
         compress: true,
       },
       additionalBehaviors: { '/api/*': apiBehavior },
-      errorResponses: [{ httpStatus: 404, responsePagePath: '/404/index.html', responseHttpStatus: 404, ttl: Duration.minutes(5) }, { httpStatus: 403, responsePagePath: '/404/index.html', responseHttpStatus: 404, ttl: Duration.minutes(5) }],
+      // A page that doesn't exist comes back from S3 as a 403, which becomes the 404 page.
+      // Error pages apply to /api/* too, so only 403 is caught: the API's 404s ("We couldn't
+      // find that booking") reach the page with their message, and the API keeps 403 out of
+      // anything the website calls (test/www-errors.test.ts).
+      errorResponses: [{ httpStatus: 403, responsePagePath: '/404/index.html', responseHttpStatus: 404, ttl: Duration.minutes(5) }],
       domainNames: cert ? [domain, www] : undefined,
       certificate: cert,
       priceClass: cf.PriceClass.PRICE_CLASS_100,

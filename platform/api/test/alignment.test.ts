@@ -76,7 +76,7 @@ const apptCsv = (status: string) =>
 test('before the switch nothing here books, texts or charges, and GlossGenius imports come in', async () => {
   cat = (await call('GET', '/public/catalog')).json;
   assert.equal((await call('GET', '/public/config')).json.booking, 'closed');
-  assert.equal((await call('POST', '/public/bookings/start', { client: { first: 'Early', last: 'Bird', phone: '804-555-0300' } })).status, 403);
+  assert.equal((await call('POST', '/public/bookings/start', { client: { first: 'Early', last: 'Bird', phone: '804-555-0300' } })).status, 409);
 
   await asOwner();
   boot = (await call('GET', '/staff/bootstrap')).json;

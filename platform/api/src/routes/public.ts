@@ -31,7 +31,8 @@ function pageUrl(raw: unknown, fallback: string) {
 
 /** Anything that books, changes a booking or takes payment: only after the switch from GlossGenius. */
 async function requireOpen(store: Store) {
-  if (!switched(await getSettings(store))) throw new HttpError(403, 'Online booking here isn’t open yet. Please book on GlossGenius for now.');
+  // 409, not 403: on www a 403 is replaced by the 404 page (stack.ts), losing this message
+  if (!switched(await getSettings(store))) throw new HttpError(409, 'Online booking here isn’t open yet. Please book on GlossGenius for now.');
 }
 
 /** The Meta event for a finished booking (sent once the deposit, if any, has gone through). */

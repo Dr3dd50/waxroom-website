@@ -202,7 +202,7 @@ test('Stripe isn’t called before the switch from GlossGenius, keys or not', as
   const s = await store.get<any>('settings', 'settings');
   await store.put('settings', { ...s, switchover: { done: false } });
   const n = reqs.length;
-  assert.equal((await call('POST', '/public/bookings/start', { client: { first: 'Too', last: 'Early', phone: '804-555-0413' } })).status, 403);
+  assert.equal((await call('POST', '/public/bookings/start', { client: { first: 'Too', last: 'Early', phone: '804-555-0413' } })).status, 409);
   const { payments } = await import('../src/services/payments');
   await assert.rejects(() => payments.ensureCustomer({ id: 'x', first: 'A', last: 'B', phone: '+18045550413', email: '' } as any), /switch over from GlossGenius/);
   assert.equal(reqs.length, n);
