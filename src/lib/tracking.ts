@@ -11,6 +11,7 @@
 // - Conversions carry one event id, shared with the server's copy (Conversions API),
 //   so Meta keeps one of the two.
 import trackingConfig from '../data/tracking.json';
+import { API_URL } from './api';
 
 const PIXEL_ID: string = import.meta.env.VITE_META_PIXEL_ID || trackingConfig.metaPixelId;
 const POSTHOG = trackingConfig.posthog;
@@ -218,9 +219,10 @@ function trackBookTap(service: string) {
   window.fbq?.('track', 'InitiateCheckout', { content_name: service, content_category: 'booking' }, { eventID: a.eventId });
   const body = JSON.stringify({ event: 'InitiateCheckout', tracking: a, url: location.href, service });
   try {
-    if (!navigator.sendBeacon?.('/api/public/track', new Blob([body], { type: 'application/json' }))) throw new Error('no beacon');
+    // text/plain: a beacon to another domain can't send JSON's type (the API reads it either way)
+    if (!navigator.sendBeacon?.(`${API_URL}/public/track`, new Blob([body], { type: 'text/plain' }))) throw new Error('no beacon');
   } catch {
-    fetch('/api/public/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+    fetch(`${API_URL}/public/track`, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body, keepalive: true }).catch(() => {});
   }
 }
 

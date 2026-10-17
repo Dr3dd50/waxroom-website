@@ -251,7 +251,7 @@ function ClientCard({ id, onChanged }: { id: string; onChanged: () => Promise<vo
         <section className="box">
           <h3>Referrals</h3>
           <p className="small">
-            Their link: <code>waxroomrichmond.com/r/{c.referralCode}</code>
+            Their link: <code>waxroomrichmond.com/r/?c={c.referralCode}</code>
           </p>
           {d.referrals
             .filter((r) => r.friendId === c.id)

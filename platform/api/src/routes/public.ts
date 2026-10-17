@@ -13,7 +13,7 @@ import { payments } from '../services/payments';
 import { twilioLive } from '../config';
 import { apptVars, cancelAppointment, cancelOutcome, completeDeposit, createAppointment, finalizeOnlineBooking, manageLink, moveAppointment, onAppointment, refundHours } from '../services/appointments';
 import { validEmail } from '../services/email';
-import { googleCalendarUrl, icsFor } from '../services/calendar';
+import { calendarLink, googleCalendarUrl, icsFor } from '../services/calendar';
 import { grantPackage } from '../services/clients';
 import { switched, withLock } from '../services/switchover';
 import { readTracking, requestInfo, sendMetaEvent } from '../services/meta';
@@ -275,7 +275,7 @@ export function publicRoutes(store: Store) {
       canCancelOnline: settings.policies.allowOnlineCancellations,
       windowHours: settings.policies.cancellationWindowHours,
       refundHours: refundHours(settings),
-      calendar: { ics: `${config.siteUrl}/api/cal/${appt.manageToken}`, google: googleCalendarUrl(appt, (await store.get<Service>('services', appt.serviceId))!, manageLink(appt)) },
+      calendar: { ics: calendarLink(appt), google: googleCalendarUrl(appt, (await store.get<Service>('services', appt.serviceId))!, manageLink(appt)) },
     };
   }
 

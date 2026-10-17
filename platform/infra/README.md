@@ -53,10 +53,10 @@ waits while the certificate is checked, so add the validation record shown in
 Certificate Manager (us-east-1) at your DNS host, then a CNAME from `staff` to
 the staff distribution's `*.cloudfront.net` address. The full cutover above includes `staff.` too.
 
-Done on Oct 17, 2026: `cdk.json` now has `"attachDomains": true` and `"booking": "native"`,
-so every later deploy keeps www on this site with our own booking. Deploy with
-`npm run deploy` (website, dashboard and API together); `npm run deploy:live`, for the
-GlossGenius version, refuses to run.
+Not used: www stays on its original hosting. Since the switch, `npm run deploy:live`
+puts the website with our own booking there, and its pages call the API on the staff
+domain (`VITE_API_URL`, allowed by the API's CORS for the site's origin). `cdk.json`
+keeps `"booking": "native"` so the stack's own copy of the site matches.
 
 ## 3. Switching booking from GlossGenius to ours
 

@@ -1,4 +1,7 @@
-// Calls to our booking API (served at /api on the same domain).
+// Calls to our booking API: on the same domain at /api, or at VITE_API_URL when the
+// site is hosted apart from it (www is served by the original website hosting, which
+// has no /api, so the live build calls the staff domain's).
+export const API_URL = `${import.meta.env.VITE_API_URL ?? ''}/api`;
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -10,7 +13,7 @@ export class ApiError extends Error {
 export async function api<T>(path: string, body?: unknown, method = body === undefined ? 'GET' : 'POST'): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`/api${path}`, { method, headers: body === undefined ? undefined : { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin' });
+    res = await fetch(`${API_URL}${path}`, { method, headers: body === undefined ? undefined : { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin' });
   } catch {
     throw new ApiError(0, 'We couldn’t reach the booking system. Check your connection and try again.');
   }

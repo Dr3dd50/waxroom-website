@@ -69,7 +69,7 @@ export function TextingProofPage() {
           </ul>
           <p>Examples:</p>
           <div className="sms-thread">
-            <Bubble>{`Hi Ava! You’re booked for Brazilian with Nyeesha on Fri, Oct 23 at 2:00 PM. Add it to your calendar: waxroomrichmond.com/api/cal/… Manage your booking: waxroomrichmond.com/booking/?t=…\n${texting.firstTextLine}`}</Bubble>
+            <Bubble>{`Hi Ava! You’re booked for Brazilian with Nyeesha on Fri, Oct 23 at 2:00 PM. Add it to your calendar: staff.waxroomrichmond.com/api/cal/… Manage your booking: waxroomrichmond.com/booking/?t=…\n${texting.firstTextLine}`}</Bubble>
             <Bubble>Reminder: Brazilian tomorrow at 2:00 PM at The Wax Room, 11162 Hull Street Rd N. Let hair grow to about ¼ inch and skip lotion on the area.</Bubble>
             <Bubble>{'New here? The New Client Ritual is a Brazilian and a complimentary 1-hour V-steam for $49: waxroomrichmond.com/offers/new-client-ritual/\nReply STOP to opt out'}</Bubble>
           </div>

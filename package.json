@@ -18,7 +18,6 @@
     "test:api": "tsx --test platform/api/test/*.test.ts",
     "import:glossgenius": "tsx platform/api/scripts/import-glossgenius.ts",
     "build:native": "node scripts/build-native.mjs",
-    "deploy": "npm run build:native && npm run build:dashboard && npx cdk deploy",
     "deploy:live": "node scripts/deploy-live.mjs",
     "dev:all": "node scripts/dev-all.mjs"
   },

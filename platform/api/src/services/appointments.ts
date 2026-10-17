@@ -18,7 +18,7 @@ import { switched, withLock, withStaffLock } from './switchover';
 export const manageLink = (a: Appointment) => `${config.siteUrl}/booking/?t=${a.manageToken}`;
 /** Our booking page, opened on one service when there is one. */
 export const bookingLink = (service?: Service) => `${config.siteUrl}/book/${service ? `?service=${encodeURIComponent(nice(service.name))}` : ''}`;
-export const referralLink = (c: Client) => `${config.siteUrl}/r/${c.referralCode}`;
+export const referralLink = (c: Client) => `${config.siteUrl}/r/?c=${c.referralCode}`;
 
 /**
  * Send one of the automatic messages, if it's switched on: by text when the client

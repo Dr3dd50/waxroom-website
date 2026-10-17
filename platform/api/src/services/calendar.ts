@@ -8,7 +8,8 @@ import type { Appointment, Service } from '../types';
 import { nice } from '../lib/util';
 import catalog from '../../../seed/catalog.json';
 
-export const calendarLink = (a: Appointment) => `${config.siteUrl}/api/cal/${a.manageToken}`;
+/** The API answers on the staff domain; www has no /api. */
+export const calendarLink = (a: Appointment) => `${config.staffUrl}/api/cal/${a.manageToken}`;
 
 const stamp = (iso: string) => iso.replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
 // RFC 5545: escape text, fold lines at 75 octets

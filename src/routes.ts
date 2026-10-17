@@ -34,7 +34,7 @@ export function resolve(pathname: string): Route {
   if (path === '/text-messages') return { kind: 'textingProof' };
   const legal = LEGAL_DOCS.find((d) => d.path === `${path}/`);
   if (legal) return { kind: 'legal', doc: legal };
-  if (NATIVE && /^\/r\/[A-Za-z0-9]+$/.test(path)) return { kind: 'referral' };
+  if (NATIVE && /^\/r(\/[A-Za-z0-9]+)?$/.test(path)) return { kind: 'referral' };
   const offer = /^\/offers\/([a-z0-9-]+)$/.exec(path);
   if (offer) {
     const o = findOffer(offer[1]);

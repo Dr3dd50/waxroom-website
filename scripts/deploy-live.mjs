@@ -1,6 +1,7 @@
-// Put the website (GlossGenius booking version) on www.waxroomrichmond.com as it is
-// hosted today: the CloudFront distribution that answers for the domain, and the S3
-// bucket behind it. Nothing else changes: no booking system, no texts, no payments.
+// Put the website on www.waxroomrichmond.com as it is hosted today: the CloudFront
+// distribution that answers for the domain, and the S3 bucket behind it. Since the switch
+// from GlossGenius it's the version with our own booking, whose pages call the booking
+// system on the staff domain (www has no /api of its own).
 //
 //   npm run deploy:live            build, upload, refresh the CDN
 //   npm run deploy:live -- --check only show which distribution and bucket it would use
@@ -26,12 +27,7 @@ function run(cmd, opts = {}) {
 }
 const aws = (args) => JSON.parse(run(`aws ${args} --output json`, { quiet: true }) || 'null');
 
-// Since the cutover www is the new site (cdk.json "attachDomains"), deployed with
-// `npm run deploy`. This script would put the GlossGenius booking version back on it.
-if (JSON.parse(readFileSync(resolve(root, 'cdk.json'), 'utf8')).context?.attachDomains === true) {
-  console.error('www.waxroomrichmond.com is the new site now, with our own booking. Deploy it with `npm run deploy`.');
-  process.exit(1);
-}
+const API = 'https://staff.waxroomrichmond.com';
 
 try {
   run('aws --version', { quiet: true });
@@ -57,12 +53,24 @@ const target = `s3://${bucket}${origin.OriginPath || ''}`;
 console.log(`${DOMAIN} → CloudFront ${dist.Id} → ${target}`);
 if (check) process.exit(0);
 
-// The GlossGenius version only: our own booking goes live through the switchover, not here.
+// Our own booking, once the booking system says it's open (the dashboard's switch from
+// GlossGenius); before that the site's Book buttons would lead nowhere.
+const live = await fetch(`${API}/api/public/config`).then((r) => r.json()).catch(() => null);
+if (live?.booking !== 'open') {
+  console.error(`The booking system at ${API} isn't open yet (${live ? `booking: ${live.booking}` : 'no answer'}). Switch over in the dashboard first.`);
+  process.exit(1);
+}
+// and it must already let www call it (the API from this code, deployed with `npx cdk deploy`)
+const pre = await fetch(`${API}/api/public/config`, { method: 'OPTIONS', headers: { Origin: `https://${DOMAIN}`, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type' } }).catch(() => null);
+if (pre?.headers.get('access-control-allow-origin') !== `https://${DOMAIN}`) {
+  console.error(`The booking system doesn't accept calls from ${DOMAIN} yet. Deploy it first: npm run build:native, npm run build:dashboard, npx cdk deploy.`);
+  process.exit(1);
+}
 ensurePackages(root); // after a git pull that added a package
-run('npm run build');
+run('npm run build', { env: { ...process.env, VITE_BOOKING: 'native', VITE_API_URL: API } });
 const mode = JSON.parse(readFileSync(resolve(root, 'dist/booking-mode.json'), 'utf8')).booking;
-if (mode !== 'glossgenius') {
-  console.error(`dist/ was built with ${mode} booking; the live site books on GlossGenius.`);
+if (mode !== 'native') {
+  console.error(`dist/ was built with ${mode} booking.`);
   process.exit(1);
 }
 

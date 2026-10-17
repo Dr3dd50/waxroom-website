@@ -1,5 +1,6 @@
 // The API: /api/public (website), /api/staff (dashboard), /api/webhooks.
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { config } from './config';
 import { HttpError } from './lib/util';
 import { calendarRoutes, publicRoutes } from './routes/public';
@@ -31,6 +32,10 @@ export function makeApp(store: Store) {
     return c.json({ error: 'Something went wrong on our side. Please try again.' }, 500);
   });
   app.get('/health', (c) => c.json({ ok: true }));
+  // the website calls in from its own domain (www has no /api of its own)
+  const site = new URL(config.siteUrl);
+  const siteOrigins = [site.origin, `${site.protocol}//${site.host.replace(/^www\./, '')}`];
+  app.use('/public/*', cors({ origin: siteOrigins, allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], allowHeaders: ['Content-Type'], maxAge: 86400 }));
   app.route('/public', publicRoutes(store));
   app.route('/cal', calendarRoutes(store));
   app.route('/staff', staffRoutes(store));

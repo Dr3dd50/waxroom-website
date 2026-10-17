@@ -1,9 +1,9 @@
-// /r/CODE: a client's personal referral link. Remembers the code for booking.
+// /r/?c=CODE (or /r/CODE): a client's personal referral link. Remembers the code for booking.
 import { useEffect, useState } from 'react';
 import { api, cents } from '../lib/api';
 
 export function ReferralPage() {
-  const code = typeof location === 'undefined' ? '' : location.pathname.split('/').filter(Boolean)[1] ?? '';
+  const code = typeof location === 'undefined' ? '' : new URLSearchParams(location.search).get('c') ?? location.pathname.split('/').filter(Boolean)[1] ?? '';
   const [ref, setRef] = useState<{ code: string; from: string; friendGets: number } | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {

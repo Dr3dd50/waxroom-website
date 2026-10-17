@@ -53,7 +53,7 @@ export function ReferralsView() {
           <ol className="how">
             <li>
               <strong>Clients share their link</strong>
-              <span>It’s in every receipt text, e.g. waxroomrichmond.com/r/KEISHA10.</span>
+              <span>It’s in every receipt text, e.g. waxroomrichmond.com/r/?c=KEISHA10.</span>
             </li>
             <li>
               <strong>The friend books through it</strong>
