@@ -1,5 +1,5 @@
 {
-  "app": "npx tsx platform/infra/app.ts",
+  "app": "node scripts/ensure-packages.mjs && npx tsx platform/infra/app.ts",
   "context": {
     "@aws-cdk/aws-lambda-nodejs:useLatestRuntimeVersion": true,
     "attachStaff": true

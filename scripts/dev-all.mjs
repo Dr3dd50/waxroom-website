@@ -5,22 +5,14 @@
 //   Dashboard  http://localhost:5174      (owner: waxroomrichmond@gmail.com / waxroom-demo)
 // Tools run straight through node rather than npx, so this works the same on
 // Windows, macOS and Linux.
-import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, statSync, utimesSync } from 'node:fs';
+import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
+import { ensurePackages } from './ensure-packages.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 
-// New packages since the last install (after a git pull, say): install them first, or
-// the sites start without them. `npm ci` installs exactly what package-lock.json lists
-// and never rewrites it, so the next git pull isn't blocked by a local lockfile change.
-const lock = resolve(root, 'package-lock.json'), installed = resolve(root, 'node_modules/.package-lock.json');
-if (!existsSync(installed) || statSync(lock).mtimeMs > statSync(installed).mtimeMs) {
-  console.log('Packages changed since the last install: running npm ci…');
-  const r = spawnSync('npm ci', { cwd: root, stdio: 'inherit', shell: true });
-  if (r.status) process.exit(r.status);
-  if (existsSync(installed)) utimesSync(installed, new Date(), new Date()); // installed as of now, even if npm changed nothing
-}
+// New packages since the last install (after a git pull, say): install them first.
+ensurePackages(root);
 const tsx = resolve(root, 'node_modules/tsx/dist/cli.mjs');
 const vite = resolve(root, 'node_modules/vite/bin/vite.js');
 

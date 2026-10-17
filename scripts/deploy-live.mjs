@@ -10,6 +10,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { ensurePackages } from './ensure-packages.mjs';
 
 const DOMAIN = 'www.waxroomrichmond.com';
 const root = resolve(import.meta.dirname, '..');
@@ -50,6 +51,7 @@ console.log(`${DOMAIN} → CloudFront ${dist.Id} → ${target}`);
 if (check) process.exit(0);
 
 // The GlossGenius version only: our own booking goes live through the switchover, not here.
+ensurePackages(root); // after a git pull that added a package
 run('npm run build');
 const mode = JSON.parse(readFileSync(resolve(root, 'dist/booking-mode.json'), 'utf8')).booking;
 if (mode !== 'glossgenius') {
