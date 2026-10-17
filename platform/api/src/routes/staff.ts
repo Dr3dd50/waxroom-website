@@ -199,6 +199,9 @@ export function staffRoutes(store: Store) {
     membership: x.membership,
     smsReminders: x.smsReminders,
     smsConsent: x.smsConsent,
+    smsMarketingAt: x.smsMarketingAt,
+    smsMarketingSource: x.smsMarketingSource,
+    smsMarketingPending: x.smsMarketingPending,
     smsOptOut: x.smsOptOut,
     smsMarketing: x.smsMarketing,
     referralCode: x.referralCode,
@@ -274,8 +277,11 @@ export function staffRoutes(store: Store) {
     }
     if (b.smsMarketing !== undefined && b.smsMarketing !== x.smsMarketing) {
       x.smsMarketing = b.smsMarketing;
-      if (b.smsMarketing) x.smsMarketingAt = nowIso();
-      else if (x.smsReminders) x.smsOptOut = { at: nowIso(), source: 'desk', scope: 'offers', by };
+      if (b.smsMarketing) {
+        x.smsMarketingAt = nowIso();
+        x.smsMarketingSource = 'desk';
+        delete x.smsMarketingPending;
+      } else if (x.smsReminders) x.smsOptOut = { at: nowIso(), source: 'desk', scope: 'offers', by };
     }
     if (!x.referralCode) x.referralCode = await uniqueReferralCode(store, x.first);
     await store.put('clients', x);

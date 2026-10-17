@@ -152,7 +152,7 @@ export const TERMS: LegalDoc = {
       body: [
         [
           'Appointment texts: when you book, The Wax Room texts the mobile number you give us about your appointments: booking confirmations, reminders, requests to confirm, changes, cancellations and receipts. After a visit we may ask you to rate it, and if a service is due again we may invite you to rebook.',
-          'Offers and news: only if you opt in, up to 4 a month. Agreeing to offers is never a condition of booking or buying.',
+          'Offers and news: only if you opt in and confirm by replying YES to our text, up to 4 a month. Agreeing to offers is never a condition of booking or buying.',
           'Message frequency varies, usually 2 to 4 texts per visit. Message and data rates may apply.',
           `Reply STOP to stop all texts, or use our [opt-out form](/text-opt-out/). Reply START to get appointment texts again. Reply HELP for help, or contact us at ${phoneDisplay(business.phone)} or ${business.email}.`,
           'Carriers aren’t liable for delayed or undelivered messages.',

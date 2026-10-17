@@ -7,6 +7,8 @@
 // Nothing runs before the switch from GlossGenius. After it, appointments that
 // came from GlossGenius get our reminders only if the owner chose that when
 // switching (with GlossGenius's own reminders turned off), so nobody gets both.
+import texting from '../../../../src/data/texting.json';
+import { OFFERS_YES_DAYS } from './clients';
 import type { Store } from '../store/store';
 import type { Appointment, Client, Service } from '../types';
 import { zoned } from '../lib/time';
@@ -131,6 +133,16 @@ export async function handleInbound(store: Store, from: string, body: string) {
   // a 1–5 answer to "how was your visit?" (it also stays in the inbox, like every reply)
   const rated = await handleRating(store, client, body, settings);
   if (rated) return rated;
+  // the YES to the website's "reply YES to get offers" text
+  if (['YES', 'Y'].includes(word) && client.smsReminders && client.smsMarketingPending && Date.now() - Date.parse(client.smsMarketingPending) < OFFERS_YES_DAYS * 86400000) {
+    client.smsMarketing = true;
+    client.smsMarketingAt = nowIso();
+    client.smsMarketingSource = 'text-yes';
+    delete client.smsMarketingPending;
+    if (client.smsOptOut?.scope === 'offers') delete client.smsOptOut;
+    await store.put('clients', client);
+    return sendText(store, client.phone, texting.offersWelcome, 'opt-in', client);
+  }
   if (['START', 'UNSTOP', 'YES'].includes(word) && !client.smsReminders) {
     client.smsReminders = true;
     client.smsConsent = { at: nowIso(), source: 'text-reply' };

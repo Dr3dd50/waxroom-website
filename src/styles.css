@@ -2886,3 +2886,39 @@ h3 {
   color: inherit;
   text-decoration: underline;
 }
+
+/* /text-messages/: the consent wording shown as clients see it */
+.proof-form {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1rem 0;
+  padding: 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper, #fffaf3);
+}
+.proof-form__btn {
+  justify-self: start;
+  pointer-events: none;
+}
+.sms-thread {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1rem 0;
+  max-width: 26rem;
+}
+.sms-bubble {
+  margin: 0;
+  padding: 0.7rem 0.95rem;
+  border-radius: 18px 18px 18px 6px;
+  background: #ece5da;
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+.sms-bubble--client {
+  justify-self: end;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--honey);
+}

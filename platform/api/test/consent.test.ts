@@ -110,3 +110,40 @@ test('GlossGenius opt-outs carry over, whatever the column is called', () => {
   assert.equal(textsOff({ 'sms marketing': 'No' }), false, 'offers start off anyway');
   assert.equal(textsOff({ phone: '8045550000', notes: 'no' }), false);
 });
+
+test('offers from the website wait for a YES; nobody is added on someone else’s say-so', async () => {
+  const { askForOffersYes } = await import('../src/services/clients');
+  const start = await call('POST', '/public/bookings/start', { client: { first: 'Xia', last: 'Offers', phone: '804-555-0910', email: 'xia@example.com', smsMarketing: true } });
+  assert.equal(start.status, 200, JSON.stringify(start.json));
+  const asked = await client(start.json.clientId);
+  assert.equal(asked.smsMarketing, false, 'not on offers yet');
+  assert.ok(asked.smsMarketingPending);
+  const [ask] = (await textsTo(asked.id)).filter((m) => m.kind === 'opt-in');
+  assert.match(ask.body, /reply YES to get offers and news/);
+  // asking again soon doesn't text again
+  assert.equal(await askForOffersYes(store, asked), null);
+  // the campaign list leaves them out until they reply
+  await call('POST', '/staff/login', { email: 'waxroomrichmond@gmail.com', password: 'owner-pass-123' });
+  await handleInbound(store, '+18045550910', 'YES');
+  const joined = await client(asked.id);
+  assert.equal(joined.smsMarketing, true);
+  assert.equal(joined.smsMarketingSource, 'text-yes');
+  assert.equal(joined.smsMarketingPending, undefined);
+  assert.ok((await textsTo(asked.id)).some((m) => m.kind === 'opt-in' && /You’re in!/.test(m.body)));
+});
+
+test('a YES without a pending ask changes nothing; a number that replied STOP isn’t asked', async () => {
+  const { askForOffersYes } = await import('../src/services/clients');
+  const c = (await call('POST', '/staff/clients', { first: 'Yara', last: 'NoAsk', phone: '804-555-0911', smsReminders: true })).json;
+  await handleInbound(store, '+18045550911', 'YES');
+  assert.equal((await client(c.id)).smsMarketing, false);
+  await handleInbound(store, '+18045550911', 'STOP');
+  assert.equal(await askForOffersYes(store, await client(c.id)), null);
+});
+
+test('offers agreed in person at the desk count right away, recorded as such', async () => {
+  const c = (await call('POST', '/staff/clients', { first: 'Zed', last: 'Desk', phone: '804-555-0912', smsReminders: true, smsMarketing: true })).json;
+  const z = await client(c.id);
+  assert.equal(z.smsMarketing, true);
+  assert.equal(z.smsMarketingSource, 'desk');
+});

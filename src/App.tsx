@@ -9,6 +9,7 @@ import { ManagePage } from './pages/ManagePage';
 import { CardPage } from './pages/CardPage';
 import { TextOptOutPage } from './pages/TextOptOutPage';
 import { LegalPage } from './pages/LegalPage';
+import { TextingProofPage } from './pages/TextingProofPage';
 import { OfferPage } from './pages/OfferPage';
 import { JoinPage } from './pages/JoinPage';
 import { ReferralPage } from './pages/ReferralPage';
@@ -69,6 +70,7 @@ export default function App({ path }: { path: string }) {
         {route.kind === 'card' ? <CardPage /> : null}
         {route.kind === 'textOptOut' ? <TextOptOutPage /> : null}
         {route.kind === 'legal' ? <LegalPage doc={route.doc} /> : null}
+        {route.kind === 'textingProof' ? <TextingProofPage /> : null}
         {route.kind === 'offer' ? <OfferPage offer={route.offer} /> : null}
         {route.kind === 'notFound' ? (
           <section className="hero">

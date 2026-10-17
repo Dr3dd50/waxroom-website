@@ -1,3 +1,5 @@
+import texting from '../../../../src/data/texting.json';
+import { sendText } from './sms';
 import type { Store } from '../store/store';
 import type { Appointment, Client, Package, Payment } from '../types';
 import { bad, nowIso, rid, toE164 } from '../lib/util';
@@ -37,6 +39,7 @@ export async function upsertClient(store: Store, input: ClientInput, opts: { tru
     if (input.smsMarketing && !existing.smsMarketing) {
       existing.smsMarketing = true;
       existing.smsMarketingAt = nowIso();
+      existing.smsMarketingSource = 'desk';
     }
     await store.put('clients', existing);
     return { client: existing, isNew: false };
@@ -55,8 +58,10 @@ export async function upsertClient(store: Store, input: ClientInput, opts: { tru
     ...((input.smsReminders ?? true)
       ? { smsConsent: { at: nowIso(), source: opts.trusted ? ('desk' as const) : ('online' as const), by: opts.by } }
       : { smsOptOut: { at: nowIso(), source: 'desk' as const, scope: 'all' as const, by: opts.by } }),
-    smsMarketing: !!input.smsMarketing,
-    smsMarketingAt: input.smsMarketing ? nowIso() : undefined,
+    // offers: asked in person at the desk counts now; from the website it waits for a YES (askForOffersYes)
+    smsMarketing: !!opts.trusted && !!input.smsMarketing,
+    smsMarketingAt: opts.trusted && input.smsMarketing ? nowIso() : undefined,
+    smsMarketingSource: opts.trusted && input.smsMarketing ? ('desk' as const) : undefined,
     credit: 0,
     referralCode: await uniqueReferralCode(store, input.first),
   };
@@ -91,4 +96,23 @@ async function grantOnce(store: Store, client: Client, p: Package, paymentId: st
   Object.assign(client, fresh);
   await store.put('payments', { id: `${nowIso()}_${rid(4)}`, at: nowIso(), clientId: client.id, kind: 'package', amount: p.price, tip: 0, method: 'card', status: 'paid', providerId: paymentId, simulated });
   return { expiresAt, already: false };
+}
+
+/** How long a "reply YES" for offers stays good. */
+export const OFFERS_YES_DAYS = 30;
+
+/**
+ * Someone ticked "text me offers" on the website. Anyone can type any number there, so
+ * the number gets one text asking for a YES and offers start only when it comes back.
+ * Not for a number already on offers, already asked lately, or that replied STOP.
+ */
+export async function askForOffersYes(store: Store, client: Client) {
+  const fresh = (await store.get<Client>('clients', client.id)) ?? client;
+  if (fresh.smsMarketing || !fresh.smsReminders) return null;
+  if (fresh.smsMarketingPending && Date.now() - Date.parse(fresh.smsMarketingPending) < OFFERS_YES_DAYS * 86400000) return null;
+  const msg = await sendText(store, fresh.phone, texting.offersConfirm, 'opt-in', fresh);
+  // not sent (before the switch from GlossGenius): nothing to wait for
+  if (msg.status === 'failed') return msg;
+  await store.put('clients', { ...fresh, smsMarketingPending: msg.at });
+  return msg;
 }

@@ -1,0 +1,8 @@
+{
+  "_note": "The words clients see when they agree to texts. The booking form, the /text-messages/ page (proof of opt-in for Twilio) and the booking system all read them from here, so they can't drift apart.",
+  "appointmentConsent": "By continuing, you agree to get texts from The Wax Room at this number about your appointments: confirmations, reminders, changes and receipts. Message frequency varies, usually 2 to 4 per visit. Message and data rates may apply. Reply HELP for help, STOP to opt out.",
+  "offersLabel": "Text me offers and news from The Wax Room too (optional, not needed to book). Up to 4 a month. We’ll text you to confirm. Reply STOP anytime.",
+  "offersConfirm": "The Wax Room: reply YES to get offers and news by text, up to 4 a month. Msg & data rates may apply. Reply STOP to opt out.",
+  "offersWelcome": "You’re in! Offers and news from The Wax Room, up to 4 a month. Reply STOP to opt out, HELP for help.",
+  "firstTextLine": "The Wax Room: reply STOP to opt out, HELP for help."
+}

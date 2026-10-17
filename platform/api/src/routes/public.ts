@@ -7,7 +7,7 @@ import type { Appointment, Client, Membership, Package, Service, Staff } from '.
 import { addDays, zoned } from '../lib/time';
 import { HttpError, bad, money, nice, nowIso, rid, toE164 } from '../lib/util';
 import { getSettings, isFree, slotsFor } from '../services/availability';
-import { findClientByPhone, upsertClient, type ClientInput } from '../services/clients';
+import { askForOffersYes, findClientByPhone, upsertClient, type ClientInput } from '../services/clients';
 import { sendText } from '../services/sms';
 import { payments } from '../services/payments';
 import { twilioLive } from '../config';
@@ -198,6 +198,7 @@ export function publicRoutes(store: Store) {
     const { client } = await upsertClient(store, body.client);
     client.customerId = await payments.ensureCustomer(client);
     await store.put('clients', client);
+    if (body.client?.smsMarketing) await askForOffersYes(store, client);
     const setup = await payments.startCardSetup(client.customerId);
     return c.json({ clientId: client.id, ...setup });
   });
@@ -357,7 +358,9 @@ export function publicRoutes(store: Store) {
     await requireOpen(store);
     const m = await store.get<Membership>('memberships', c.req.param('id'));
     if (!m?.active) throw new HttpError(404, 'That membership isn’t available.');
-    const { client } = await upsertClient(store, (await c.req.json<{ client: ClientInput }>()).client);
+    const input = (await c.req.json<{ client: ClientInput }>()).client;
+    const { client } = await upsertClient(store, input);
+    if (input?.smsMarketing) await askForOffersYes(store, client);
     if (client.membership?.status === 'active' || client.membership?.status === 'past_due') throw bad('You already have a membership. Text us to switch.');
     client.customerId = await payments.ensureCustomer(client);
     await store.put('clients', client);
@@ -425,7 +428,9 @@ export function publicRoutes(store: Store) {
     await requireOpen(store);
     const p = await store.get<Package>('packages', c.req.param('id'));
     if (!p?.active) throw new HttpError(404, 'That package isn’t available.');
-    const { client } = await upsertClient(store, (await c.req.json<{ client: ClientInput }>()).client);
+    const input = (await c.req.json<{ client: ClientInput }>()).client;
+    const { client } = await upsertClient(store, input);
+    if (input?.smsMarketing) await askForOffersYes(store, client);
     client.customerId = await payments.ensureCustomer(client);
     await store.put('clients', client);
     return c.json({ clientId: client.id, ...(await payments.startCardSetup(client.customerId)) });

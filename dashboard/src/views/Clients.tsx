@@ -289,9 +289,18 @@ function ClientCard({ id, onChanged }: { id: string; onChanged: () => Promise<vo
           <dt>Offers & news</dt>
           <dd>
             {c.smsMarketing ? (
-              <button className="chip" onClick={() => save({ smsMarketing: false })}>
-                Opted in · turn off
-              </button>
+              <>
+                {c.smsMarketingAt ? (
+                  <span className="muted small">
+                    {c.smsMarketingSource === 'text-yes' ? 'replied YES' : c.smsMarketingSource === 'desk' ? 'agreed in person' : 'opted in'}, {when(c.smsMarketingAt)}{' '}
+                  </span>
+                ) : null}
+                <button className="chip" onClick={() => save({ smsMarketing: false })}>
+                  Opted in · turn off
+                </button>
+              </>
+            ) : c.smsMarketingPending ? (
+              <span className="muted small">Asked online; texted to confirm {when(c.smsMarketingPending)}, waiting for YES</span>
             ) : (
               <button className="chip" onClick={() => save({ smsMarketing: true })} title="Only with the client’s permission">
                 Not opted in · client agreed

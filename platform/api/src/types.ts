@@ -87,6 +87,10 @@ export type Client = {
   smsReminders: boolean;
   smsMarketing: boolean;
   smsMarketingAt?: string;
+  /** How they joined offers: replied YES to the website's confirmation text, or asked in person. */
+  smsMarketingSource?: 'text-yes' | 'desk';
+  /** Asked online for offers; texted "reply YES" at this time and waiting for it. */
+  smsMarketingPending?: string;
   /** How and when they agreed to appointment texts: carriers can ask for this. */
   smsConsent?: { at: string; source: 'online' | 'desk' | 'glossgenius' | 'text-reply'; by?: string };
   /** How and when they stopped texts (all of them, or offers only). */
@@ -186,7 +190,7 @@ export type Message = {
   to: string;
   from?: string;
   clientId?: string;
-  kind: 'booking' | 'moved' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff' | 'alert' | 'card-link' | 'rating-request' | 'rating-thanks' | 'opt-out';
+  kind: 'booking' | 'moved' | 'confirm-request' | 'reminder' | 'receipt' | 'rebook' | 'referral' | 'birthday' | 'cancel' | 'campaign' | 'reply' | 'inbound' | 'staff' | 'alert' | 'card-link' | 'rating-request' | 'rating-thanks' | 'opt-out' | 'opt-in';
   body: string;
   status: 'sent' | 'simulated' | 'failed' | 'received' | 'queued';
   /** Texts unless marked email (then `to` is the address and `subject` is set). */

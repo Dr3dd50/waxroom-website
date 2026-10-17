@@ -1,4 +1,5 @@
 // Online booking: service → who → when → details → card → booked.
+import texting from '../data/texting.json';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CardForm, type CardSetup } from '../components/CardForm';
 import { api, cents, dateOf, minutes, needsApproval, timeOf, TZ, type NeedsApproval } from '../lib/api';
@@ -581,7 +582,7 @@ export function DetailsForm({
       </div>
       {emailRequired ? <p className="fine">We’ll email your confirmation and reminder here.</p> : null}
       <label className="check">
-        <input type="checkbox" name="marketing" /> Text me offers and news from The Wax Room too (optional, not needed to book). Up to 4 a month. Reply STOP anytime.
+        <input type="checkbox" name="marketing" /> {texting.offersLabel}
       </label>
       {policy ? (
         <label className="check">
@@ -597,8 +598,7 @@ export function DetailsForm({
       ) : null}
       {showPolicy && policy ? <p className="policy-text">{policy.cancellationPolicy}</p> : null}
       <p className="fine">
-        By continuing, you agree to get texts from The Wax Room at this number about your appointments: confirmations, reminders, changes and receipts. Message
-        frequency varies, usually 2 to 4 per visit. Message and data rates may apply. Reply HELP for help, STOP to opt out.{' '}
+        {texting.appointmentConsent}{' '}
         <a href="/terms/#texts" target="_blank" rel="noopener">
           Texting terms
         </a>{' '}

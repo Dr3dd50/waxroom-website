@@ -39,6 +39,9 @@ export type Client = {
   card: string | null;
   membership?: { membershipId: string; since: string; status: string; periodStart: string };
   smsReminders: boolean;
+  smsMarketingAt?: string;
+  smsMarketingSource?: 'text-yes' | 'desk';
+  smsMarketingPending?: string;
   smsConsent?: { at: string; source: 'online' | 'desk' | 'glossgenius' | 'text-reply'; by?: string };
   smsOptOut?: { at: string; source: 'reply' | 'web-form' | 'desk' | 'glossgenius'; scope: 'all' | 'offers'; by?: string };
   smsMarketing: boolean;

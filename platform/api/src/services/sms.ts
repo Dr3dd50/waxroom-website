@@ -2,13 +2,14 @@
 // registered for A2P 10DLC); until then they're kept in an outbox the
 // dashboard shows, marked as not sent.
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import texting from '../../../../src/data/texting.json';
 import { config, twilioLive } from '../config';
 import type { Store } from '../store/store';
 import type { Client, Message, Settings } from '../types';
 import { nowIso, rid } from '../lib/util';
 
 /** On a client's first text from this number: who it's from and how to stop (carriers expect it). */
-export const FIRST_TEXT_LINE = 'The Wax Room: reply STOP to opt out, HELP for help.';
+export const FIRST_TEXT_LINE = texting.firstTextLine;
 
 export async function sendText(store: Store, to: string, body: string, kind: Message['kind'], client?: Client): Promise<Message> {
   const at = nowIso();
