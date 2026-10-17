@@ -26,6 +26,13 @@ function run(cmd, opts = {}) {
 }
 const aws = (args) => JSON.parse(run(`aws ${args} --output json`, { quiet: true }) || 'null');
 
+// Since the cutover www is the new site (cdk.json "attachDomains"), deployed with
+// `npm run deploy`. This script would put the GlossGenius booking version back on it.
+if (JSON.parse(readFileSync(resolve(root, 'cdk.json'), 'utf8')).context?.attachDomains === true) {
+  console.error('www.waxroomrichmond.com is the new site now, with our own booking. Deploy it with `npm run deploy`.');
+  process.exit(1);
+}
+
 try {
   run('aws --version', { quiet: true });
 } catch {

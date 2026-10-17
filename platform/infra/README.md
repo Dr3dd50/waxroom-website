@@ -53,6 +53,11 @@ waits while the certificate is checked, so add the validation record shown in
 Certificate Manager (us-east-1) at your DNS host, then a CNAME from `staff` to
 the staff distribution's `*.cloudfront.net` address. The full cutover above includes `staff.` too.
 
+Done on Oct 17, 2026: `cdk.json` now has `"attachDomains": true` and `"booking": "native"`,
+so every later deploy keeps www on this site with our own booking. Deploy with
+`npm run deploy` (website, dashboard and API together); `npm run deploy:live`, for the
+GlossGenius version, refuses to run.
+
 ## 3. Switching booking from GlossGenius to ours
 
 Only one system takes bookings at a time, so nothing can be booked twice. Until
