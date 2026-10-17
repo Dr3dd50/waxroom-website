@@ -196,10 +196,10 @@ function handler(event) {
       },
       additionalBehaviors: { '/api/*': apiBehavior },
       defaultRootObject: 'index.html',
-      errorResponses: [
-        { httpStatus: 403, responsePagePath: '/index.html', responseHttpStatus: 200 },
-        { httpStatus: 404, responsePagePath: '/index.html', responseHttpStatus: 200 },
-      ],
+      // No error pages: they apply to /api/* too, and turned the API's 403s and 404s into
+      // the dashboard's HTML with a 200 (an error the dashboard read as success, a bad
+      // Twilio signature that looked accepted). The dashboard routes by #hash, so it
+      // never needed them.
       domainNames: staffCert ? [staffHost] : undefined,
       certificate: staffCert,
       priceClass: cf.PriceClass.PRICE_CLASS_100,
