@@ -254,6 +254,7 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
   const [busy, setBusy] = useState(false);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [tipPct, setTipPct] = useState(boot.settings.policies.defaultTipPercent);
+  // a percentage of the service price, like the buttons
   const [customTip, setCustomTip] = useState('');
   const [useCredit, setUseCredit] = useState(true);
   const [useMembership, setUseMembership] = useState(true);
@@ -261,7 +262,8 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
   const closed = ['completed', 'cancelled', 'no-show'].includes(a.status);
   // what each way of cancelling would charge and refund, worked out by the server exactly as the cancel does
   const [preview, setPreview] = useState<CancelPreview | null>(null);
-  const tip = customTip !== '' ? Math.round(Number(customTip) * 100) : Math.round((a.price * tipPct) / 100);
+  const pct = customTip !== '' ? Math.max(0, Number(customTip) || 0) : tipPct;
+  const tip = Math.round((a.price * pct) / 100);
 
   useEffect(() => {
     if (step !== 'cancel') return;
@@ -413,7 +415,7 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
               {quote.lines.map((l, i) => (
                 <Line key={i} label={l.label} amount={l.amount} />
               ))}
-              <Line label={`Tip${customTip === '' ? ` (${tipPct}%)` : ''}`} amount={tip} />
+              <Line label={`Tip (${pct}%)`} amount={tip} />
             </dl>
             <div className="tips">
               {[0, 15, 20, 25].map((p) => (
@@ -423,8 +425,8 @@ function AppointmentDrawer({ a, client, onClose, onChanged }: { a: Appointment; 
               ))}
             </div>
             <label className="field">
-              Other tip amount ($)
-              <input type="number" min="0" step="1" value={customTip} onChange={(e) => setCustomTip(e.target.value)} />
+              Other tip (%)
+              <input type="number" min="0" step="1" inputMode="decimal" value={customTip} onChange={(e) => setCustomTip(e.target.value)} />
             </label>
             {client.credit ? (
               <label className="check">
