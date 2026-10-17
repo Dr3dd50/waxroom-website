@@ -1,6 +1,7 @@
 import { NATIVE } from './lib/booking';
 import { SERVICE_GROUPS, SERVICE_PAGES, findGroupLanding, findServicePage, groupPath, servicePath, type ServiceGroup, type ServicePage } from './content/services';
 import { LIVE_OFFERS, findOffer, offerPath, vSteam, type Offer } from './content/offers';
+import { LEGAL_DOCS, type LegalDoc } from './content/legal';
 
 export const SITE_URL = 'https://www.waxroomrichmond.com';
 
@@ -15,6 +16,7 @@ export type Route =
   | { kind: 'referral' }
   | { kind: 'card' }
   | { kind: 'textOptOut' }
+  | { kind: 'legal'; doc: LegalDoc }
   | { kind: 'offer'; offer: Offer }
   | { kind: 'notFound' };
 
@@ -28,6 +30,8 @@ export function resolve(pathname: string): Route {
   if (NATIVE && path === '/join') return { kind: 'join' };
   if (NATIVE && path === '/card') return { kind: 'card' };
   if (path === '/text-opt-out') return { kind: 'textOptOut' };
+  const legal = LEGAL_DOCS.find((d) => d.path === `${path}/`);
+  if (legal) return { kind: 'legal', doc: legal };
   if (NATIVE && /^\/r\/[A-Za-z0-9]+$/.test(path)) return { kind: 'referral' };
   const offer = /^\/offers\/([a-z0-9-]+)$/.exec(path);
   if (offer) {
@@ -43,7 +47,7 @@ export function resolve(pathname: string): Route {
 
 /** Every path that gets a pre-rendered HTML file. */
 /** Pages search engines should list. */
-export const SITEMAP_PATHS = ['/', ...SERVICE_GROUPS.filter((g) => g.landing).map(groupPath), ...SERVICE_PAGES.map(servicePath), ...LIVE_OFFERS.map(offerPath), '/gallery/'];
+export const SITEMAP_PATHS = ['/', ...SERVICE_GROUPS.filter((g) => g.landing).map(groupPath), ...SERVICE_PAGES.map(servicePath), ...LIVE_OFFERS.map(offerPath), '/gallery/', ...LEGAL_DOCS.map((d) => d.path)];
 /** Every path that gets a pre-rendered HTML file (/r/ serves every referral link). */
 export const PRERENDER_PATHS = [...SITEMAP_PATHS, '/404/', '/book/', '/text-opt-out/', ...(NATIVE ? ['/booking/', '/join/', '/r/', '/card/'] : [])];
 
@@ -81,6 +85,7 @@ export function headFor(route: Route) {
       canonical: `${SITE_URL}${offerPath(o)}`,
     };
   }
+  if (route.kind === 'legal') return { title: route.doc.seoTitle, description: route.doc.description, canonical: `${SITE_URL}${route.doc.path}` };
   if (route.kind === 'textOptOut') return { title: 'Stop Text Messages | The Wax Room', description: 'Stop offers, or every text, from The Wax Room.', canonical: `${SITE_URL}/text-opt-out/` };
   if (route.kind === 'card') return { title: 'Card on File | The Wax Room', description: 'Add a card to hold your appointments at The Wax Room.', canonical: `${SITE_URL}/card/` };
   if (route.kind === 'referral') return { title: 'A Gift From a Friend | The Wax Room', description: 'Money off your first visit to The Wax Room in Midlothian, VA.', canonical: `${SITE_URL}/` };

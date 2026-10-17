@@ -1521,3 +1521,25 @@ code {
 .mini-list li .chip {
   justify-self: end;
 }
+.new-client input[type='checkbox'],
+.new-client input[type='radio'] {
+  width: auto;
+  flex: none;
+  padding: 0;
+}
+.new-client .check {
+  justify-content: flex-start;
+}
+.consent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.consent legend {
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}

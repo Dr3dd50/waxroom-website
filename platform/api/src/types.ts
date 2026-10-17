@@ -87,6 +87,12 @@ export type Client = {
   smsReminders: boolean;
   smsMarketing: boolean;
   smsMarketingAt?: string;
+  /** How and when they agreed to appointment texts: carriers can ask for this. */
+  smsConsent?: { at: string; source: 'online' | 'desk' | 'glossgenius' | 'text-reply'; by?: string };
+  /** How and when they stopped texts (all of them, or offers only). */
+  smsOptOut?: { at: string; source: 'reply' | 'web-form' | 'desk' | 'glossgenius'; scope: 'all' | 'offers'; by?: string };
+  /** When the first text from this system reached them (it carried the STOP/HELP line). */
+  textedAt?: string;
   customerId?: string; // Stripe customer
   card?: Card;
   credit: number;

@@ -21,7 +21,7 @@ export type ClientInput = { first: string; last: string; phone: string; email?: 
  * number into the website, so from there an existing client's text choices and
  * details stay as they are. A STOP is only undone by the client replying START.
  */
-export async function upsertClient(store: Store, input: ClientInput, opts: { trusted?: boolean } = {}) {
+export async function upsertClient(store: Store, input: ClientInput, opts: { trusted?: boolean; by?: string } = {}) {
   const phone = toE164(input.phone ?? '');
   if (!phone) throw bad('Enter a 10-digit US mobile number.');
   if (!input.first?.trim()) throw bad('Enter a first name.');
@@ -29,7 +29,11 @@ export async function upsertClient(store: Store, input: ClientInput, opts: { tru
   if (existing && !opts.trusted) return { client: existing, isNew: false };
   if (existing) {
     existing.email ||= input.email?.trim() ?? '';
-    if (input.smsReminders !== undefined) existing.smsReminders = input.smsReminders;
+    // the desk can record a no; texts back on is a change made on the client's own record
+    if (input.smsReminders === false && existing.smsReminders) {
+      existing.smsReminders = false;
+      existing.smsOptOut = { at: nowIso(), source: 'desk', scope: 'all', by: opts.by };
+    }
     if (input.smsMarketing && !existing.smsMarketing) {
       existing.smsMarketing = true;
       existing.smsMarketingAt = nowIso();
@@ -47,6 +51,10 @@ export async function upsertClient(store: Store, input: ClientInput, opts: { tru
     notes: '',
     createdAt: nowIso(),
     smsReminders: input.smsReminders ?? true,
+    // online: giving a mobile number under the texting terms; at the desk: asked in person
+    ...((input.smsReminders ?? true)
+      ? { smsConsent: { at: nowIso(), source: opts.trusted ? ('desk' as const) : ('online' as const), by: opts.by } }
+      : { smsOptOut: { at: nowIso(), source: 'desk' as const, scope: 'all' as const, by: opts.by } }),
     smsMarketing: !!input.smsMarketing,
     smsMarketingAt: input.smsMarketing ? nowIso() : undefined,
     credit: 0,

@@ -546,7 +546,6 @@ export function DetailsForm({
           last: f.get('last'),
           phone: f.get('phone'),
           email: f.get('email'),
-          smsReminders: f.get('reminders') === 'on',
           smsMarketing: f.get('marketing') === 'on',
         },
       });
@@ -582,22 +581,32 @@ export function DetailsForm({
       </div>
       {emailRequired ? <p className="fine">We’ll email your confirmation and reminder here.</p> : null}
       <label className="check">
-        <input type="checkbox" name="reminders" defaultChecked /> Text me my booking confirmation and reminders.
-      </label>
-      <label className="check">
-        <input type="checkbox" name="marketing" /> Text me offers and news from The Wax Room (optional). Up to 4 a month. Reply STOP anytime.
+        <input type="checkbox" name="marketing" /> Text me offers and news from The Wax Room too (optional, not needed to book). Up to 4 a month. Reply STOP anytime.
       </label>
       {policy ? (
         <label className="check">
-          <input type="checkbox" required /> I agree to the{' '}
-          <button type="button" className="linkish" onClick={() => setShowPolicy(!showPolicy)}>
-            cancellation and no-show policy
-          </button>
-          .
+          <input type="checkbox" required />{' '}
+          <span>
+            I agree to the{' '}
+            <button type="button" className="linkish" onClick={() => setShowPolicy(!showPolicy)}>
+              cancellation and no-show policy
+            </button>
+            .
+          </span>
         </label>
       ) : null}
       {showPolicy && policy ? <p className="policy-text">{policy.cancellationPolicy}</p> : null}
-      <p className="fine">Message and data rates may apply. Reply HELP for help, STOP to opt out.</p>
+      <p className="fine">
+        By continuing, you agree to get texts from The Wax Room at this number about your appointments: confirmations, reminders, changes and receipts. Message
+        frequency varies, usually 2 to 4 per visit. Message and data rates may apply. Reply HELP for help, STOP to opt out.{' '}
+        <a href="/terms/#texts" target="_blank" rel="noopener">
+          Texting terms
+        </a>{' '}
+        ·{' '}
+        <a href="/privacy/" target="_blank" rel="noopener">
+          Privacy policy
+        </a>
+      </p>
       {error ? (
         <p className="form-error" role="alert">
           {error}

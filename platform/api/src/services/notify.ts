@@ -10,7 +10,7 @@
 import type { Store } from '../store/store';
 import type { Appointment, Client, Service } from '../types';
 import { zoned } from '../lib/time';
-import { nice } from '../lib/util';
+import { nice, nowIso } from '../lib/util';
 import { apptVars, autoText, bookingLink, manageLink, releaseUnpaidHolds } from './appointments';
 import { getSettings } from './availability';
 import { flushOutbox, isQuiet } from './alerts';
@@ -121,6 +121,7 @@ export async function handleInbound(store: Store, from: string, body: string) {
     // the carrier also blocks further texts until they reply START
     client.smsReminders = false;
     client.smsMarketing = false;
+    client.smsOptOut = { at: nowIso(), source: 'reply', scope: 'all' };
     await store.put('clients', client);
     return null;
   }
@@ -132,6 +133,8 @@ export async function handleInbound(store: Store, from: string, body: string) {
   if (rated) return rated;
   if (['START', 'UNSTOP', 'YES'].includes(word) && !client.smsReminders) {
     client.smsReminders = true;
+    client.smsConsent = { at: nowIso(), source: 'text-reply' };
+    delete client.smsOptOut;
     await store.put('clients', client);
     return sendText(store, client.phone, 'You’re back on appointment texts from The Wax Room.', 'reply', client);
   }

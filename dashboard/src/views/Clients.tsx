@@ -265,7 +265,27 @@ function ClientCard({ id, onChanged }: { id: string; onChanged: () => Promise<vo
         <h3>Texts</h3>
         <dl className="kv kv--settings">
           <dt>Appointment texts</dt>
-          <dd>{c.smsReminders ? <Pill tone="green">On</Pill> : <Pill tone="red">Opted out (replied STOP)</Pill>}</dd>
+          <dd>
+            {c.smsReminders ? (
+              <>
+                <Pill tone="green">On</Pill> <span className="muted small">{consentNote(c)}</span>{' '}
+                <button className="chip" onClick={() => save({ smsReminders: false })} title="When the client asks to stop">
+                  Client asked to stop
+                </button>
+              </>
+            ) : (
+              <>
+                <Pill tone="red">Off</Pill> <span className="muted small">{optOutNote(c)}</span>{' '}
+                {c.smsOptOut?.source === 'reply' ? (
+                  <span className="muted small">They can reply START to turn them back on.</span>
+                ) : (
+                  <button className="chip" onClick={() => save({ smsReminders: true })} title="Only when the client asks">
+                    Client asked to turn on
+                  </button>
+                )}
+              </>
+            )}
+          </dd>
           <dt>Offers & news</dt>
           <dd>
             {c.smsMarketing ? (
@@ -415,4 +435,17 @@ function MembershipPicker({ client, onDone }: { client: Client; onDone: () => Pr
       {error ? <p className="form-error">{error}</p> : null}
     </div>
   );
+}
+
+const when = (iso: string) => new Date(iso).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' });
+const CONSENT: Record<string, string> = { online: 'agreed when booking online', desk: 'agreed in person', glossgenius: 'carried over from GlossGenius', 'text-reply': 'replied START' };
+const OPT_OUT: Record<string, string> = { reply: 'replied STOP', 'web-form': 'opted out on the website', desk: 'asked the studio to stop', glossgenius: 'opted out in GlossGenius' };
+/** How and when the client agreed to appointment texts, for the record. */
+function consentNote(c: Client) {
+  const k = c.smsConsent;
+  return k ? `${CONSENT[k.source]}${k.by ? ` (${k.by})` : ''}, ${when(k.at)}` : '';
+}
+function optOutNote(c: Client) {
+  const o = c.smsOptOut;
+  return o ? `${OPT_OUT[o.source]}${o.by ? ` (${o.by})` : ''}, ${when(o.at)}` : 'opted out';
 }

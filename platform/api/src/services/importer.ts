@@ -57,6 +57,22 @@ const NOT_WHEN = /created|updated|modified|booked on|birth|paid|cancell?ed (at|o
  * A column's value by header: an exact header first (in the order given), then a
  * header containing the name. Date and time lookups skip bookkeeping columns.
  */
+/**
+ * Whether the export says this client doesn't take texts. GlossGenius's column names
+ * vary by export, so any column about SMS or text messages is read: a yes in an
+ * opt-out column, or a no in an opt-in or notifications one.
+ */
+export function textsOff(row: Record<string, string>) {
+  for (const [k, v] of Object.entries(row)) {
+    if (!/\b(sms|texts?|text messages?)\b/.test(k) || !v?.trim()) continue;
+    if (/marketing|promo/.test(k)) continue; // offers start off anyway
+    const yes = /^(true|yes|y|1|on|subscribed|opted in)$/i.test(v.trim());
+    const no = /^(false|no|n|0|off|unsubscribed|opted out|stop)$/i.test(v.trim());
+    if (/opt.?out|unsubscrib|blocked/.test(k) ? yes : no) return true;
+  }
+  return false;
+}
+
 const col = (row: Record<string, string>, ...names: string[]) => {
   const keys = Object.keys(row);
   for (const n of names) if (row[n]) return row[n];
@@ -117,6 +133,12 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
       if (existing) {
         existing.email ||= col(row, 'email');
         existing.birthday ||= monthDay(col(row, 'birthday', 'date of birth', 'dob'));
+        // an opt-out made in GlossGenius since the last import still counts
+        if (textsOff(row) && existing.smsReminders) {
+          existing.smsReminders = false;
+          existing.smsMarketing = false;
+          existing.smsOptOut = { at: nowIso(), source: 'glossgenius', scope: 'all' };
+        }
         changed.set(existing.id, existing);
         matched++;
         continue;
@@ -130,8 +152,11 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
         birthday: monthDay(col(row, 'birthday', 'date of birth', 'dob')),
         notes: col(row, 'notes', 'note'),
         createdAt: nowIso(),
-        // appointment texts continue as before; marketing needs fresh opt-in
-        smsReminders: true,
+        // appointment texts continue as before, unless GlossGenius has them opted out;
+        // marketing needs fresh opt-in
+        ...(textsOff(row)
+          ? { smsReminders: false, smsOptOut: { at: nowIso(), source: 'glossgenius' as const, scope: 'all' as const } }
+          : { smsReminders: true, smsConsent: { at: nowIso(), source: 'glossgenius' as const } }),
         smsMarketing: false,
         credit: 0,
         referralCode: referralCode(first),

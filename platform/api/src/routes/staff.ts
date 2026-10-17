@@ -105,7 +105,7 @@ export function staffRoutes(store: Store) {
     let isNew = false;
     if (b.clientId) client = await store.get<Client>('clients', b.clientId);
     // a new client starts on appointment texts; an existing one keeps their choice (a STOP stays a STOP)
-    else if (b.client) ({ client, isNew } = await upsertClient(store, b.client, { trusted: true }));
+    else if (b.client) ({ client, isNew } = await upsertClient(store, b.client, { trusted: true, by: c.get('staff').short }));
     if (!client) throw bad('Pick or add a client.');
     if (b.clientId && !isOwner(c)) await clientOr404(c, client.id);
     const appt = await createAppointment(store, { client, isNewClient: isNew, service, staffId: b.staffId, start: b.start, source: 'staff', notes: b.notes, price: b.price });
@@ -198,6 +198,8 @@ export function staffRoutes(store: Store) {
     card: x.card ? `${x.card.brand} •• ${x.card.last4}` : null,
     membership: x.membership,
     smsReminders: x.smsReminders,
+    smsConsent: x.smsConsent,
+    smsOptOut: x.smsOptOut,
     smsMarketing: x.smsMarketing,
     referralCode: x.referralCode,
     referredBy: x.referredBy,
@@ -242,7 +244,7 @@ export function staffRoutes(store: Store) {
     const b = await c.req.json<{ first: string; last: string; phone: string; email?: string; smsMarketing?: boolean; birthday?: string }>();
     const phone = toE164(b.phone ?? '');
     if (phone && (await findClientByPhone(store, phone))) throw bad('A client with that phone number is already on file. Search for them instead.');
-    const { client } = await upsertClient(store, b, { trusted: true });
+    const { client } = await upsertClient(store, b, { trusted: true, by: c.get('staff').short });
     return c.json(clientSummary(client, await seesContact(c)));
   });
 
@@ -260,10 +262,20 @@ export function staffRoutes(store: Store) {
       if (!p) throw bad('Enter a 10-digit US mobile number.');
       x.phone = p;
     }
-    for (const k of ['first', 'last', 'email', 'notes', 'birthday', 'smsReminders'] as const) if (b[k] !== undefined) (x as Record<string, unknown>)[k] = b[k];
-    if (b.smsMarketing !== undefined) {
+    for (const k of ['first', 'last', 'email', 'notes', 'birthday'] as const) if (b[k] !== undefined) (x as Record<string, unknown>)[k] = b[k];
+    // texts on or off from the dashboard: the client asked in person, recorded as such
+    const by = c.get('staff').short;
+    if (b.smsReminders !== undefined && b.smsReminders !== x.smsReminders) {
+      x.smsReminders = b.smsReminders;
+      if (b.smsReminders) {
+        x.smsConsent = { at: nowIso(), source: 'desk', by };
+        delete x.smsOptOut;
+      } else x.smsOptOut = { at: nowIso(), source: 'desk', scope: 'all', by };
+    }
+    if (b.smsMarketing !== undefined && b.smsMarketing !== x.smsMarketing) {
       x.smsMarketing = b.smsMarketing;
       if (b.smsMarketing) x.smsMarketingAt = nowIso();
+      else if (x.smsReminders) x.smsOptOut = { at: nowIso(), source: 'desk', scope: 'offers', by };
     }
     if (!x.referralCode) x.referralCode = await uniqueReferralCode(store, x.first);
     await store.put('clients', x);

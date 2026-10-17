@@ -85,6 +85,11 @@ Getting ready (any time before):
    Services → the service → Integration → Send a webhook) to the `TwilioWebhook`
    output URL, `https://staff.waxroomrichmond.com/api/webhooks/twilio`, method POST.
    It keeps working after www moves over.
+   Then, on the same Messaging Service → Opt-Out Management (Advanced Opt-Out), set
+   the replies Twilio sends for the keywords (the system doesn't send its own):
+   - HELP: `The Wax Room, Midlothian VA: appointment texts, and offers if you opted in. Help: (804) 601-8106 or waxroomrichmond@gmail.com. Msg & data rates may apply. Reply STOP to opt out.`
+   - STOP: `You're unsubscribed from The Wax Room texts and won't get more. Reply START to get appointment texts again.`
+   - START: `You're back on appointment texts from The Wax Room. Reply HELP for help, STOP to opt out.`
 3. Each team member's mobile number goes in Settings → Team, for their booking texts.
 4. `npm run build:native && npx cdk deploy -c booking=native -c attachDomains=true …`.
 5. Dashboard → Settings → Switch from GlossGenius: upload the GlossGenius clients

@@ -765,7 +765,16 @@ export function NewClientForm({ onSaved, onCancel }: { onSaved: (c: Client) => v
         e.preventDefault();
         const f = new FormData(e.currentTarget);
         try {
-          onSaved(await api<Client>('/clients', { first: f.get('first'), last: f.get('last'), phone: f.get('phone'), email: f.get('email'), smsMarketing: f.get('marketing') === 'on' }));
+          onSaved(
+            await api<Client>('/clients', {
+              first: f.get('first'),
+              last: f.get('last'),
+              phone: f.get('phone'),
+              email: f.get('email'),
+              smsReminders: f.get('texts') === 'yes',
+              smsMarketing: f.get('texts') === 'yes' && f.get('marketing') === 'on',
+            }),
+          );
         } catch (err) {
           setError((err as Error).message);
         }
@@ -779,8 +788,17 @@ export function NewClientForm({ onSaved, onCancel }: { onSaved: (c: Client) => v
         <input name="phone" placeholder="Mobile" required inputMode="tel" />
         <input name="email" placeholder="Email" type="email" />
       </div>
+      <fieldset className="consent">
+        <legend>Ask: “Can we text you about your appointments?”</legend>
+        <label className="check">
+          <input type="radio" name="texts" value="yes" required /> Yes, appointment texts
+        </label>
+        <label className="check">
+          <input type="radio" name="texts" value="no" required /> No texts
+        </label>
+      </fieldset>
       <label className="check">
-        <input type="checkbox" name="marketing" /> Client agreed to offers by text
+        <input type="checkbox" name="marketing" /> They also want offers by text
       </label>
       {error ? <p className="form-error">{error}</p> : null}
       <div className="row-actions">

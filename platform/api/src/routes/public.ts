@@ -111,6 +111,7 @@ export function publicRoutes(store: Store) {
     if (client && changes) {
       client.smsMarketing = false;
       if (b.scope === 'all') client.smsReminders = false;
+      client.smsOptOut = { at: nowIso(), source: 'web-form', scope: b.scope };
       await store.put('clients', client);
       await sendText(
         store,
