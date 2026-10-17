@@ -198,6 +198,7 @@ export function staffRoutes(store: Store) {
     card: x.card ? `${x.card.brand} •• ${x.card.last4}` : null,
     membership: x.membership,
     smsReminders: x.smsReminders,
+    banned: x.banned,
     smsConsent: x.smsConsent,
     smsMarketingAt: x.smsMarketingAt,
     smsMarketingSource: x.smsMarketingSource,
@@ -253,7 +254,7 @@ export function staffRoutes(store: Store) {
 
   r.patch('/clients/:id', async (c) => {
     const x = await clientOr404(c, c.req.param('id')!);
-    const b = await c.req.json<Partial<{ first: string; last: string; phone: string; email: string; notes: string; birthday: string; smsReminders: boolean; smsMarketing: boolean }>>();
+    const b = await c.req.json<Partial<{ first: string; last: string; phone: string; email: string; notes: string; birthday: string; smsReminders: boolean; smsMarketing: boolean; banned: boolean }>>();
     const contact = await seesContact(c);
     if (!contact) {
       // an empty field here is the hidden value coming back, not a change
@@ -266,6 +267,11 @@ export function staffRoutes(store: Store) {
       x.phone = p;
     }
     for (const k of ['first', 'last', 'email', 'notes', 'birthday'] as const) if (b[k] !== undefined) (x as Record<string, unknown>)[k] = b[k];
+    if (b.banned !== undefined && b.banned !== !!x.banned) {
+      if (!isOwner(c)) throw new HttpError(403, 'Only the owner can do that.');
+      if (b.banned) x.banned = { at: nowIso(), source: 'desk', by: c.get('staff').short };
+      else delete x.banned;
+    }
     // texts on or off from the dashboard: the client asked in person, recorded as such
     const by = c.get('staff').short;
     if (b.smsReminders !== undefined && b.smsReminders !== x.smsReminders) {
@@ -296,6 +302,7 @@ export function staffRoutes(store: Store) {
     const token = rid(16);
     await store.put('tokens', { id: token, kind: 'card', clientId: x.id, expiresAt: new Date(Date.now() + CARD_LINK_DAYS * 86400000).toISOString() });
     const link = `${config.siteUrl}/card/?t=${token}`;
+    if (!x.phone) return c.json({ link, texted: false, reason: `There’s no mobile number on file for ${x.first}, so share the link another way.` });
     if (!x.smsReminders) return c.json({ link, texted: false, reason: `${x.first} has opted out of texts, so share the link another way.` });
     const settings = await getSettings(store);
     const m = await sendOrQueue(store, settings, x.phone, `Hi ${x.first}, add a card for your Wax Room appointments here: ${link} It's saved securely with Stripe. The link works for ${CARD_LINK_DAYS} days.`, 'card-link', x);
@@ -350,7 +357,7 @@ export function staffRoutes(store: Store) {
   });
 
   async function audience(key: string) {
-    const clients = (await store.list<Client>('clients')).filter((x) => x.smsMarketing && x.smsReminders);
+    const clients = (await store.list<Client>('clients')).filter((x) => x.smsMarketing && x.smsReminders && x.phone && !x.banned);
     if (key === 'members') return clients.filter((x) => x.membership?.status === 'active');
     if (key === 'lapsed') return clients.filter((x) => x.lastVisitAt && Date.now() - Date.parse(x.lastVisitAt) > 56 * 86400000);
     if (key.startsWith('category:')) {

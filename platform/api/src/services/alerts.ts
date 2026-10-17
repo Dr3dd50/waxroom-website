@@ -52,7 +52,8 @@ export async function alertStaff(store: Store, appt: Appointment, event: AlertEv
 /** Text now, or during quiet hours hold it in the outbox until they end. */
 export async function sendOrQueue(store: Store, settings: Settings, to: string, body: string, kind: Message['kind'], client?: Client) {
   const sendAfter = quietUntil(settings);
-  if (!sendAfter) return sendText(store, to, body, kind, client);
+  // no number: recorded as not sent now, rather than waiting till morning to fail
+  if (!sendAfter || !to) return sendText(store, to, body, kind, client);
   const at = nowIso();
   const msg: Message = { id: `${at}_${rid(4)}`, at, direction: 'out', to, clientId: client?.id, kind, body, status: 'queued', sendAfter };
   return store.put('outbox', msg);

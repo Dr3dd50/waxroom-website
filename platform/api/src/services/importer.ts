@@ -6,9 +6,10 @@
 // birthday and banned status (notes aren't included; GlossGenius support can
 // send those). Appointments: from Insights or GlossGenius support; columns are
 // matched by name, so small differences in the export's headers are fine.
-// Banned clients are skipped.
+// Every client with a name comes in: banned ones stay banned (they can't book
+// online), and those with no mobile number of their own get no texts.
 //
-// Run it as often as needed while both systems are live: clients match on phone
+// Run it as often as needed while both systems are live: clients match on phone (or email)
 // and appointments on client + time, so nothing is duplicated, and a later export
 // updates what changed (a GlossGenius appointment since cancelled, or completed).
 // Imported appointments block those times on our calendar but get no texts from
@@ -16,7 +17,7 @@
 import type { Store } from '../store/store';
 import type { Appointment, Client, ImportReport, Service, Settings, Staff } from '../types';
 import { zoned, zonedToUtc } from '../lib/time';
-import { nowIso, rid, toE164 } from '../lib/util';
+import { nowIso, prettyPhone, rid, toE164 } from '../lib/util';
 
 /** Minimal CSV parser: quoted fields, commas and newlines inside quotes. */
 export function parseCsv(text: string) {
@@ -106,7 +107,7 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
   const now = opts.now ?? new Date();
   const report: ImportReport = { at: nowIso() };
   const clients = await store.list<Client>('clients');
-  const byPhone = new Map(clients.map((c) => [c.phone, c]));
+  const byPhone = new Map(clients.filter((c) => c.phone).map((c) => [c.phone, c]));
   const codes = new Set(clients.map((c) => c.referralCode));
   const referralCode = (first: string) => {
     const base = first.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) || 'FRIEND';
@@ -115,23 +116,43 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
   const changed = new Map<string, Client>();
 
   if (files.clients) {
-    let added = 0, matched = 0, skipped = 0;
+    let added = 0, matched = 0, duplicates = 0, sharedPhone = 0, banned = 0, noPhone = 0, skipped = 0;
+    const fromFile = new Set<string>();
     for (const row of parseCsv(files.clients)) {
-      if (/^(true|yes|1)$/i.test(col(row, 'banned'))) {
-        skipped++;
-        continue;
-      }
       const phone = toE164(col(row, 'phone', 'mobile', 'cell'));
+      const email = col(row, 'email').trim();
       let first = col(row, 'first name', 'first');
       let last = col(row, 'last name', 'last');
       if (!first) [first, last] = col(row, 'name', 'client').split(/\s+(.+)/);
-      if (!phone || !first) {
+      if (!first) {
         skipped++;
         continue;
       }
-      const existing = byPhone.get(phone);
+      const isBanned = /^(true|yes|1)$/i.test(col(row, 'banned'));
+      if (isBanned) banned++;
+      const fullName = `${first} ${last ?? ''}`.trim().toLowerCase();
+      const samePerson = (c: Client) =>
+        c.first.trim().toLowerCase() === first.trim().toLowerCase() || (!!email && c.email.toLowerCase() === email.toLowerCase());
+      // a phone is one person's: someone else on it (a family member, say) comes in
+      // without it, so texts and replies on that number stay with the first
+      const onPhone = phone ? byPhone.get(phone) : undefined;
+      // with no phone of their own: by email, else by name among those with neither
+      const existing =
+        (onPhone && samePerson(onPhone) ? onPhone : undefined) ||
+        (email ? clients.find((c) => !c.phone && c.email.toLowerCase() === email.toLowerCase()) : undefined) ||
+        (!phone && email ? clients.find((c) => c.email.toLowerCase() === email.toLowerCase()) : undefined) ||
+        clients.find((c) => !c.phone && !c.email && `${c.first} ${c.last}`.trim().toLowerCase() === fullName);
       if (existing) {
-        existing.email ||= col(row, 'email');
+        existing.email ||= email;
+        // a mobile number added in GlossGenius since: theirs now, with texts as GlossGenius has them
+        if (!existing.phone && phone && !byPhone.has(phone)) {
+          existing.phone = phone;
+          byPhone.set(phone, existing);
+          if (!textsOff(row) && !existing.smsOptOut) {
+            existing.smsReminders = true;
+            existing.smsConsent = { at: nowIso(), source: 'glossgenius' };
+          }
+        }
         existing.birthday ||= monthDay(col(row, 'birthday', 'date of birth', 'dob'));
         // an opt-out made in GlossGenius since the last import still counts
         if (textsOff(row) && existing.smsReminders) {
@@ -139,37 +160,48 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
           existing.smsMarketing = false;
           existing.smsOptOut = { at: nowIso(), source: 'glossgenius', scope: 'all' };
         }
+        // a ban follows GlossGenius; one set here at the desk stays
+        if (isBanned) existing.banned ??= { at: nowIso(), source: 'glossgenius' };
+        else if (existing.banned?.source === 'glossgenius') delete existing.banned;
         changed.set(existing.id, existing);
-        matched++;
+        if (fromFile.has(existing.id)) duplicates++;
+        else matched++;
         continue;
       }
+      const shares = onPhone ? `Shares the phone ${prettyPhone(onPhone.phone)} with ${onPhone.first} ${onPhone.last}`.trim() + ' in GlossGenius.' : '';
+      const ownPhone = onPhone ? '' : (phone ?? '');
+      if (onPhone) sharedPhone++;
+      else if (!ownPhone) noPhone++;
+      const off = !ownPhone || textsOff(row);
       const c: Client = {
         id: rid(),
         first,
         last: last ?? '',
-        phone,
-        email: col(row, 'email'),
+        phone: ownPhone,
+        email,
         birthday: monthDay(col(row, 'birthday', 'date of birth', 'dob')),
-        notes: col(row, 'notes', 'note'),
+        notes: [col(row, 'notes', 'note'), shares].filter(Boolean).join('\n'),
         createdAt: nowIso(),
-        // appointment texts continue as before, unless GlossGenius has them opted out;
-        // marketing needs fresh opt-in
-        ...(textsOff(row)
-          ? { smsReminders: false, smsOptOut: { at: nowIso(), source: 'glossgenius' as const, scope: 'all' as const } }
+        // appointment texts continue as before, unless GlossGenius has them opted out
+        // (or there's no number of their own to text); marketing needs fresh opt-in
+        ...(off
+          ? { smsReminders: false, ...(ownPhone ? { smsOptOut: { at: nowIso(), source: 'glossgenius' as const, scope: 'all' as const } } : {}) }
           : { smsReminders: true, smsConsent: { at: nowIso(), source: 'glossgenius' as const } }),
         smsMarketing: false,
         credit: 0,
         referralCode: referralCode(first),
         importedFrom: 'glossgenius',
+        ...(isBanned ? { banned: { at: nowIso(), source: 'glossgenius' as const } } : {}),
       };
-      byPhone.set(phone, c);
+      if (ownPhone) byPhone.set(ownPhone, c);
       clients.push(c);
+      fromFile.add(c.id);
       changed.set(c.id, c);
       added++;
     }
     if (!dry) await putAll(store, 'clients', [...changed.values()]);
     changed.clear();
-    report.clients = { added, matched, skipped };
+    report.clients = { added, matched, duplicates, sharedPhone, banned, noPhone, skipped };
   }
 
   if (files.appointments) {
@@ -192,7 +224,9 @@ export async function importGlossGenius(store: Store, files: { clients?: string;
     for (const row of parseCsv(files.appointments)) {
       const phone = toE164(col(row, 'phone', 'client phone', 'mobile'));
       const name = col(row, 'client', 'client name', 'name');
-      const client = phone ? byPhone.get(phone) : clients.find((c) => `${c.first} ${c.last}`.toLowerCase() === name.toLowerCase());
+      // by name first when it's given: someone sharing a phone came in under their own name
+      const named = (c: Client) => !!name && `${c.first} ${c.last}`.trim().toLowerCase() === name.trim().toLowerCase();
+      const client = clients.find((c) => named(c) && (!phone || c.phone === phone || !c.phone)) ?? (phone ? byPhone.get(phone) : undefined);
       const sName = col(row, 'service', 'service name').toLowerCase();
       const service = services.find((s) => s.name.toLowerCase() === sName) ?? services.find((s) => sName.includes(s.name.toLowerCase()));
       const dateStr = col(row, 'date', 'appointment date', 'start date', 'start');

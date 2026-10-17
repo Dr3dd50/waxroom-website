@@ -15,7 +15,12 @@ function ReportLines({ r }: { r: ImportReport }) {
     <>
       {r.clients ? (
         <p className="small">
-          Clients: {r.clients.added} new, {r.clients.matched} already here, {r.clients.skipped} skipped (banned, or no name or phone).
+          Clients: {r.clients.added} new, {r.clients.matched} already in the new system
+          {r.clients.duplicates ? `, ${r.clients.duplicates} listed twice in the file (merged)` : ''}.
+          {r.clients.noPhone ? ` ${r.clients.noPhone} have no mobile number, so they won’t get texts.` : ''}
+          {r.clients.sharedPhone ? ` ${r.clients.sharedPhone} share a phone with someone listed before them, so they come in without it (noted on their card).` : ''}
+          {r.clients.banned ? ` ${r.clients.banned} are banned in GlossGenius and stay banned: they can’t book online.` : ''}
+          {r.clients.skipped ? ` ${r.clients.skipped} rows have no name and are left out.` : ''}
         </p>
       ) : null}
       {r.appointments ? (

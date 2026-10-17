@@ -85,7 +85,7 @@ test('before the switch nothing here books, texts or charges, and GlossGenius im
   // check the files first: nothing is saved
   const dry = await call('POST', '/staff/import/glossgenius', { clients: clientsCsv, appointments: apptCsv('Booked'), dryRun: true });
   assert.equal(dry.status, 200);
-  assert.deepEqual(dry.json.report.clients, { added: 3, matched: 0, skipped: 1 });
+  assert.deepEqual(dry.json.report.clients, { added: 4, matched: 0, duplicates: 0, sharedPhone: 0, banned: 1, noPhone: 0, skipped: 0 });
   assert.equal((await store.list<any>('clients')).length, 0);
   const imp = (await call('POST', '/staff/import/glossgenius', { clients: clientsCsv, appointments: apptCsv('Booked') })).json.report;
   assert.equal(imp.appointments.added, 3);

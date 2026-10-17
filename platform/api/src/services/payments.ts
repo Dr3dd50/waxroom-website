@@ -41,7 +41,7 @@ export const payments = {
   async ensureCustomer(c: Client) {
     if (!stripeLive()) return (practiceOk(), c.customerId ?? `cus_sim_${rid()}`);
     if (c.customerId && !c.customerId.startsWith('cus_sim_')) return c.customerId;
-    const cus = await api().customers.create({ name: `${c.first} ${c.last}`, email: c.email || undefined, phone: c.phone, metadata: { clientId: c.id } });
+    const cus = await api().customers.create({ name: `${c.first} ${c.last}`, email: c.email || undefined, phone: c.phone || undefined, metadata: { clientId: c.id } });
     return cus.id;
   },
 

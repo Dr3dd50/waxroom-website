@@ -79,9 +79,11 @@ export type Client = {
   id: string;
   first: string;
   last: string;
-  phone: string; // E.164
+  phone: string; // E.164, or '' when there's no mobile number of their own on file
   email: string;
   birthday?: string; // MM-DD
+  /** Not booked online; the desk can still book them. From GlossGenius, or set by the owner. */
+  banned?: { at: string; source: 'glossgenius' | 'desk'; by?: string };
   notes: string;
   createdAt: string;
   smsReminders: boolean;
@@ -284,7 +286,21 @@ export type Settings = {
 
 export type ImportReport = {
   at: string;
-  clients?: { added: number; matched: number; skipped: number };
+  clients?: {
+    added: number;
+    /** Already in our system. */
+    matched: number;
+    /** The same person again further down the file. */
+    duplicates?: number;
+    /** Someone else on a phone an earlier client has: added without it. */
+    sharedPhone?: number;
+    /** Of the rows read, how many GlossGenius has banned (added or matched, marked banned). */
+    banned?: number;
+    /** Added with no mobile number: no texts. */
+    noPhone?: number;
+    /** No name at all. */
+    skipped: number;
+  };
   appointments?: { added: number; updated: number; unchanged: number; unmatched: number; removed?: number; problems: string[] };
 };
 

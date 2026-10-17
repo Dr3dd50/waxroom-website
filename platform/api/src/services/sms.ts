@@ -19,7 +19,10 @@ export async function sendText(store: Store, to: string, body: string, kind: Mes
   // Nothing is texted from here before the switch from GlossGenius. Every path that
   // texts checks first; this is the last stop in case one is ever missed.
   const settings = await store.get<Settings>('settings', 'settings');
-  if (!settings?.switchover?.done) {
+  if (!to) {
+    msg.status = 'failed';
+    msg.error = 'Not sent: no mobile number on file.';
+  } else if (!settings?.switchover?.done) {
     msg.status = 'failed';
     msg.error = 'Not sent: texts start at the switch from GlossGenius.';
   } else if (twilioLive()) {

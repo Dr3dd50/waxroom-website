@@ -39,6 +39,8 @@ export type Client = {
   card: string | null;
   membership?: { membershipId: string; since: string; status: string; periodStart: string };
   smsReminders: boolean;
+  /** Can't book online. */
+  banned?: { at: string; source: 'glossgenius' | 'desk'; by?: string };
   smsMarketingAt?: string;
   smsMarketingSource?: 'text-yes' | 'desk';
   smsMarketingPending?: string;
@@ -69,7 +71,7 @@ export type Settings = {
 };
 export type ImportReport = {
   at: string;
-  clients?: { added: number; matched: number; skipped: number };
+  clients?: { added: number; matched: number; duplicates?: number; sharedPhone?: number; banned?: number; noPhone?: number; skipped: number };
   appointments?: { added: number; updated: number; unchanged: number; unmatched: number; removed?: number; problems: string[] };
 };
 export type Boot = { me: Staff; staff: Staff[]; services: Service[]; memberships: Membership[]; packages: Package[]; settings: Settings; live: { payments: boolean; texts: boolean; email?: boolean }; today: string };

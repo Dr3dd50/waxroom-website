@@ -2,7 +2,8 @@ import texting from '../../../../src/data/texting.json';
 import { sendText } from './sms';
 import type { Store } from '../store/store';
 import type { Appointment, Client, Package, Payment } from '../types';
-import { bad, nowIso, rid, toE164 } from '../lib/util';
+import catalog from '../../../seed/catalog.json';
+import { HttpError, bad, nowIso, prettyPhone, rid, toE164 } from '../lib/util';
 import { withLock } from './switchover';
 
 export async function findClientByPhone(store: Store, phone: string) {
@@ -28,6 +29,12 @@ export async function upsertClient(store: Store, input: ClientInput, opts: { tru
   if (!phone) throw bad('Enter a 10-digit US mobile number.');
   if (!input.first?.trim()) throw bad('Enter a first name.');
   const existing = await findClientByPhone(store, phone);
+  if (!opts.trusted) {
+    // banned in GlossGenius or by the owner: not online, under their number or their email
+    const email = input.email?.trim().toLowerCase();
+    const banned = existing?.banned || (email && (await store.list<Client>('clients')).some((c) => c.banned && c.email.toLowerCase() === email));
+    if (banned) throw new HttpError(409, `We can’t book this online. Please call or text the studio at ${prettyPhone(catalog.business.phone)}.`);
+  }
   if (existing && !opts.trusted) return { client: existing, isNew: false };
   if (existing) {
     existing.email ||= input.email?.trim() ?? '';

@@ -80,9 +80,9 @@ export function ClientsView() {
                   <strong>
                     {c.first} {c.last}
                   </strong>
-                  <small>{phone(c.phone)}</small>
+                  <small>{c.contactHidden ? '' : c.phone ? phone(c.phone) : 'No phone'}</small>
                 </span>
-                {c.membership?.status === 'active' ? <Pill tone="green">Member</Pill> : null}
+                {c.banned ? <Pill tone="red">Banned</Pill> : c.membership?.status === 'active' ? <Pill tone="green">Member</Pill> : null}
               </button>
             </li>
           ))}
@@ -119,7 +119,7 @@ function ClientCard({ id, onChanged }: { id: string; onChanged: () => Promise<vo
   const who = (sid: string) => boot.staff.find((s) => s.id === sid)?.short ?? '';
   const membership = c.membership?.status === 'active' ? boot.memberships.find((m) => m.id === c.membership!.membershipId) : null;
 
-  async function save(body: Partial<Client>) {
+  async function save(body: Partial<Omit<Client, 'banned'>> & { banned?: boolean }) {
     setError('');
     try {
       await api(`/clients/${id}`, body, 'PATCH');
@@ -139,9 +139,26 @@ function ClientCard({ id, onChanged }: { id: string; onChanged: () => Promise<vo
             {c.first} {c.last}
           </h2>
           <p className="muted">
-            {c.contactHidden ? 'Phone and email: owner only' : phone(c.phone)}
+            {c.contactHidden ? 'Phone and email: owner only' : c.phone ? phone(c.phone) : 'No mobile number'}
             {c.email ? ` · ${c.email}` : ''}
           </p>
+          {c.banned || owner ? (
+            <p className="client-head__ban">
+              {c.banned ? (
+                <>
+                  <Pill tone="red">Banned</Pill>{' '}
+                  <span className="muted small">
+                    Can’t book online{c.banned.source === 'glossgenius' ? ' (banned in GlossGenius)' : c.banned.by ? ` (set by ${c.banned.by}, ${when(c.banned.at)})` : ''}. You can still book them here.
+                  </span>{' '}
+                </>
+              ) : null}
+              {owner ? (
+                <button className="chip" onClick={() => save({ banned: !c.banned })}>
+                  {c.banned ? 'Lift the ban' : 'Ban from booking online'}
+                </button>
+              ) : null}
+            </p>
+          ) : null}
         </div>
       </header>
       {error ? <p className="form-error">{error}</p> : null}
@@ -266,7 +283,9 @@ function ClientCard({ id, onChanged }: { id: string; onChanged: () => Promise<vo
         <dl className="kv kv--settings">
           <dt>Appointment texts</dt>
           <dd>
-            {c.smsReminders ? (
+            {!c.phone && !c.contactHidden ? (
+              <span className="muted small">No mobile number on file, so no texts.</span>
+            ) : c.smsReminders ? (
               <>
                 <Pill tone="green">On</Pill> <span className="muted small">{consentNote(c)}</span>{' '}
                 <button className="chip" onClick={() => save({ smsReminders: false })} title="When the client asks to stop">
