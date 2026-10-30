@@ -304,4 +304,36 @@ export type ImportReport = {
   appointments?: { added: number; updated: number; unchanged: number; unmatched: number; removed?: number; problems: string[] };
 };
 
-export type Collection = 'staff' | 'services' | 'memberships' | 'packages' | 'clients' | 'appointments' | 'referrals' | 'messages' | 'payments' | 'settings' | 'tokens' | 'metaOutbox' | 'outbox' | 'locks';
+/** A video put through the automatic editor (dashboard → Video editor). */
+export type ContentEdit = {
+  /** Starts with the time it was made, so the newest sort last. */
+  id: string;
+  createdAt: string;
+  staffId: string;
+  /** The uploaded file's name, shown in the list. */
+  name: string;
+  bytes: number;
+  options: EditOptions;
+  status: 'uploading' | 'processing' | 'done' | 'failed';
+  startedAt?: string;
+  progress?: { stage: string; pct: number };
+  result?: EditResult;
+  error?: string;
+};
+export type EditOptions = { cut: boolean; captions: boolean; sfx: boolean; pace: 'natural' | 'tight' };
+/** What platform/editor/edit.py reports (report.json / result.json). */
+export type EditResult = {
+  durationIn: number;
+  durationOut: number;
+  cuts: number;
+  removedSeconds: number;
+  captions: number;
+  words: number;
+  transcript: string;
+  sfx: { at: number; sound: string }[];
+  size: [number, number];
+  seconds: number;
+  files: string[];
+};
+
+export type Collection = 'staff' | 'services' | 'memberships' | 'packages' | 'clients' | 'appointments' | 'referrals' | 'messages' | 'payments' | 'settings' | 'tokens' | 'metaOutbox' | 'outbox' | 'locks' | 'edits';

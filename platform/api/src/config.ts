@@ -39,6 +39,17 @@ export const config = {
     user: env.GMAIL_USER || env.OWNER_EMAIL || 'waxroomrichmond@gmail.com',
     appPassword: env.GMAIL_APP_PASSWORD?.replace(/\s+/g, ''),
   },
+  /**
+   * The video editor (platform/editor). On AWS videos go to an S3 bucket and a container
+   * Lambda edits them; locally edit.py runs on this machine and files live in .data/edits.
+   */
+  editor: {
+    bucket: env.EDITS_BUCKET,
+    fn: env.EDITOR_FUNCTION,
+    python: env.EDITOR_PYTHON ?? 'python3',
+    dir: env.EDITS_DIR ?? fileURLToPath(new URL('../.data/edits', import.meta.url)),
+    script: fileURLToPath(new URL('../../editor/edit.py', import.meta.url)),
+  },
   twilio: {
     accountSid: env.TWILIO_ACCOUNT_SID,
     authToken: env.TWILIO_AUTH_TOKEN,
