@@ -10,6 +10,7 @@ Everything is defined in `stack.ts` (AWS CDK), deployed to `us-east-1`:
 | Data | DynamoDB (on-demand, point-in-time recovery, kept if the stack is removed) |
 | Timed texts | EventBridge rule every 15 minutes → Lambda |
 | Keys | Secrets Manager secret `AppKeys…` (session secret generated; Stripe and Twilio filled in later) |
+| Video editor | Container Lambda built from `platform/editor/Dockerfile` (15 min, 3 GB); uploads and results in an S3 bucket that empties after 30 days |
 
 ## 1. First deploy (nothing public changes yet)
 
@@ -161,3 +162,13 @@ Setup (business.facebook.com, the business portfolio that owns the ad account):
 9. **Remove `META_TEST_EVENT_CODE`** from the secret. From here events count.
 10. After about two weeks, read Event Match Quality in Events Manager.
 
+
+## The video editor
+
+`npx cdk deploy` builds the editor's container image from `platform/editor/Dockerfile`, so the
+machine deploying needs **Docker** running. The image bakes in ffmpeg, the speech model, the
+face model and the Mixkit sound kit; nothing downloads during an edit.
+
+The editor gets 3008 MB of memory, which every AWS account allows. Lambda's CPU grows with its
+memory, so where the account's limit is higher, `-c editorMemory=10240` makes edits about three
+times faster. Videos and their edits are deleted from the `Edits…` bucket after 30 days.

@@ -1,7 +1,7 @@
 // Small shared UI pieces for the dashboard.
 import type { ReactNode } from 'react';
 
-export type IconName = 'calendar' | 'users' | 'tag' | 'gift' | 'chat' | 'card' | 'gear' | 'out' | 'left' | 'right' | 'plus' | 'x' | 'search' | 'phone' | 'check' | 'clock';
+export type IconName = 'calendar' | 'users' | 'tag' | 'gift' | 'chat' | 'card' | 'gear' | 'out' | 'left' | 'right' | 'plus' | 'x' | 'search' | 'phone' | 'check' | 'clock' | 'film';
 
 const PATHS: Record<IconName, string> = {
   calendar: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
@@ -20,6 +20,7 @@ const PATHS: Record<IconName, string> = {
   phone: 'M5 3h4l2 5-3 2a12 12 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A18 18 0 0 1 3 5a2 2 0 0 1 2-2z',
   check: 'M5 12l5 5 9-10',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  film: 'M4 4h16v16H4zM4 9h16M4 15h16M9 4v5M15 4v5M9 15v5M15 15v5',
 };
 
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {

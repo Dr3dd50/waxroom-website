@@ -14,6 +14,7 @@ behind it.
 | API | AWS | Appointments, availability, clients, catalog, referrals, webhooks |
 | Payments | Stripe | Card on file, deposits, checkout, no-show fees, membership subscriptions, referral credit |
 | Texts | Twilio | Confirmations, reminders, calendar links, book-again texts (per service, switched on by the owner), team texts for bookings, moves and cancellations, marketing campaigns (opt-in only) |
+| Video editor | `editor/` | Raw phone video in, a post-ready Reel out: retakes, "um"s and pauses cut, captions, sound. Every staff login, under Video editor |
 
 Hosting is AWS, alongside the CloudFront distribution that already serves the
 domain: the dashboard as its own static site on the `employee` subdomain, the
@@ -89,3 +90,29 @@ links once Twilio's registration and Stripe are ready. Deploying is in
 
     npm run dashboard          # dev server on :5174
     npm run build:dashboard    # → dist-dashboard/, deployed to staff.waxroomrichmond.com
+
+## Video editor
+
+Dashboard → Video editor, for the owner and every employee (employees see their own
+videos, the owner sees everyone's). Upload a talking-to-camera video of up to 10 minutes and it
+comes back as a 1080x1920 MP4, plus an `.srt` caption file:
+
+- **Cut**: false starts and retakes out (the last good take of each line stays), along with
+  restart chatter ("okay, again"), "um"s and long pauses. Each cut lands on the voice's own edges
+  with a short crossfade, and a 1.0/1.1 punch-in hides the jump.
+- **Captions**: three words at a time in Archivo Black, the spoken word in honey, kept off the
+  face and clear of the app buttons.
+- **Sound**: real recorded effects (Mixkit), set against the speaker's voice. Off, Subtle (a
+  whoosh at the open, a pop on prices and numbers) or Lively (plus whooshes on the punch-ins).
+  There's an optional music bed 20 dB under the voice.
+- **Checks**: loudness, peaks, pauses left, captions on the face. A failed check shows on the video.
+
+It's a server rebuild of [ghost-editor](https://github.com/kurbaitaev/ghost-editor) (MIT).
+`editor/THIRD_PARTY.md` maps each step to the ghost-editor script it comes from, and lists the
+licences.
+
+Locally, run `sh platform/editor/setup.sh` once (it needs Python 3 and ffmpeg). It installs
+faster-whisper and OpenCV and downloads the sound kit and face model; the first edit then
+downloads the speech model. `python3 platform/editor/edit.py <video> <out-dir>` edits a file by
+hand, and `python3 platform/editor/test_edit.py` tests it. On AWS the editor is a container Lambda
+(see `infra/README.md`).

@@ -1,0 +1,5 @@
+__pycache__
+library/sfx
+library/music
+library/models
+test_edit.py

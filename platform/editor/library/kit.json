@@ -1,0 +1,134 @@
+{
+ "_about": "The sounds the editor uses: ghost-editor's pinned Mixkit picks (github.com/kurbaitaev/ghost-editor, scripts/sfx_fetch.py and library/*/manifest.json) and its roles. Mixkit's free licence allows commercial use without credit but not redistributing the files as they are, so fetch_kit.py downloads them and they are never committed.",
+ "sfx": {
+  "whoosh-1": {
+   "role": "whoosh",
+   "mixkit_id": "2350",
+   "max_seconds": 0.9,
+   "title": "Magic sparkle whoosh"
+  },
+  "whoosh-2": {
+   "role": "whoosh",
+   "mixkit_id": "1492",
+   "max_seconds": 0.9,
+   "title": "Cinematic whoosh fast transition"
+  },
+  "whoosh-3": {
+   "role": "whoosh",
+   "mixkit_id": "1714",
+   "max_seconds": 0.9,
+   "title": "Fast rocket whoosh"
+  },
+  "whoosh-cine": {
+   "role": "whoosh",
+   "mixkit_id": "1491",
+   "max_seconds": 1.5,
+   "title": "Arrow whoosh"
+  },
+  "pop-1": {
+   "role": "ui",
+   "mixkit_id": "2925",
+   "max_seconds": 0.4,
+   "title": "Soap bubble sound"
+  },
+  "pop-2": {
+   "role": "ui",
+   "mixkit_id": "2354",
+   "max_seconds": 0.4,
+   "title": "Message pop alert"
+  },
+  "pop-3": {
+   "role": "ui",
+   "mixkit_id": "2364",
+   "max_seconds": 0.4,
+   "title": "Hard pop click"
+  },
+  "ding-1": {
+   "role": "ui",
+   "mixkit_id": "2870",
+   "max_seconds": 1.0,
+   "title": "Correct answer tone"
+  },
+  "impact-1": {
+   "role": "impact",
+   "mixkit_id": "2908",
+   "max_seconds": 1.6,
+   "title": "Movie trailer epic impact"
+  },
+  "impact-2": {
+   "role": "impact",
+   "mixkit_id": "788",
+   "max_seconds": 1.2,
+   "title": "Big cinematic impact"
+  },
+  "riser-1": {
+   "role": "whoosh",
+   "mixkit_id": "790",
+   "max_seconds": 2.0,
+   "title": "Cinematic trailer riser"
+  },
+  "kaching-1": {
+   "role": "impact",
+   "mixkit_id": "1993",
+   "max_seconds": 1.4,
+   "title": "Clinking coins"
+  },
+  "shutter-1": {
+   "role": "ui",
+   "mixkit_id": "1430",
+   "max_seconds": 0.6,
+   "title": "Camera shutter hard click"
+  }
+ },
+ "music": {
+  "lo-fi-02": {
+   "mood": "calm",
+   "url": "https://assets.mixkit.co/music/764/764.mp3",
+   "tags": [
+    "chill",
+    "lo-fi",
+    "subtle",
+    "warm"
+   ]
+  },
+  "digital-clouds": {
+   "mood": "calm",
+   "url": "https://assets.mixkit.co/music/175/175.mp3",
+   "tags": [
+    "chill",
+    "soft",
+    "electronic",
+    "subtle"
+   ]
+  },
+  "chillax": {
+   "mood": "calm",
+   "url": "https://assets.mixkit.co/music/655/655.mp3",
+   "tags": [
+    "meditative",
+    "acoustic",
+    "relaxed"
+   ]
+  },
+  "a-baby-story": {
+   "mood": "warm",
+   "url": "https://assets.mixkit.co/music/530/530.mp3",
+   "tags": [
+    "hopeful",
+    "relaxed",
+    "acoustic",
+    "lifestyle"
+   ]
+  },
+  "happy-times": {
+   "mood": "upbeat",
+   "url": "https://assets.mixkit.co/music/158/158.mp3",
+   "tags": [
+    "upbeat",
+    "pop",
+    "bright",
+    "happy"
+   ]
+  }
+ }
+}
