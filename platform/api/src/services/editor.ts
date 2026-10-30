@@ -29,7 +29,7 @@ export interface EditorBackend {
   remove(e: ContentEdit): Promise<void>;
 }
 
-const flags = (e: ContentEdit) => [...(e.options.cut ? [] : ['--no-cut']), ...(e.options.captions ? [] : ['--no-captions']), ...(e.options.sfx ? [] : ['--no-sfx']), '--pace', e.options.pace];
+const flags = (e: ContentEdit) => [...(e.options.cut ? [] : ['--no-cut']), ...(e.options.captions ? [] : ['--no-captions']), '--sfx', e.options.sfx, '--music', e.options.music, '--pace', e.options.pace];
 const downloadName = (e: ContentEdit, name: string) => `${e.name.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-') || 'video'}-edited${name.slice(name.lastIndexOf('.'))}`;
 const stale = (e: ContentEdit) => !!e.startedAt && Date.now() - Date.parse(e.startedAt) > STALE_MS;
 

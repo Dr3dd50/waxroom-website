@@ -1543,3 +1543,122 @@ code {
   font-size: 0.85rem;
   font-weight: 600;
 }
+
+/* ── video editor ── */
+.editor-new {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+.drop {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  padding: 1.6rem 1rem;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--muted);
+  text-align: center;
+  cursor: pointer;
+}
+.drop:hover,
+.drop.has-file {
+  border-color: var(--honey);
+  color: var(--ink);
+}
+.drop input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.editor-opts {
+  display: grid;
+  gap: 0.8rem;
+}
+.edit-list {
+  display: grid;
+  gap: 1rem;
+}
+.edit-card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+}
+.edit-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.8rem;
+}
+.edit-card header div {
+  display: grid;
+  min-width: 0;
+}
+.edit-card header strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.edit-card p {
+  margin: 0;
+}
+.edit-progress {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+.edit-progress::after {
+  content: '';
+  height: 6px;
+  border-radius: 3px;
+  background: var(--honey-pale);
+  grid-area: 2 / 1;
+}
+.edit-progress i {
+  grid-area: 2 / 1;
+  z-index: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--honey);
+  transition: width 0.6s ease;
+}
+.edit-video {
+  width: 100%;
+  max-height: 60vh;
+  aspect-ratio: 9 / 16;
+  border-radius: 12px;
+  background: var(--espresso);
+}
+.edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.edit-checks {
+  margin: 0;
+  padding: 0.55rem 0.8rem 0.55rem 1.8rem;
+  border-radius: 10px;
+  background: #fdf0d2;
+  font-size: 0.85rem;
+}
+.edit-details h3 {
+  margin: 0.6rem 0 0.2rem;
+  font: 600 0.85rem var(--sans);
+}
+.edit-details ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.edit-delete {
+  justify-self: start;
+}
+.edit-actions a.btn {
+  text-decoration: none;
+  color: var(--ink);
+}

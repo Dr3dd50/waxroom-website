@@ -320,7 +320,14 @@ export type ContentEdit = {
   result?: EditResult;
   error?: string;
 };
-export type EditOptions = { cut: boolean; captions: boolean; sfx: boolean; pace: 'natural' | 'tight' };
+export type EditOptions = {
+  /** Retakes, restarts, "um"s and long pauses out. */
+  cut: boolean;
+  captions: boolean;
+  sfx: 'off' | 'subtle' | 'lively';
+  music: 'none' | 'calm' | 'warm' | 'upbeat';
+  pace: 'natural' | 'tight';
+};
 /** What platform/editor/edit.py reports (report.json / result.json). */
 export type EditResult = {
   durationIn: number;
@@ -330,7 +337,13 @@ export type EditResult = {
   captions: number;
   words: number;
   transcript: string;
-  sfx: { at: number; sound: string }[];
+  /** What the cut took out, and why. */
+  dropped: { at: number; said: string; why: 'retake' | 'restart' | 'filler' }[];
+  sfx: { at: number; id: string; why: string; sound: string; db_vs_voice: number }[];
+  music: { id: string; db_vs_voice: number } | null;
+  /** What a viewer would hear or see go wrong. */
+  checks: { check: string; ok: boolean; detail: string }[];
+  note?: string;
   size: [number, number];
   seconds: number;
   files: string[];

@@ -1,6 +1,7 @@
 // The video editor, for anyone signed in to the dashboard: upload a raw video, and
-// platform/editor cuts the dead air, captions it and adds sound effects. Employees see
-// their own edits; the owner sees everyone's. Mounted under /staff, behind its sign-in.
+// platform/editor (a server rebuild of ghost-editor) cuts the retakes and dead air, captions
+// it and adds sound. Employees see their own edits; the owner sees everyone's. Mounted under
+// /staff, behind its sign-in.
 import { Hono } from 'hono';
 import type { Env } from '../auth';
 import { HttpError, bad, nowIso, rid } from '../lib/util';
@@ -46,7 +47,13 @@ export function editRoutes(store: Store) {
       staffId: c.get('staff').id,
       name: (b.name ?? 'video').slice(0, 120),
       bytes: b.bytes,
-      options: { cut: o.cut !== false, captions: o.captions !== false, sfx: o.sfx !== false, pace: o.pace === 'tight' ? 'tight' : 'natural' },
+      options: {
+        cut: o.cut !== false,
+        captions: o.captions !== false,
+        sfx: o.sfx === 'off' || o.sfx === 'lively' ? o.sfx : 'subtle',
+        music: o.music === 'calm' || o.music === 'warm' || o.music === 'upbeat' ? o.music : 'none',
+        pace: o.pace === 'tight' ? 'tight' : 'natural',
+      },
       status: 'uploading',
     };
     await store.put('edits', e);

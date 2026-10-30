@@ -70,8 +70,8 @@ test('an employee uploads, edits and downloads a video; the owner sees it, other
 
   await login('one@example.com', 'employee-pass');
   assert.equal((await call('POST', '/staff/edits', { name: 'notes.txt', bytes: 5, type: 'text/plain' })).status, 400);
-  const made = (await call('POST', '/staff/edits', { name: 'Brow lamination.mov', bytes: 9, type: 'video/quicktime', options: { sfx: false, pace: 'tight' } })).json;
-  assert.deepEqual(made.edit.options, { cut: true, captions: true, sfx: false, pace: 'tight' });
+  const made = (await call('POST', '/staff/edits', { name: 'Brow lamination.mov', bytes: 9, type: 'video/quicktime', options: { sfx: 'off', music: 'calm', pace: 'tight' } })).json;
+  assert.deepEqual(made.edit.options, { cut: true, captions: true, sfx: 'off', music: 'calm', pace: 'tight' });
   assert.equal(made.upload.url, `/api/staff/edits/${made.edit.id}/source`);
   const id = made.edit.id;
 

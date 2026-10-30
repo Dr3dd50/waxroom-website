@@ -37,7 +37,7 @@ def handler(event, _context):
     try:
         work.mkdir(parents=True, exist_ok=True)
         s3.download_file(bucket, event['source'], str(src))
-        result = edit(src, out, Options(cut=opts.get('cut', True), captions=opts.get('captions', True), sfx=opts.get('sfx', True), pace=opts.get('pace', 'natural')), on_progress)
+        result = edit(src, out, Options(cut=opts.get('cut', True), captions=opts.get('captions', True), sfx=opts.get('sfx', 'subtle'), music=opts.get('music', 'none'), pace=opts.get('pace', 'natural')), on_progress)
         types = {'.mp4': 'video/mp4', '.srt': 'application/x-subrip'}
         for name in result['files']:
             s3.upload_file(str(out / name), bucket, f'{prefix}{name}', ExtraArgs={'ContentType': types[Path(name).suffix]})

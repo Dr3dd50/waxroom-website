@@ -1,20 +1,25 @@
-"""Automatic content editing: one raw phone video in, one post-ready video out.
+"""Automatic content editing: one raw phone video in, one post-ready vertical video out.
 
-    python3 platform/editor/edit.py <source video> <out dir> [--no-cut] [--no-captions] [--no-sfx] [--pace natural|tight]
+    python3 platform/editor/edit.py <source video> <out dir> [--no-cut] [--no-captions]
+        [--sfx off|subtle|lively] [--music none|calm|warm|upbeat] [--pace natural|tight]
 
-The steps, each from an open-source project:
+A server version of ghost-editor (github.com/kurbaitaev/ghost-editor, MIT; see THIRD_PARTY.md).
+ghost-editor is a Claude Code skill: Claude reads the transcript, picks takes, writes a plan and
+renders it in headless Chrome on a Mac. Here every choice it hands to Claude is made by a rule,
+and the render is one ffmpeg pass, so an edit runs unattended in a Lambda in a few minutes.
+Its pipeline, step for step:
 
-  1. Watch.    auto-editor (github.com/WyattBlue/auto-editor) measures the audio and marks the
-               dead air; faster-whisper (github.com/SYSTRAN/faster-whisper) transcribes every word
-               with its time.
-  2. Cut.      The dead air goes, but never part of a word: a stretch the recogniser heard as
-               speech is kept even where auto-editor called it quiet.
-  3. Caption.  Two or three words at a time, in Archivo Black, the spoken word in honey, burned in
-               with libass and also written out as captions.srt for the platforms that take a file.
-  4. Sound.    A soft whoosh on each real jump cut and a pop under the first caption. The effects
-               are synthesised here, so there are no sound files to license.
-  5. Render.   One ffmpeg pass: cut, captions, effects mixed under the voice, loudness at
-               -14 LUFS (what Instagram and TikTok normalise to).
+  1. Prep        1080x1920 at 30 fps, landscape centre-cropped, HDR tone-mapped, the voice
+                 levelled to -16 LUFS before anything is mixed with it          (prep.sh)
+  2. Transcribe  faster-whisper, every word timed, with ghost-editor's anti-merge decoding so
+                 a retake isn't smoothed into one clean sentence                (transcribe.py)
+  3. Takes       the last good take of each line; restarts and "um"s go        (takes.py)
+  4. Cut         edges from the voice's own envelope, long pauses shrunk, smooth joins
+                 and matched levels                                   (plan_cut.py, voice_smooth.py)
+  5. Face        YuNet face tracking: captions off the face, punch-ins on it   (face_track.py)
+  6. Edit        a 1.0 / 1.1 punch-in at every cut, clean-style captions       (build.mjs, clean.json)
+  7. Sound       real recorded effects levelled against this voice; optional music bed
+  8. Check       loudness, true peak, pauses left, captions on the face        (qa.py)
 
 Writes <out>/edited.mp4, <out>/captions.srt, <out>/report.json and, while it works,
 <out>/progress.json. Exits non-zero with the reason on stderr if it can't finish.
@@ -24,55 +29,43 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
 import time
 import wave
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+import numpy as np
+
+import captions
+import cut
+import face
+import sound
+from takes import Word, choose
+
 HERE = Path(__file__).resolve().parent
 FONTS = HERE / 'fonts'
-FONT = 'Archivo Black'
-SR = 48000
-
-# how hard to cut: a "natural" edit leaves a breath around each phrase, a "tight" one only a beat
-PACES = {
-    'natural': {'threshold': 0.04, 'margin': 0.25, 'gap': 0.35},
-    'tight': {'threshold': 0.05, 'margin': 0.12, 'gap': 0.2},
-}
-MIN_KEEP = 0.2  # a kept stretch shorter than this is a click, not content
-WORD_PAD = 0.06  # kept either side of every word the recogniser heard
-WHOOSH_GAP = 0.6  # only a cut that removed at least this much is a jump cut worth a whoosh
-WHOOSH_SPACING = 2.5  # and never two whooshes closer than this
+W, H, FPS = 1080, 1920, cut.FPS
+SNAP = 1.1  # ghost-editor's clean-style punch-in
 # the AWS editor has 15 minutes to finish, and a short-form post is rarely more than three
 MAX_MINUTES = float(os.environ.get('EDITOR_MAX_MINUTES', '10'))
-MAX_LONG_SIDE = 1920  # 4K phone footage is rendered at 1080p: smaller, faster, and what the apps show
 
-
-@dataclass
-class Word:
-    text: str
-    start: float
-    end: float
+Progress = Callable[[str, float], None]
 
 
 @dataclass
 class Options:
     cut: bool = True
     captions: bool = True
-    sfx: bool = True
-    pace: str = 'natural'
-    model: str = field(default_factory=lambda: os.environ.get('EDITOR_MODEL', 'base.en'))
-
-
-Progress = Callable[[str, float], None]
+    sfx: str = 'subtle'  # off | subtle | lively
+    music: str = 'none'  # none | calm | warm | upbeat
+    pace: str = 'natural'  # natural | tight
+    model: str = os.environ.get('EDITOR_MODEL', 'base.en')
 
 
 def run(cmd: list[str], text: bool = True) -> subprocess.CompletedProcess:
@@ -83,11 +76,10 @@ def run(cmd: list[str], text: bool = True) -> subprocess.CompletedProcess:
     return r
 
 
-# ── 1. watch ──
+# ── 1. prep ──
 
 
 def probe(src: Path) -> dict:
-    """Duration, the picture's displayed size (phones store portrait video sideways), and whether it has sound."""
     out = json.loads(run(['ffprobe', '-v', 'error', '-show_streams', '-show_format', '-of', 'json', str(src)]).stdout)
     video = next((s for s in out['streams'] if s['codec_type'] == 'video'), None)
     if not video:
@@ -95,301 +87,169 @@ def probe(src: Path) -> dict:
     w, h = int(video['width']), int(video['height'])
     rotation = 0
     for sd in video.get('side_data_list', []):
-        if 'rotation' in sd:
-            rotation = int(sd['rotation'])
-    rotation = int(video.get('tags', {}).get('rotate', rotation))
-    if abs(rotation) % 180 == 90:
+        rotation = int(sd.get('rotation', rotation))
+    if abs(int(video.get('tags', {}).get('rotate', rotation))) % 180 == 90:
         w, h = h, w
     duration = float(out['format'].get('duration') or video.get('duration') or 0)
     if duration <= 0:
         raise RuntimeError('Couldn’t read how long that video is.')
     if duration > MAX_MINUTES * 60:
         raise RuntimeError(f'That video is {duration / 60:.0f} minutes long. The editor takes videos up to {MAX_MINUTES:g} minutes: trim it first.')
-    return {'width': w, 'height': h, 'duration': duration, 'audio': any(s['codec_type'] == 'audio' for s in out['streams'])}
+    return {'width': w, 'height': h, 'duration': duration, 'audio': any(s['codec_type'] == 'audio' for s in out['streams']), 'hdr': video.get('color_transfer') in ('arib-std-b67', 'smpte2084')}
 
 
-def loud_ranges(src: Path, pace: str, work: Path) -> list[tuple[float, float]]:
-    """What auto-editor keeps: everything louder than the pace's threshold, plus its margin."""
-    p = PACES[pace]
-    out = work / 'timeline.json'
-    exe = shutil.which('auto-editor') or 'auto-editor'
-    # a 100 fps time base gives the cut points 10 ms precision whatever the video's frame rate
-    run([exe, str(src), '--edit', f'audio:threshold={p["threshold"]}', '--margin', f'{p["margin"]}s', '--frame-rate', '100', '--export', 'v1', '-o', str(out), '--no-open', '--progress', 'none'])
-    chunks = json.loads(out.read_text())['chunks']
-    return [(a / 100, b / 100) for a, b, speed in chunks if speed == 1.0 and b > a]
+def prep_video(src: Path, info: dict, dst: Path) -> None:
+    """The picture every later step reads: 1080x1920, 30 fps, SDR, a keyframe every second."""
+    vf = f'scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS}' if info['width'] < info['height'] else f'crop=ih*9/16:ih,scale={W}:{H},fps={FPS}'
+    if info['hdr']:  # iPhone HLG/PQ: one HDR plate would make the whole edit HDR
+        vf = 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p,' + vf
+    run(['ffmpeg', '-v', 'error', '-y', '-i', str(src), '-vf', vf, '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '16', '-pix_fmt', 'yuv420p', '-g', '30', '-keyint_min', '30', str(dst)])
 
 
-def decode_audio(src: Path):
-    import numpy as np
+def prep_voice(src: Path) -> np.ndarray:
+    """The voice at -16 LUFS (two-pass loudnorm), 48 kHz mono."""
+    stats = run(['ffmpeg', '-hide_banner', '-nostats', '-i', str(src), '-vn', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json', '-f', 'null', '-']).stderr
+    m = json.loads(re.search(r'\{[^{}]*"input_i"[^{}]*\}', stats).group(0))
+    af = f'loudnorm=I=-16:TP=-1.5:LRA=11:measured_I={m["input_i"]}:measured_TP={m["input_tp"]}:measured_LRA={m["input_lra"]}:measured_thresh={m["input_thresh"]}:offset={m["target_offset"]}:linear=true'
+    raw = run(['ffmpeg', '-v', 'error', '-i', str(src), '-vn', '-af', af, '-ac', '1', '-ar', str(cut.SR), '-f', 'f32le', '-'], text=False).stdout
+    return np.frombuffer(raw, np.float32).astype(np.float64)
 
-    pcm = run(['ffmpeg', '-v', 'error', '-i', str(src), '-vn', '-f', 's16le', '-ac', '1', '-ar', '16000', '-'], text=False).stdout
-    return np.frombuffer(pcm, np.int16).astype(np.float32) / 32768
+
+# ── 2. transcribe ──
 
 
-def transcribe(src: Path, model_name: str, on_progress: Progress, duration: float) -> list[Word]:
+def transcribe(voice: np.ndarray, model_name: str, on_progress: Progress, duration: float) -> list[Word]:
     from faster_whisper import WhisperModel
 
     model = WhisperModel(model_name, device='cpu', compute_type='int8', download_root=os.environ.get('EDITOR_MODELS') or None)
-    segments, _ = model.transcribe(decode_audio(src), word_timestamps=True, vad_filter=True, condition_on_previous_text=False)
+    # 48 kHz → 16 kHz: a windowed-sinc low-pass at 7.5 kHz, then every third sample
+    taps = np.arange(-48, 49)
+    lp = np.sinc(taps * 7500 * 2 / cut.SR) * np.hamming(len(taps))
+    audio16 = np.convolve(voice, lp / lp.sum(), mode='same')[:: cut.SR // 16000].astype(np.float32)
+    segments, _ = model.transcribe(
+        audio16,
+        word_timestamps=True,
+        vad_filter=True,
+        vad_parameters={'min_silence_duration_ms': 300},
+        # ghost-editor's anti-merge decoding: don't condition on earlier text, or a retake is merged into one clean sentence
+        condition_on_previous_text=False,
+        temperature=[0.0, 0.2, 0.4],
+        no_speech_threshold=0.6,
+        compression_ratio_threshold=2.2,
+        hallucination_silence_threshold=1.0,
+    )
     words: list[Word] = []
     for seg in segments:
-        on_progress('Listening and writing captions', min(seg.end / duration, 1))
+        on_progress('Listening to the video', min(seg.end / duration, 1))
         for w in seg.words or []:
-            text = w.word.strip()
-            if text and w.end > w.start:
-                words.append(Word(text, float(w.start), float(w.end)))
+            if w.word.strip() and w.end > w.start:
+                words.append(Word(w.word.strip(), float(w.start), float(w.end), float(w.probability)))
     return words
 
 
-# ── 2. cut ──
-
-
-def merge(ranges: list[tuple[float, float]], gap: float) -> list[tuple[float, float]]:
-    """Sort, and join ranges that overlap or sit closer than `gap`."""
-    out: list[list[float]] = []
-    for a, b in sorted(ranges):
-        if out and a - out[-1][1] <= gap:
-            out[-1][1] = max(out[-1][1], b)
-        else:
-            out.append([a, b])
-    return [(a, b) for a, b in out]
-
-
-def keep_ranges(loud: list[tuple[float, float]], words: list[Word], duration: float, pace: str) -> list[tuple[float, float]]:
-    """The stretches to keep: auto-editor's loud parts and every word heard, joined across short gaps."""
-    spoken = [(max(0.0, w.start - WORD_PAD), min(duration, w.end + WORD_PAD)) for w in words]
-    keeps = [(max(0.0, a), min(duration, b)) for a, b in merge(loud + spoken, PACES[pace]['gap'])]
-    keeps = [(a, b) for a, b in keeps if b - a >= MIN_KEEP]
-    return keeps or [(0.0, duration)]
+# ── 4. the edit's clock ──
 
 
 class Timeline:
-    """Where a moment of the source lands in the edit."""
-
-    def __init__(self, keeps: list[tuple[float, float]]):
-        self.keeps = keeps
-        self.offsets: list[float] = []
+    def __init__(self, pieces: list[cut.Piece]):
+        self.pieces = pieces
+        self.offsets = []
         t = 0.0
-        for a, b in keeps:
+        for q in pieces:
             self.offsets.append(t)
-            t += b - a
+            t += q.b - q.a
         self.duration = t
 
-    def map(self, t: float) -> float | None:
-        for (a, b), off in zip(self.keeps, self.offsets):
-            if a <= t <= b:
-                return off + t - a
+    def where(self, t: float) -> tuple[int, float] | None:
+        """(piece index, edit seconds) for a source time, or None if it was cut."""
+        for k, (q, off) in enumerate(zip(self.pieces, self.offsets)):
+            if q.a <= t <= q.b:
+                return k, off + t - q.a
         return None
 
-    def cut_points(self) -> list[tuple[float, float]]:
-        """(time in the edit, seconds removed there) for every join."""
-        return [(self.offsets[i], self.keeps[i][0] - self.keeps[i - 1][1]) for i in range(1, len(self.keeps))]
+    def cuts(self) -> list[float]:
+        return self.offsets[1:]
 
 
-def retime(words: list[Word], tl: Timeline) -> list[Word]:
-    """Words on the edit's clock; a word whose middle was cut is dropped from the captions."""
+def retime(words: list[Word], keep: list[bool], tl: Timeline) -> list[tuple[Word, Word, int]]:
+    """(source word, edit-clock word, piece) for every kept word still in the edit."""
     out = []
-    for w in words:
-        mid = tl.map((w.start + w.end) / 2)
-        if mid is None:
+    for w, k in zip(words, keep):
+        mid = tl.where((w.start + w.end) / 2)
+        if not k or mid is None:
             continue
-        start = tl.map(w.start)
-        end = tl.map(w.end)
+        s, e = tl.where(w.start), tl.where(w.end)
         half = (w.end - w.start) / 2
-        out.append(Word(w.text, start if start is not None else mid - half, end if end is not None else mid + half))
+        out.append((w, Word(w.text, s[1] if s else mid[1] - half, e[1] if e else mid[1] + half, w.p), mid[0]))
     return out
 
 
-# ── 3. caption ──
+# ── 6. render ──
 
 
-def cards(words: list[Word]) -> list[list[Word]]:
-    """Two or three words a card: a new card after a sentence or comma, a pause, or 16 letters."""
-    groups: list[list[Word]] = []
-    cur: list[Word] = []
-    for w in words:
-        if cur:
-            letters = sum(len(x.text) for x in cur) + len(w.text)
-            if len(cur) >= 3 or letters > 16 or w.start - cur[-1].end > 0.45 or re.search(r'[.,!?;:]$', cur[-1].text):
-                groups.append(cur)
-                cur = []
-        cur.append(w)
-    if cur:
-        groups.append(cur)
-    return groups
-
-
-def ass_time(t: float) -> str:
-    cs = max(0, round(t * 100))
-    return f'{cs // 360000}:{cs // 6000 % 60:02d}:{cs // 100 % 60:02d}.{cs % 100:02d}'
-
-
-def srt_time(t: float) -> str:
-    ms = max(0, round(t * 1000))
-    return f'{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}'
-
-
-def clean(text: str) -> str:
-    return text.replace('\\', '').replace('{', '').replace('}', '')
-
-
-def write_ass(groups: list[list[Word]], w: int, h: int, path: Path) -> None:
-    size = round(min(w, h) * 0.085)
-    outline = max(2, round(size * 0.09))
-    # lower third, clear of the caption and button overlays Instagram and TikTok draw at the bottom
-    margin_v = round(h * (0.24 if h > w else 0.12))
-    white, honey = '&H00FFFFFF', '&H001E9AE3'  # ASS colours are &HAABBGGRR: honey is #e39a1e
-    lines = [
-        '[Script Info]',
-        'ScriptType: v4.00+',
-        f'PlayResX: {w}',
-        f'PlayResY: {h}',
-        'WrapStyle: 0',
-        'ScaledBorderAndShadow: yes',
-        '',
-        '[V4+ Styles]',
-        'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-        f'Style: Caption,{FONT},{size},{white},{white},&H00140F0B,&H64000000,0,0,0,0,100,100,1,0,1,{outline},{max(1, outline // 2)},2,{round(w * 0.08)},{round(w * 0.08)},{margin_v},1',
-        '',
-        '[Events]',
-        'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
-    ]
-    for gi, g in enumerate(groups):
-        card_end = g[-1].end
-        if gi + 1 < len(groups) and groups[gi + 1][0].start - card_end < 0.3:
-            card_end = groups[gi + 1][0].start  # no flicker between cards that follow on
-        for i, word in enumerate(g):
-            start = word.start if i else g[0].start
-            end = g[i + 1].start if i + 1 < len(g) else card_end
-            if end <= start:
-                continue
-            text = ' '.join((f'{{\\c{honey}}}{clean(x.text).upper()}{{\\c{white}}}' if j == i else clean(x.text).upper()) for j, x in enumerate(g))
-            pop = '{\\fscx86\\fscy86\\t(0,90,\\fscx100\\fscy100)}' if i == 0 else ''
-            lines.append(f'Dialogue: 0,{ass_time(start)},{ass_time(end)},Caption,,0,0,0,,{pop}{text}')
-    path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
-
-
-def write_srt(groups: list[list[Word]], path: Path) -> None:
-    blocks = [f'{i}\n{srt_time(g[0].start)} --> {srt_time(g[-1].end)}\n{" ".join(w.text for w in g)}\n' for i, g in enumerate(groups, 1)]
-    path.write_text('\n'.join(blocks), encoding='utf-8')
-
-
-# ── 4. sound ──
-
-
-def whoosh(np, seconds: float = 0.42):
-    """Pink-ish noise swept up through a resonant band, swelling in and dying away."""
-    n = int(SR * seconds)
-    t = np.arange(n) / SR
-    rng = np.random.default_rng(7)
-    noise = np.cumsum(rng.standard_normal(n)) * 0.02
-    noise -= np.convolve(noise, np.ones(64) / 64, mode='same')  # drop the rumble
-    freq = 500 + 3500 * (t / seconds) ** 1.6
-    band = np.zeros(n)
-    y1 = y2 = 0.0
-    for i in range(n):  # a two-pole resonator whose centre sweeps with `freq`
-        r = 0.985
-        c = 2 * r * math.cos(2 * math.pi * freq[i] / SR)
-        y = noise[i] + c * y1 - r * r * y2
-        band[i] = y
-        y2, y1 = y1, y
-    env = np.sin(np.pi * np.clip(t / seconds, 0, 1)) ** 2
-    out = band * env
-    return out / (np.abs(out).max() or 1)
-
-
-def pop(np, seconds: float = 0.09):
-    """A quick falling blip, like a bubble."""
-    t = np.arange(int(SR * seconds)) / SR
-    phase = 2 * np.pi * (520 * t + 1400 * (1 - np.exp(-t * 45)) / 45)
-    return np.sin(phase) * np.exp(-t * 38)
-
-
-def sfx_track(cut_points: list[tuple[float, float]], first_caption: float | None, duration: float, path: Path) -> list[dict]:
-    import numpy as np
-
-    track = np.zeros(int(SR * (duration + 1)))
-    events: list[dict] = []
-
-    def place(sound, at: float, gain: float, kind: str):
-        i = max(0, int(at * SR))
-        seg = sound[: max(0, len(track) - i)] * gain
-        track[i : i + len(seg)] += seg
-        events.append({'at': round(at, 2), 'sound': kind})
-
-    swoosh = whoosh(np)
-    last = -math.inf
-    for at, removed in cut_points:
-        if removed >= WHOOSH_GAP and at - last >= WHOOSH_SPACING:
-            # centred on the join, so it carries the eye across the cut
-            place(swoosh, at - len(swoosh) / SR / 2, 0.16, 'whoosh')
-            last = at
-    if first_caption is not None:
-        place(pop(np), first_caption, 0.22, 'pop')
-    pcm = (np.clip(track, -1, 1) * 32767).astype('<i2')
+def write_wav(x: np.ndarray, path: Path) -> None:
+    pcm = (np.clip(x, -1, 1) * 32767).astype('<i2')
     with wave.open(str(path), 'wb') as f:
         f.setnchannels(1)
         f.setsampwidth(2)
-        f.setframerate(SR)
+        f.setframerate(cut.SR)
         f.writeframes(pcm.tobytes())
-    return sorted(events, key=lambda e: e['at'])
-
-
-# ── 5. render ──
-
-
-def out_size(w: int, h: int) -> tuple[int, int]:
-    scale = min(1.0, MAX_LONG_SIDE / max(w, h))
-    return (int(w * scale) // 2 * 2, int(h * scale) // 2 * 2)
 
 
 def ff_escape(p: Path) -> str:
     return str(p).replace('\\', '/').replace(':', '\\:').replace("'", "\\'")
 
 
-def render(src: Path, info: dict, keeps: list[tuple[float, float]], ass: Path | None, sfx: Path | None, out: Path, work: Path, on_progress: Progress, duration: float) -> None:
-    w, h = out_size(info['width'], info['height'])
-    n = len(keeps)
-    parts = []
-    has_audio = info['audio']
-    parts.append(f'[0:v]split={n}' + ''.join(f'[v{i}]' for i in range(n)) if n > 1 else '[0:v]null[v0]')
-    if has_audio:
-        parts.append(f'[0:a]asplit={n}' + ''.join(f'[a{i}]' for i in range(n)) if n > 1 else '[0:a]anull[a0]')
-    joined = ''
-    for i, (a, b) in enumerate(keeps):
-        parts.append(f'[v{i}]trim={a:.3f}:{b:.3f},setpts=PTS-STARTPTS[cv{i}]')
-        if has_audio:
-            fade = min(0.01, (b - a) / 4)
-            # 10 ms fades either side of a join: a hard audio cut clicks
-            parts.append(f'[a{i}]atrim={a:.3f}:{b:.3f},asetpts=PTS-STARTPTS,afade=t=in:d={fade:.3f},afade=t=out:st={b - a - fade:.3f}:d={fade:.3f}[ca{i}]')
-        joined += f'[cv{i}]' + (f'[ca{i}]' if has_audio else '')
-    parts.append(f'{joined}concat=n={n}:v=1:a={1 if has_audio else 0}' + ('[cv][ca]' if has_audio else '[cv]'))
-    picture = f'[cv]scale={w}:{h}:flags=lanczos,setsar=1,format=yuv420p'
-    if ass:
-        picture += f",ass='{ff_escape(ass)}':fontsdir='{ff_escape(FONTS)}'"
-    parts.append(picture + '[vout]')
-    inputs = ['-i', str(src)]
-    if has_audio and sfx:
-        inputs += ['-i', str(sfx)]
-        parts.append('[1:a]aresample=48000,aformat=channel_layouts=stereo[fx]')
-        parts.append('[ca]aresample=48000,aformat=channel_layouts=stereo[voice]')
-        parts.append('[voice][fx]amix=inputs=2:normalize=0:duration=first,loudnorm=I=-14:TP=-1:LRA=11[aout]')
-    elif has_audio:
-        parts.append('[ca]aresample=48000,loudnorm=I=-14:TP=-1:LRA=11[aout]')
-    script = work / 'graph.txt'
-    script.write_text(';\n'.join(parts))
-    cmd = ['ffmpeg', '-v', 'error', '-y', *inputs, '-filter_complex_script', str(script), '-map', '[vout]']
-    if has_audio:
-        cmd += ['-map', '[aout]', '-c:a', 'aac', '-b:a', '160k', '-ar', '48000']
-    cmd += ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-movflags', '+faststart', '-progress', 'pipe:1', '-nostats', str(out)]
+def render(video: Path, audio: Path, pieces: list[cut.Piece], zooms: list[float], org: tuple[float, float], ass: Path | None, out: Path, work: Path, on_progress: Progress, duration: float) -> None:
+    n = len(pieces)
+    ox, oy = org
+    parts = [f'[0:v]split={n}' + ''.join(f'[v{i}]' for i in range(n)) if n > 1 else '[0:v]null[v0]']
+    for i, (q, z) in enumerate(zip(pieces, zooms)):
+        chain = f'[v{i}]trim={q.a:.4f}:{q.b:.4f},setpts=PTS-STARTPTS'
+        if z != 1:
+            # scale around the face: the crop keeps the origin where it was on screen
+            cw, ch = W / z, H / z
+            x = min(max(0.0, ox - ox / z), W - cw)
+            y = min(max(0.0, oy - oy / z), H - ch)
+            chain += f',crop={cw:.1f}:{ch:.1f}:{x:.1f}:{y:.1f},scale={W}:{H}:flags=lanczos'
+        parts.append(chain + f',setsar=1[c{i}]')
+    parts.append(''.join(f'[c{i}]' for i in range(n)) + f'concat=n={n}:v=1:a=0,format=yuv420p[cv]')
+    parts.append(f"[cv]ass='{ff_escape(ass)}':fontsdir='{ff_escape(FONTS)}'[vout]" if ass else '[cv]null[vout]')
+    parts.append('[1:a]alimiter=limit=0.89:level=false,aformat=channel_layouts=stereo[aout]')
+    graph = work / 'graph.txt'
+    graph.write_text(';\n'.join(parts))
+    cmd = ['ffmpeg', '-v', 'error', '-y', '-i', str(video), '-i', str(audio), '-filter_complex_script', str(graph), '-map', '[vout]', '-map', '[aout]',
+           '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '19', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000',
+           '-movflags', '+faststart', '-shortest', '-progress', 'pipe:1', '-nostats', str(out)]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     assert proc.stdout
     for line in proc.stdout:
-        if line.startswith('out_time_us=') and line.strip() != 'out_time_us=N/A':
+        if line.startswith('out_time_us=') and 'N/A' not in line:
             on_progress('Rendering', min(int(line.split('=')[1]) / 1e6 / duration, 1))
     err = proc.stderr.read() if proc.stderr else ''
     if proc.wait() != 0:
         raise RuntimeError(f'ffmpeg failed: {err.strip()[-800:]}')
+
+
+# ── 8. check ──
+
+
+def checks(out: Path, edit_words: list[Word], backed: int, cards: int, events: list[dict], duration: float) -> list[dict]:
+    """ghost-editor's qa.py, the parts that apply: what a viewer would hear or see go wrong."""
+    r = run(['ffmpeg', '-hide_banner', '-nostats', '-i', str(out), '-af', 'ebur128=peak=true', '-f', 'null', '-'])
+    i = float(re.findall(r'I:\s+(-?[\d.]+) LUFS', r.stderr)[-1])
+    tp = float(re.findall(r'Peak:\s+(-?[\d.]+) dBFS', r.stderr)[-1])
+    gaps = [b.start - a.end for a, b in zip(edit_words, edit_words[1:])]
+    longest = max(gaps, default=0.0)
+    per_min = len(events) / max(duration / 60, 1e-6)
+    cap = max(2, int(sound.PER_MINUTE * duration / 60))
+    return [
+        {'check': 'Loudness', 'ok': -18 <= i <= -12, 'detail': f'{i:.1f} LUFS (the voice is set to -16; apps play around -14)'},
+        {'check': 'Peaks', 'ok': tp <= -0.5, 'detail': f'{tp:.1f} dBTP'},
+        {'check': 'Pauses', 'ok': longest <= 1.2, 'detail': f'longest pause left {longest:.1f} s'},
+        {'check': 'Captions off the face', 'ok': backed == 0, 'detail': f'{backed} of {cards} captions sit over the chin on a dark box' if backed else 'every caption clears the face'},
+        {'check': 'Sound density', 'ok': len(events) <= cap, 'detail': f'{len(events)} effects, {per_min:.0f} a minute'},
+    ]
 
 
 # ── all together ──
@@ -401,40 +261,68 @@ def edit(src: Path, out_dir: Path, opts: Options, on_progress: Progress | None =
     started = time.time()
     with tempfile.TemporaryDirectory(prefix='edit-') as tmp:
         work = Path(tmp)
-        report('Watching the video', 0)
+        report('Preparing the video', 0)
         info = probe(src)
         duration = info['duration']
-        words = transcribe(src, opts.model, report, duration) if info['audio'] and (opts.captions or opts.cut) else []
-        if opts.cut and info['audio']:
-            report('Finding the dead air', 1)
-            keeps = keep_ranges(loud_ranges(src, opts.pace, work), words, duration, opts.pace)
-        else:
-            keeps = [(0.0, duration)]
-        tl = Timeline(keeps)
-        timed = retime(words, tl)
-        groups = cards(timed)
+        talk = work / 'talk.mp4'
+        prep_video(src, info, talk)
+        voice = prep_voice(src) if info['audio'] else np.zeros(int(duration * cut.SR))
+        words = transcribe(voice, opts.model, report, duration) if info['audio'] else []
+        report('Choosing the best takes', 1)
+        keep, dropped = choose(words) if opts.cut else ([True] * len(words), [])
+        pieces = cut.plan(words, keep, voice, duration, opts.pace) if opts.cut else [cut.Piece(0.0, cut.grid(duration), 0)]
+        tl = Timeline(pieces)
+        timed = retime(words, keep, tl)
+        edit_words = [e for _, e, _ in timed]
+        # a punch-in at every cut, alternating, so a jump cut reads as a second camera
+        zooms = [1.0 if k % 2 == 0 else SNAP for k in range(len(pieces))]
+
+        report('Finding the face', 0)
+        samples = face.track(talk)
+        org = face.origin(samples)
+        groups = captions.cards(edit_words)
         ass = None
-        if opts.captions and groups:
-            ass = work / 'captions.ass'
-            write_ass(groups, *out_size(info['width'], info['height']), ass)
+        backed = 0
         if groups:
-            write_srt(groups, out_dir / 'captions.srt')
-        sfx = work / 'sfx.wav' if opts.sfx and info['audio'] else None
-        events = sfx_track(tl.cut_points(), groups[0][0].start if groups and opts.captions else None, tl.duration, sfx) if sfx else []
-        render(src, info, keeps, ass, sfx, out_dir / 'edited.mp4', work, report, tl.duration)
+            src_of = {(e.start, e.end): (s, k) for s, e, k in timed}
+            placer = face.Placer(samples, *org, block_h=captions.SIZE * 1.3)
+            places = []
+            for g in groups:
+                (s0, k0), (s1, _) = src_of[(g[0].start, g[0].end)], src_of[(g[-1].start, g[-1].end)]
+                places.append(placer.place(s0.start, s1.end, zooms[k0]))
+            backed = sum(1 for _, b in places if b)
+            if opts.captions:
+                ass = work / 'captions.ass'
+                captions.write_ass(groups, places, ass)
+            captions.write_srt(groups, out_dir / 'captions.srt')
+
+        report('Adding sound', 1)
+        edited_voice = cut.build_voice(voice, pieces) if info['audio'] else np.zeros(int(tl.duration * cut.SR))
+        profile = opts.sfx if sound.kit_ready() else 'off'
+        events = sound.plan(edit_words, tl.cuts(), tl.duration, profile)
+        music = opts.music if opts.music != 'none' and sound.kit_ready() else None
+        mixed, placed, bed = sound.mix(edited_voice, edit_words, events, music)
+        write_wav(mixed, work / 'mix.wav')
+
+        render(talk, work / 'mix.wav', pieces, zooms, org, ass, out_dir / 'edited.mp4', work, report, tl.duration)
+        report('Checking the result', 1)
+        qa = checks(out_dir / 'edited.mp4', edit_words, backed if opts.captions else 0, len(groups), placed, tl.duration)
     result = {
         'durationIn': round(duration, 2),
         'durationOut': round(tl.duration, 2),
-        'cuts': len(keeps) - 1,
+        'cuts': len(pieces) - 1,
         'removedSeconds': round(duration - tl.duration, 2),
         'captions': len(groups) if opts.captions else 0,
-        'words': len(timed),
-        'transcript': ' '.join(w.text for w in timed),
-        'sfx': events,
-        'keeps': [[round(a, 3), round(b, 3)] for a, b in keeps],
-        'size': list(out_size(info['width'], info['height'])),
+        'words': len(edit_words),
+        'transcript': ' '.join(w.text for w in captions.sentence_case(edit_words)),
+        'dropped': dropped,
+        'sfx': placed,
+        'music': bed,
+        'checks': qa,
+        'size': [W, H],
         'seconds': round(time.time() - started, 1),
         'files': ['edited.mp4'] + (['captions.srt'] if groups else []),
+        **({'note': 'Sound effects are off: the sound kit isn’t installed (run platform/editor/setup.sh).'} if opts.sfx != 'off' and profile == 'off' else {}),
     }
     (out_dir / 'report.json').write_text(json.dumps(result, indent=2))
     return result
@@ -446,25 +334,25 @@ def main() -> None:
     ap.add_argument('out', type=Path)
     ap.add_argument('--no-cut', action='store_true')
     ap.add_argument('--no-captions', action='store_true')
-    ap.add_argument('--no-sfx', action='store_true')
-    ap.add_argument('--pace', choices=sorted(PACES), default='natural')
+    ap.add_argument('--sfx', choices=['off', 'subtle', 'lively'], default='subtle')
+    ap.add_argument('--music', choices=['none', 'calm', 'warm', 'upbeat'], default='none')
+    ap.add_argument('--pace', choices=sorted(cut.PACES), default='natural')
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     progress_file = a.out / 'progress.json'
     last = [0.0]
 
     def on_progress(stage: str, pct: float) -> None:
-        now = time.time()
-        if now - last[0] >= 1 or pct >= 1:
-            last[0] = now
+        if time.time() - last[0] >= 1 or pct >= 1:
+            last[0] = time.time()
             progress_file.write_text(json.dumps({'stage': stage, 'pct': round(pct, 3)}))
 
     try:
-        result = edit(a.source, a.out, Options(cut=not a.no_cut, captions=not a.no_captions, sfx=not a.no_sfx, pace=a.pace), on_progress)
+        result = edit(a.source, a.out, Options(cut=not a.no_cut, captions=not a.no_captions, sfx=a.sfx, music=a.music, pace=a.pace), on_progress)
     except Exception as e:  # the reason, for whoever started it
         print(str(e) or e.__class__.__name__, file=sys.stderr)
         sys.exit(1)
-    print(json.dumps({k: v for k, v in result.items() if k not in ('keeps', 'transcript')}))
+    print(json.dumps({k: v for k, v in result.items() if k not in ('transcript', 'dropped')}))
 
 
 if __name__ == '__main__':
