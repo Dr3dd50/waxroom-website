@@ -118,19 +118,26 @@ def prep_voice(src: Path) -> np.ndarray:
 # ── 2. transcribe ──
 
 
+UNREAD = '[speech]'  # speech the recogniser heard as speech but couldn't put words to
+
+
 def transcribe(voice: np.ndarray, model_name: str, on_progress: Progress, duration: float) -> list[Word]:
+    """Every word, timed. One pass over the whole file gives the words their context. Over a whole
+    file Whisper skips short false starts, though, so (like ghost-editor's islands_tx.py) every
+    stretch of speech that pass left without words is transcribed again on its own: Silero VAD
+    islands at 0.3 s pauses, and loud stretches the VAD missed. A stretch that still comes back
+    empty is kept as one UNREAD stretch, so speech is never cut for being hard to recognise."""
     from faster_whisper import WhisperModel
+    from faster_whisper.vad import VadOptions, get_speech_timestamps
 
     model = WhisperModel(model_name, device='cpu', compute_type='int8', download_root=os.environ.get('EDITOR_MODELS') or None)
     # 48 kHz → 16 kHz: a windowed-sinc low-pass at 7.5 kHz, then every third sample
     taps = np.arange(-48, 49)
     lp = np.sinc(taps * 7500 * 2 / cut.SR) * np.hamming(len(taps))
     audio16 = np.convolve(voice, lp / lp.sum(), mode='same')[:: cut.SR // 16000].astype(np.float32)
-    segments, _ = model.transcribe(
-        audio16,
+    decode = dict(
+        language='en',
         word_timestamps=True,
-        vad_filter=True,
-        vad_parameters={'min_silence_duration_ms': 300},
         # ghost-editor's anti-merge decoding: don't condition on earlier text, or a retake is merged into one clean sentence
         condition_on_previous_text=False,
         temperature=[0.0, 0.2, 0.4],
@@ -138,13 +145,30 @@ def transcribe(voice: np.ndarray, model_name: str, on_progress: Progress, durati
         compression_ratio_threshold=2.2,
         hallucination_silence_threshold=1.0,
     )
+
+    def words_of(segments, at: float = 0.0) -> list[Word]:
+        return [Word(w.word.strip(), at + float(w.start), at + float(w.end), float(w.probability)) for seg in segments for w in seg.words or [] if w.word.strip() and w.end > w.start]
+
+    segments, _ = model.transcribe(audio16, vad_filter=True, vad_parameters={'min_silence_duration_ms': 300}, **decode)
     words: list[Word] = []
     for seg in segments:
         on_progress('Listening to the video', min(seg.end / duration, 1))
-        for w in seg.words or []:
-            if w.word.strip() and w.end > w.start:
-                words.append(Word(w.word.strip(), float(w.start), float(w.end), float(w.probability)))
-    return words
+        words += words_of([seg])
+    islands = get_speech_timestamps(audio16, VadOptions(min_silence_duration_ms=300, speech_pad_ms=100, min_speech_duration_ms=150))
+    # the VAD can miss a word, so stretches that are simply loud are checked too
+    spans = [(i['start'] / 16000 + 0.1, i['end'] / 16000 - 0.1) for i in islands] + cut.loud_spans(voice)  # the VAD pads each island 0.1 s
+    extra: list[Word] = []
+    for a, b in spans:
+        inside = sorted((w for w in words + extra if w.end > a and w.start < b), key=lambda w: w.start)
+        edges = [a] + [t for w in inside for t in (w.start, w.end)] + [b]
+        # the stretches of this island no word covers: a missed word, or a whole missed line
+        for g0, g1 in zip(edges[::2], edges[1::2]):
+            if g1 - g0 < 0.3:
+                continue
+            i0, i1 = int((g0 - 0.05) * 16000), int((g1 + 0.05) * 16000)
+            heard = words_of(model.transcribe(audio16[max(0, i0) : i1], vad_filter=False, **decode)[0], max(0, i0) / 16000)
+            extra += heard or [Word(UNREAD, g0, g1, 0.0)]
+    return sorted(words + extra, key=lambda w: w.start)
 
 
 # ── 4. the edit's clock ──
@@ -273,6 +297,7 @@ def edit(src: Path, out_dir: Path, opts: Options, on_progress: Progress | None =
         pieces = cut.plan(words, keep, voice, duration, opts.pace) if opts.cut else [cut.Piece(0.0, cut.grid(duration), 0)]
         tl = Timeline(pieces)
         timed = retime(words, keep, tl)
+        timed = [x for x in timed if x[0].text != UNREAD]  # kept in the cut, but nothing to caption
         edit_words = [e for _, e, _ in timed]
         # a punch-in at every cut, alternating, so a jump cut reads as a second camera
         zooms = [1.0 if k % 2 == 0 else SNAP for k in range(len(pieces))]

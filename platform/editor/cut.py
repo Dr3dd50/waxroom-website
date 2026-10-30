@@ -47,7 +47,25 @@ def envelope(voice: np.ndarray) -> tuple[np.ndarray, float]:
     n = len(voice) // hop
     frames = voice[: n * hop].reshape(n, hop)
     db = 20 * np.log10(np.sqrt((frames**2).mean(1)) + 1e-9)
-    return db, float(np.percentile(db, 8)) + 14
+    # the room's floor: digital silence (an edited or screen-recorded clip) would put it at -180 dB
+    # and make every sound count as speech
+    room = db[db > -90]
+    floor = float(np.percentile(room, 8)) if len(room) else -70.0
+    return db, max(floor, -70.0) + 14
+
+
+def loud_spans(voice: np.ndarray, min_len: float = 0.25) -> list[tuple[float, float]]:
+    """Stretches well above the room (floor + 20 dB), pauses under 0.3 s bridged."""
+    env, thr = envelope(voice)
+    loud = env > thr + 6
+    spans: list[list[float]] = []
+    for i in np.flatnonzero(loud):
+        t = i / 100
+        if spans and t - spans[-1][1] <= 0.3:
+            spans[-1][1] = t + 0.01
+        else:
+            spans.append([t, t + 0.01])
+    return [(a, b) for a, b in spans if b - a >= min_len]
 
 
 def onset(env: np.ndarray, thr: float, t: float, lo: float) -> float:
