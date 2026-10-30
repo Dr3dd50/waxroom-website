@@ -28,3 +28,4 @@ motion/out
 # local API data
 platform/api/.data
 cdk.out
+__pycache__
