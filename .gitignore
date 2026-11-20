@@ -28,3 +28,9 @@ motion/out
 # local API data
 platform/api/.data
 cdk.out
+__pycache__
+
+# the editor's downloaded kit (Mixkit sounds, the face model): fetched by platform/editor/setup.sh
+platform/editor/library/sfx
+platform/editor/library/music
+platform/editor/library/models

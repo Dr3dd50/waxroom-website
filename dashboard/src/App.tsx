@@ -11,14 +11,16 @@ import { PaymentsView } from './views/Payments';
 import { SettingsView } from './views/Settings';
 import { Login } from './views/Login';
 import { AvailabilityView } from './views/Availability';
+import { EditorView } from './views/Editor';
 import { Icon, type IconName } from './ui';
 
-type View = 'calendar' | 'availability' | 'clients' | 'catalog' | 'referrals' | 'texts' | 'payments' | 'settings';
+type View = 'calendar' | 'availability' | 'clients' | 'editor' | 'catalog' | 'referrals' | 'texts' | 'payments' | 'settings';
 
 const NAV: { view: View; label: string; icon: IconName; ownerOnly?: boolean }[] = [
   { view: 'calendar', label: 'Calendar', icon: 'calendar' },
   { view: 'availability', label: 'Availability', icon: 'clock' },
   { view: 'clients', label: 'Clients', icon: 'users' },
+  { view: 'editor', label: 'Video editor', icon: 'film' },
   { view: 'catalog', label: 'Services', icon: 'tag', ownerOnly: true },
   { view: 'referrals', label: 'Referrals', icon: 'gift', ownerOnly: true },
   { view: 'texts', label: 'Texts', icon: 'chat', ownerOnly: true },
@@ -117,6 +119,7 @@ export default function App() {
           {current === 'calendar' ? <CalendarView /> : null}
           {current === 'availability' ? <AvailabilityView /> : null}
           {current === 'clients' ? <ClientsView /> : null}
+          {current === 'editor' ? <EditorView /> : null}
           {current === 'catalog' ? <CatalogView /> : null}
           {current === 'referrals' ? <ReferralsView /> : null}
           {current === 'texts' ? <TextsView /> : null}

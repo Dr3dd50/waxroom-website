@@ -18,6 +18,7 @@ import { sendOrQueue } from '../services/alerts';
 import { runDueTexts } from '../services/notify';
 import { hashPassword } from '../seed';
 import { config, emailLive, stripeLive, twilioLive } from '../config';
+import { editRoutes } from './edits';
 
 /** How long a texted card link works. */
 const CARD_LINK_DAYS = 7;
@@ -40,6 +41,8 @@ export function staffRoutes(store: Store) {
   });
 
   r.use('*', requireStaff(store));
+  // the video editor: every signed-in member of the team
+  r.route('/edits', editRoutes(store));
 
   const isOwner = (c: { get: (k: 'staff') => Staff }) => c.get('staff').role === 'owner';
   const ownClientIds = async (staffId: string) => new Set((await store.list<Appointment>('appointments')).filter((a) => a.staffId === staffId).map((a) => a.clientId));

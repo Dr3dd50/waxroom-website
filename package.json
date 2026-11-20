@@ -23,8 +23,11 @@
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1149.0",
+    "@aws-sdk/client-lambda": "^3.1161.0",
+    "@aws-sdk/client-s3": "^3.1161.0",
     "@aws-sdk/client-secrets-manager": "^3.1149.0",
     "@aws-sdk/lib-dynamodb": "^3.1149.0",
+    "@aws-sdk/s3-request-presigner": "^3.1161.0",
     "@gsap/react": "^2.1.2",
     "@hono/node-server": "^1.19.17",
     "@stripe/stripe-js": "^4.10.0",

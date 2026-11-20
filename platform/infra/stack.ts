@@ -1,4 +1,5 @@
-import { CfnOutput, Duration, RemovalPolicy, SecretValue, Stack, type StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Duration, RemovalPolicy, SecretValue, Size, Stack, type StackProps } from 'aws-cdk-lib';
+import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import type { Construct } from 'constructs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cf from 'aws-cdk-lib/aws-cloudfront';
@@ -104,6 +105,33 @@ export class WaxRoomStack extends Stack {
       table.grantReadWriteData(fn);
       appSecret.grantRead(fn);
     }
+
+    // ── video editor (platform/editor): uploads go straight from the browser to S3, a container
+    // Lambda edits them, and the API reads what it leaves. Building the image needs Docker. ──
+    const edits = new s3.Bucket(this, 'Edits', {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+      // the staff dashboard PUTs to signed links and plays the results from them
+      cors: [{ allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET], allowedOrigins: [`https://${staffHost}`, 'https://*.cloudfront.net'], allowedHeaders: ['*'], maxAge: 3600 }],
+      // raw phone videos are big: everything goes after 30 days (download what you want to keep)
+      lifecycleRules: [{ expiration: Duration.days(30), abortIncompleteMultipartUploadAfter: Duration.days(1) }],
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+    const editor = new lambda.DockerImageFunction(this, 'Editor', {
+      code: lambda.DockerImageCode.fromImageAsset(resolve(root, 'platform/editor'), { platform: Platform.LINUX_AMD64 }),
+      architecture: lambda.Architecture.X86_64,
+      // more memory = more CPU: 3008 MB works on every account; raise it (up to 10240) where the account allows, for faster edits
+      memorySize: Number(this.node.tryGetContext('editorMemory') ?? 3008),
+      ephemeralStorageSize: Size.gibibytes(10),
+      timeout: Duration.minutes(15),
+      retryAttempts: 0, // a failed edit writes error.json; a silent retry would just fail again
+    });
+    edits.grantReadWrite(editor);
+    edits.grantReadWrite(api);
+    edits.grantDelete(api);
+    editor.grantInvoke(api);
+    api.addEnvironment('EDITS_BUCKET', edits.bucketName);
+    api.addEnvironment('EDITOR_FUNCTION', editor.functionName);
     new events.Rule(this, 'EveryFifteenMinutes', { schedule: events.Schedule.rate(Duration.minutes(15)), targets: [new targets.LambdaFunction(tick)] });
     const apiUrl = api.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE });
     const apiOrigin = new origins.FunctionUrlOrigin(apiUrl);
