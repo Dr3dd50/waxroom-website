@@ -97,7 +97,7 @@ const categories = [...byCategory.entries()]
         image: isDefaultImage(s.image) ? null : s.image,
         deposit: s.deposit_amount ? Number(s.deposit_amount) : null,
         depositNewClientsOnly: !!s.deposit_for_new_clients_only,
-        // GlossGenius opens straight on this service's calendar with /book?service_token=
+        // GlossGenius opens with this service in the cart via /services?service_token=
         token: s.token,
       })),
   }));

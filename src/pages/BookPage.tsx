@@ -110,7 +110,7 @@ function GlossGeniusMenu() {
           <h1 className="display book__title">
             Book your <em>visit.</em>
           </h1>
-          <ServicePicker services={GG_SERVICES} focus={focus} hrefFor={(s) => glossGeniusService(s.id)} note="Tap a service to pick your day and time." />
+          <ServicePicker services={GG_SERVICES} focus={focus} hrefFor={(s) => glossGeniusService(s.id)} note="Tap a service to choose your wax specialist, day and time." />
         </div>
       </div>
     </section>

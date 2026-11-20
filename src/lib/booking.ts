@@ -4,8 +4,8 @@
 // Flip the build flag to switch; nothing else changes.
 //
 // Either way a Book button opens our menu at /book/ on the umbrella of the page
-// it's on, and a chosen service goes straight to picking a time: our own step in
-// the native build, that service's calendar on GlossGenius in the live one.
+// it's on, and a chosen service goes on to picking a tech and a time: our own steps
+// in the native build, GlossGenius with that service in the cart in the live one.
 import { createContext, useContext } from 'react';
 import { business } from '../data';
 
@@ -22,8 +22,12 @@ const TOKENS = new Map(business.categories.flatMap((c) => c.services.map((s) => 
 /** Whether a service (by name) can be booked on GlossGenius, the live booking system until the switch. */
 export const onGlossGenius = (name: string) => TOKENS.has(name.toLowerCase());
 
-/** GlossGenius, opened on one service's calendar. */
-export const glossGeniusService = (token: string) => `${new URL(business.bookingUrl).origin}/book?service_token=${encodeURIComponent(token)}`;
+/**
+ * GlossGenius, with one service already in the cart. Its /services page keeps the
+ * "Select a Professional" picker (default Any Professional) above the Book button;
+ * /book?service_token= would skip straight to the calendar locked to Any Professional.
+ */
+export const glossGeniusService = (token: string) => `${new URL(business.bookingUrl).origin}/services?service_token=${encodeURIComponent(token)}`;
 
 export function bookLink(t: BookTarget = {}): LinkProps {
   if (t.service) {
